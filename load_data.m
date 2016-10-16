@@ -1,15 +1,29 @@
+
+
 %% Set up data
+% lab=6;
+% ranBy='ranByRaeed';
+% monkey='monkeyChips';
+% task='taskRW';
+% array='arrayLeftS1Area2';
+% folder='/home/raeed/Projects/limblab/data-raeed/MultiWorkspace/SplitWS/Chips/20151202/';
+% DL_fname='Chips_20151202_RW_DL_001';
+% PM_fname='Chips_20151202_RW_PM_003';
+% mapfile='mapFile/home/raeed/Projects/limblab/data-raeed/MultiWorkspace/SplitWS/Chips/mapfile/left_S1/SN 6251-001455.cmp';
+
+
+%% Set up (RaeedPC)
+addpath(genpath('C:\Users\Raeed\Projects\limblab\ClassyDataAnalysis'))
 
 lab=6;
 ranBy='ranByRaeed';
 monkey='monkeyChips';
 task='taskRW';
 array='arrayLeftS1Area2';
-%note the .nev extension is not necessary when providing the file name:
-folder='/home/raeed/Projects/limblab/data-raeed/MultiWorkspace/SplitWS/Chips/20151202/';
+folder='C:\Users\Raeed\Projects\limblab\data-raeed\MultiWorkspace\SplitWS\Chips\20151202\';
 DL_fname='Chips_20151202_RW_DL_001';
 PM_fname='Chips_20151202_RW_PM_003';
-mapfile='mapFile/home/raeed/Projects/limblab/data-raeed/MultiWorkspace/SplitWS/Chips/mapfile/left_S1/SN 6251-001455.cmp';
+mapfile='mapFileC:\Users\Raeed\Projects\limblab\data-raeed\MultiWorkspace\SplitWS\Chips\mapfile\left_S1\SN 6251-001455.cmp';
 
 %% Make CDS files
 
@@ -50,12 +64,21 @@ PM_ex.meta.hasAnalog=true;
 PM_ex.addSession(DL_cds);
 
 %% Bin experiment data
-
+DL_ex.binConfig.include(1).field='units';
+DL_ex.binConfig.include(1).which=find([DL_ex.units.data.ID]>0 & [DL_ex.units.data.ID]<255);
+DL_ex.binConfig.include(2).field='kin';
+DL_ex.binConfig.include(2).which={};
+% DL_ex.binConfig.include(3).field='analog';
+% DL_ex.binConfig.include(3).which=DL_ex.analog(3).data.Properties.VariableNames(2:end);%kinect data\
 DL_ex.firingRateConfig.cropType='tightCrop';
 DL_ex.firingRateConfig.offset=-0.015;
 
 DL_ex.binData()
 
+PM_ex.binConfig.include(1).field='units';
+PM_ex.binConfig.include(1).which=find([PM_ex.units.data.ID]>0 & [PM_ex.units.data.ID]<255);
+PM_ex.binConfig.include(2).field='kin';
+PM_ex.binConfig.include(2).which={};
 PM_ex.firingRateConfig.cropType='tightCrop';
 PM_ex.firingRateConfig.offset=-0.015;
 
