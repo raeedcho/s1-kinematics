@@ -3,7 +3,7 @@ addpath(genpath('C:\Users\Raeed\Projects\limblab\ClassyDataAnalysis'))
 
 lab=6;
 ranBy='ranByRaeed';
-monkey='monkeyChips';
+monkey='monkeyHan';
 task='taskRW';
 array='arrayLeftS1Area2';
 folder='C:\Users\Raeed\Projects\limblab\data-raeed\MultiWorkspace\SplitWS\Han\20160322\area2\preCDS\';
