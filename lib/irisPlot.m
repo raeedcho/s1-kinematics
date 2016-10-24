@@ -1,13 +1,15 @@
-function irisPlot( PM_bin, DL_bin )
-%IRISPLOT Create iris plot for PM and DL experiments
-%   Inputs - PM and DL binnedData objects with PDs already calculated
-%   Outputs - none
+function [tunedNeurons] = irisPlot( PM_pdData, DL_pdData, which_neurons )
+%IRISPLOT Create iris plot for PM and DL
+%   Inputs - PM and DL pdData tables with PDs calculated (extract from
+%   binnedData object), logical array of neurons to plot (if tuned)
+%   Outputs - logical array of which neurons were plotted, based on
+%   original data
 
 %extract relevant information
-angsPM = PM_bin.bin.pdData.velDir;
-dirCIPM = PM_bin.bin.pdData.velDirCI;
-angsDL = DL_bin.bin.pdData.velDir;
-dirCIDL = DL_bin.bin.pdData.velDirCI;
+angsPM = PM_pdData.velDir;
+dirCIPM = PM_pdData.velDirCI;
+angsDL = DL_pdData.velDir;
+dirCIDL = DL_pdData.velDirCI;
 
 % calculate CI widths
 DLCIwidth = diff(dirCIDL,1,2); % get CI widths
@@ -15,6 +17,11 @@ PMCIwidth = diff(dirCIPM,1,2);
 DLCIwidth(DLCIwidth<0) = DLCIwidth(DLCIwidth<0)+2*pi;
 PMCIwidth(PMCIwidth<0) = PMCIwidth(PMCIwidth<0)+2*pi;
 tunedNeurons = DLCIwidth<pi/4 & PMCIwidth<pi/4;
+
+if(~isempty(which_neurons))
+    tunedNeurons = tunedNeurons & which_neurons;
+end
+
 angsPMtuned = angsPM(tunedNeurons);
 angsDLtuned = angsDL(tunedNeurons);
 

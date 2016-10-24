@@ -1,7 +1,8 @@
-function [handle] = plotTuning(bins,modeledTuning,curve,maxRadius,color)
+function [handle] = plotTuning(bins,pdData,curve,maxRadius,color)
 % PLOT_TUNING makes a single figure showing the tuning curve and PD with
 % confidence intervals. Leave either entry blank to skip plotting it. Color
 % is a 3 element vector for the color of the plotted tuning curve and PD.
+% pdData is one row taken from binnedData object.
 
 % plot initial point
 h=polar(0,maxRadius);
@@ -10,6 +11,9 @@ hold all
 
 % tuning curve
 if(~isempty(curve))
+    if(height(curve)>1)
+        error('plotTuning:TooManyThings','curve must contain only one row')
+    end
     h=polar(repmat(bins,1,2),repmat(curve.binnedFR,1,2));
     set(h,'linewidth',2,'color',color)
     th_fill = [fliplr(bins) bins(end) bins(end) bins];
@@ -19,12 +23,14 @@ if(~isempty(curve))
 end
 
 % PD
-if(~isempty(modeledTuning))
-    dir = atan2(modeledTuning(2),modeledTuning(1));
-    h=polar(repmat(dir,2,1),maxRadius*[0;1]);
+if(~isempty(pdData))
+    if(height(curve)>1)
+        error('plotTuning:TooManyThings','pdData must contain only one row')
+    end
+    h=polar(repmat(pdData.velDir,2,1),maxRadius*[0;1]);
     set(h,'linewidth',2,'color',color)
-%     th_fill = [modeledTuning.dir_CI(2) modeledTuning.dir modeledTuning.dir_CI(1) 0];
-%     r_fill = [maxRadius maxRadius maxRadius 0];
-%     [x_fill,y_fill] = pol2cart(th_fill,r_fill);
-%     patch(x_fill,y_fill,color,'facealpha',0.3);
+    th_fill = [pdData.velDirCI(2) pdData.velDir pdData.velDirCI(1) 0];
+    r_fill = [maxRadius maxRadius maxRadius 0];
+    [x_fill,y_fill] = pol2cart(th_fill,r_fill);
+    patch(x_fill,y_fill,color,'facealpha',0.3);
 end
