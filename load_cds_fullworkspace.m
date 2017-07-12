@@ -2,12 +2,12 @@
 
 meta.lab=6;
 meta.ranBy='ranByRaeed';
-meta.monkey='monkeyHan';
+meta.monkey='monkeyChips';
 meta.task='taskRW';
 meta.array='arrayLeftS1Area2';
-meta.folder='C:\Users\rhc307\Projects\limblab\data-preproc\MultiWorkspace\FullWS\Han\leftS1\20160315\';
-meta.fname='Han_20160315_RW_area2_001';
-meta.mapfile='mapFileC:\Users\rhc307\Projects\limblab\data-preproc\Meta\Mapfiles\Han\left_S1\SN 6251-001459.cmp';
+meta.folder='C:\Users\rhc307\Projects\limblab\data-preproc\MultiWorkspace\FullWS\Chips\leftS1\20151203\';
+meta.fname='Chips_20151203_RW_002';
+meta.mapfile='mapFileC:\Users\rhc307\Projects\limblab\data-preproc\Meta\Mapfiles\Chips\left_S1\SN 6251-001455.cmp';
 
 % Make CDS files
 
@@ -16,11 +16,12 @@ cds.file2cds([meta.folder 'preCDS\' meta.fname],meta.ranBy,meta.array,meta.monke
 
 %% Load marker file
 
-marker_data = load([meta.folder 'ColorTracking\Markers\' 'markers_Han_20160315_RW_001' '.mat']);
+marker_data = load([meta.folder 'ColorTracking\Markers\' 'markers_' meta.fname '.mat']);
 
 %% Get TRC
 
 % go to getTRCfromMarkers and run from there for now.
+getTRCfromMarker(cds,marker_dta)
 
 %% Do openSim stuff and save analysis results to analysis folder
 
@@ -29,10 +30,10 @@ marker_data = load([meta.folder 'ColorTracking\Markers\' 'markers_Han_20160315_R
 %% Add kinematic information to CDS
 
 % load joint information
-cds.loadOpenSimData([meta.folder 'OpenSim\Analysis\'],'_Kinematics_q.sto')
+cds.loadOpenSimData([meta.folder 'OpenSim\Analysis\'],'joint_ang')
 
 % load muscle information
-cds.loadOpenSimData([meta.folder 'OpenSim\Analysis\'],'_MuscleAnalysis_Length.sto')
+cds.loadOpenSimData([meta.folder 'OpenSim\Analysis\'],'muscle_len')
 
 %% Save CDS
 
