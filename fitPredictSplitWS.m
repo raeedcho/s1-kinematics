@@ -31,8 +31,8 @@ end
 td = rmfield(td,'opensim_pca');
 
 %% split into epochs
-[~,td_dl] = getTDidx(td,'epoch','dl','result','R');
-[~,td_pm] = getTDidx(td,'epoch','pm','result','R');
+[~,td_dl] = getTDidx(td,'epoch','DL','result','R');
+[~,td_pm] = getTDidx(td,'epoch','PM','result','R');
 minsize = min(length(td_dl),length(td_pm));
 td_dl = td_dl(1:minsize);
 td_pm = td_pm(1:minsize);
@@ -57,11 +57,11 @@ td_train = [td_dl(train_idx) td_pm(train_idx)];
 
 glm_ext_params = struct('model_type','glm',...
                         'model_name','ext_model',...
-                        'in_signals',{{'pos',[1 2];'vel',[1 2]}},...
+                        'in_signals',{{'vel',[1 2]}},...
                         'out_signals',{{'S1_spikes'}});
 glm_musc_params = struct('model_type','glm',...
                         'model_name','musc_model',...
-                        'in_signals',{{'opensim_len_pca',1:5;'opensim_muscVel_pca',1:5}},...
+                        'in_signals',{{'opensim_muscVel_pca',1:5}},...
                         'out_signals',{'S1_spikes'});
 [~,glm_info_ext] = getModel(td_train,glm_ext_params);
 [~,glm_info_musc] = getModel(td_train,glm_musc_params);
@@ -84,6 +84,9 @@ eval_params = glm_info_musc;
 eval_params.eval_metric = 'pr2';
 td_musc_dl_eval = squeeze(evalModel(td_dl_test,eval_params));
 td_musc_pm_eval = squeeze(evalModel(td_pm_test,eval_params));
+
+% package test sets together
+td_test = cat(2,td_dl_test,td_pm_test)
 
 %% Plot example
 % neuron 1 has decent pseudo R2
@@ -116,8 +119,10 @@ av_pR2_musc_dl = mean(td_musc_dl_eval,2);
 av_pR2_ext_pm = mean(td_ext_pm_eval,2);
 av_pR2_musc_pm = mean(td_musc_pm_eval,2);
 
+good_neurons = td_ext_dl_eval(:,1) > 0 & td_ext_pm_eval(:,1) > 0 & td_musc_pm_eval(:,1) > 0 & td_musc_dl_eval(:,1) > 0;
+
 figure
-plot(av_pR2_ext_dl,av_pR2_musc_dl,'ro')
+plot(av_pR2_ext_dl(good_neurons),av_pR2_musc_dl(good_neurons),'ro','linewidth',2)
 hold on
 plot([-1 1],[-1 1],'k--','linewidth',2)
 plot([0 0],[-1 1],'k-','linewidth',2)
@@ -125,9 +130,10 @@ plot([-1 1],[0 0],'k-','linewidth',2)
 set(gca,'box','off','tickdir','out','xlim',[-0.1 0.5],'ylim',[-0.1 0.5])
 
 figure
-plot(av_pR2_ext_pm,av_pR2_musc_pm,'bo')
+plot(av_pR2_ext_pm(good_neurons),av_pR2_musc_pm(good_neurons),'bo','linewidth',2)
 hold on
 plot([-1 1],[-1 1],'k--','linewidth',2)
 plot([0 0],[-1 1],'k-','linewidth',2)
 plot([-1 1],[0 0],'k-','linewidth',2)
 set(gca,'box','off','tickdir','out','xlim',[-0.1 0.5],'ylim',[-0.1 0.5])
+
