@@ -24,7 +24,7 @@ end
 
 % PD
 if(~isempty(pdData))
-    if(height(curve)>1)
+    if(height(pdData)>1)
         error('plotTuning:TooManyThings','pdData must contain only one row')
     end
     h=polar(repmat(pdData.velDir,2,1),maxRadius*[0;1]);
