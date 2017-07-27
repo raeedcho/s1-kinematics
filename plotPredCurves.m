@@ -69,27 +69,39 @@ for neuron_idx = 1:height(dl_curves)
 end
 
 %% Plot PD shift summary
-CIwidth = diff(pdTable.velDirCI-repmat(pdTable.velDir,1,2));
-tuned_idx = CIwidth<pi/4;
+CIwidth_dl = diff(dl_pds.velDirCI-repmat(dl_pds.velDir,1,2),1,2);
+CIwidth_pm = diff(pm_pds.velDirCI-repmat(pm_pds.velDir,1,2),1,2);
+tuned_idx = CIwidth_dl<pi/4 & CIwidth_pm<pi/4;
 pdDiff = remove_wrapping(dl_pds.velDir-pm_pds.velDir);
 pdDiff_ext = remove_wrapping(dl_ext_pds.velDir-pm_ext_pds.velDir);
 pdDiff_musc = remove_wrapping(dl_musc_pds.velDir-pm_musc_pds.velDir);
 
+pdDiff = pdDiff(tuned_idx);
+pdDiff_ext = pdDiff_ext(tuned_idx);
+pdDiff_musc = pdDiff_musc(tuned_idx);
+
+% find linear models of pdDiff
+ext_diff_lm = fitlm(pdDiff,pdDiff_ext)
+musc_diff_lm = fitlm(pdDiff,pdDiff_musc)
+ext_pred_diff = ext_diff_lm.predict((-pi:pi/2:pi)');
+musc_pred_diff = musc_diff_lm.predict((-pi:pi/2:pi)');
+
 figure
 ext_color = [1 0.5 0];
-musc_color = [0.12 0.69 0.67]
-scatter(pdDiff,pdDiff_ext,25,ext_color,'x')
-scatter(pdDiff,pdDiff_musc,25,musc_color,'o')
+musc_color = [0.12 0.69 0.67];
+plot([-pi pi],[0 0],'-k','linewidth',2)
+hold on
+plot([0 0],[-pi pi],'-k','linewidth',2)
+plot([-pi pi],[-pi pi],'--k','linewidth',2)
+scatter(pdDiff,pdDiff_ext,50,ext_color,'x','linewidth',2)
+scatter(pdDiff,pdDiff_musc,50,musc_color,'o','linewidth',2)
+plot(-pi:pi/2:pi,ext_pred_diff,'--','Color',ext_color,'linewidth',2)
+plot(-pi:pi/2:pi,musc_pred_diff,'--','Color',musc_color,'linewidth',2)
+set(gca,'xlim',[-pi pi],'ylim',[-pi pi],'box','off','tickdir','out')
+axis square
 
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function unwrapped = remove_wrapping(wrapped)
-
-wrapped(wrapped>pi) = wrapped(wrapped>pi)-2*pi;
-wrapped(wrapped<pi) = wrapped(wrapped<pi)+2*pi;
-unwrapped = wrapped;
-
-end
