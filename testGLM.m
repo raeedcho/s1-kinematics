@@ -1,5 +1,5 @@
 %% load file
-load('/home/raeed/Projects/limblab/data-td/MultiWorkspace/FullWS/Han/20160325/Han_20160325_FullWS_area2_TD-notracking.mat')
+load('/home/raeed/Projects/limblab/data-td/MultiWorkspace/FullWS/Han/20160325/TD/Han_20160325_FullWS_area2_TD-notracking.mat')
 
 %% Split into train and test
 td = binTD(trial_data,5);
