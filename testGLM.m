@@ -2,7 +2,9 @@
 load('/home/raeed/Projects/limblab/data-td/MultiWorkspace/FullWS/Han/20160325/TD/Han_20160325_FullWS_area2_TD-notracking.mat')
 
 %% Split into train and test
-td = binTD(trial_data,5);
+[~,td] = getTDidx(trial_data,'result','R');
+td = trimTD(td,{'idx_startTime'},{'idx_endTime'});
+td = binTD(td,5);
 [train_idx,test_idx] = crossvalind('HoldOut',length(td),0.2);
 
 td_train = td(train_idx);
