@@ -196,64 +196,76 @@
     title 'One point per bootstrap sample'
 
 %% Plot PD shift clouds for each neuron individually
-    % Loop through and get mean shifts out of bootstrapped shifts
-    signalIDs = unique(shift_tables{1}.signalID,'rows');
-    % only look at tuned neurons
-    signalIDs = signalIDs(isTuned_real,:);
-    model_cstrings = {'r','g','b'}
-    model_figures = {figure;figure;figure};
-    model_titles = {'Hand-based','Egocentric','Muscle-based'}
-    for modelctr = 1:length(shift_tables)-1
-        % set up figure axes
-        figure(model_figures{modelctr})
-        plot([-pi pi],[0 0],'-k','linewidth',2)
-        hold on
-        plot([0 0],[-pi pi],'-k','linewidth',2)
-        plot([-pi pi],[-pi pi],'--k','linewidth',2)
-        axis equal
-        set(gca,'box','off','tickdir','out','xtick',[-pi pi],'ytick',[-pi pi],'xlim',[-pi pi],'ylim',[-pi pi],...
-            'xticklabel',{'-\pi','\pi'},'yticklabel',{'-\pi','\pi'})
-        xlabel 'Actual PD Shift'
-        ylabel 'Modeled PD Shift'
-        title([model_titles{modelctr} ' model PD shift vs Actual PD shift'])
-    end
-    for i = 1:size(signalIDs,1)
-        % make new table set
-        shift_tables_unit = cell(size(shift_tables));
-        for modelctr = 1:length(shift_tables)
-            % Populate new table with only that unit's PD shifts
-            unit_idx = ismember(shift_tables{modelctr}.signalID,signalIDs(i,:),'rows');
-            shift_tables_unit{modelctr} = shift_tables{modelctr}(unit_idx,:);
-        end
-        % now create hulls and plot
-        for modelctr = 1:length(shift_tables)-1
-            figure(model_figures{modelctr})
+    tic;
+    comparePDClouds(shift_tables{4},shift_tables{1},struct('filter_tuning',1),'r','facealpha',0.5)
+    comparePDClouds(shift_tables{4},shift_tables{2},struct('filter_tuning',1),'g','facealpha',0.5)
+    comparePDClouds(shift_tables{4},shift_tables{3},struct('filter_tuning',1),'b','facealpha',0.5)
+    toc
+    % tic
+    % % Loop through and get mean shifts out of bootstrapped shifts
+    % signalIDs = unique(shift_tables{1}.signalID,'rows');
+    % model_cstrings = {'r','g','b'}
+    % model_figures = {figure;figure;figure};
+    % model_titles = {'Hand-based','Egocentric','Muscle-based'}
+    % for modelctr = 1:length(shift_tables)-1
+    %     % set up figure axes
+    %     figure(model_figures{modelctr})
+    %     plot([-pi pi],[0 0],'-k','linewidth',2)
+    %     hold on
+    %     plot([0 0],[-pi pi],'-k','linewidth',2)
+    %     plot([-pi pi],[-pi pi],'--k','linewidth',2)
+    %     axis equal
+    %     set(gca,'box','off','tickdir','out','xtick',[-pi pi],'ytick',[-pi pi],'xlim',[-pi pi],'ylim',[-pi pi],...
+    %         'xticklabel',{'-\pi','\pi'},'yticklabel',{'-\pi','\pi'})
+    %     xlabel 'Actual PD Shift'
+    %     ylabel 'Modeled PD Shift'
+    %     title([model_titles{modelctr} ' model PD shift vs Actual PD shift'])
+    % end
+    % for i = 1:size(signalIDs,1)
+    %     % make new table set
+    %     shift_tables_unit = cell(size(shift_tables));
+    %     for modelctr = 1:length(shift_tables)
+    %         % Populate new table with only that unit's PD shifts
+    %         unit_idx = ismember(shift_tables{modelctr}.signalID,signalIDs(i,:),'rows');
+    %         shift_tables_unit{modelctr} = shift_tables{modelctr}(unit_idx,:);
+    %     end
+    %     % now create hulls and plot
+    %     for modelctr = 1:length(shift_tables)-1
+    %         figure(model_figures{modelctr})
 
-            % first plot cloud with center point
-            %comparePDs(shift_tables_unit{4},shift_tables_unit{modelctr},struct('move_corr','vel'),[model_cstrings{modelctr} 'o'],'linewidth',2)
-            %plot(circ_mean(shift_tables_unit{4}.velPD),circ_mean(shift_tables_unit{modelctr}.velPD),'ko','linewidth',2);
+    %         % first plot cloud with center point
+    %         %comparePDs(shift_tables_unit{4},shift_tables_unit{modelctr},struct('move_corr','vel'),[model_cstrings{modelctr} 'o'],'linewidth',2)
+    %         %plot(circ_mean(shift_tables_unit{4}.velPD),circ_mean(shift_tables_unit{modelctr}.velPD),'ko','linewidth',2);
 
-            % figure out 95% confidence interval by 'euclidean' distance to circular mean
-            % should I be calculating geodesic distance somehow? seems like no, based on a preliminary google search
-            clust = [shift_tables_unit{4}.velPD shift_tables_unit{modelctr}.velPD];
-            means = [circ_mean(shift_tables_unit{4}.velPD) circ_mean(shift_tables_unit{modelctr}.velPD)];
-            centered_clust = minusPi2Pi(clust-repmat(means,num_outer_boots,1));
-            dists = sqrt(sum(centered_clust.^2,2));
-            inliers = dists<prctile(dists,95);
-            clust = clust(inliers,:);
-            centered_clust = centered_clust(inliers,:);
+    %         % figure out 95% confidence interval by 'euclidean' distance to circular mean
+    %         % should I be calculating geodesic distance somehow? seems like no, based on a preliminary google search
+    %         clust = [shift_tables_unit{4}.velPD shift_tables_unit{modelctr}.velPD];
+    %         means = [circ_mean(shift_tables_unit{4}.velPD) circ_mean(shift_tables_unit{modelctr}.velPD)];
+    %         centered_clust = minusPi2Pi(clust-repmat(means,size(clust,1),1));
 
-            % generate convex hull of inliers
-            hull_idx = convhull(centered_clust);
+    %         % check whether to plot cluster
+    %         % skip cluster if range is above CI_thresh
+    %         if diff(prctile(centered_clust(:,1),[2.5 97.5]))>pi/3
+    %             continue
+    %         end
 
-            % plot cloud
-            % plot hull (have to figure out what to do about wraparound)
-            patch(centered_clust(hull_idx,1)+means(1),centered_clust(hull_idx,2)+means(2),model_cstrings{modelctr},'facealpha',0.5);
-            patch(centered_clust(hull_idx,1)+means(1)-2*pi,centered_clust(hull_idx,2)+means(2),model_cstrings{modelctr},'facealpha',0.5);
-            patch(centered_clust(hull_idx,1)+means(1),centered_clust(hull_idx,2)+means(2)-2*pi,model_cstrings{modelctr},'facealpha',0.5);
-            patch(centered_clust(hull_idx,1)+means(1)-2*pi,centered_clust(hull_idx,2)+means(2)-2*pi,model_cstrings{modelctr},'facealpha',0.5);
-        end
-    end
+    %         dists = sqrt(sum(centered_clust.^2,2));
+    %         inliers = dists<prctile(dists,95);
+    %         clust = clust(inliers,:);
+    %         centered_clust = centered_clust(inliers,:);
+
+    %         % generate convex hull of inliers
+    %         hull_idx = convhull(centered_clust);
+
+    %         % plot cloud
+    %         % plot hull (have to figure out what to do about wraparound)
+    %         patch(centered_clust(hull_idx,1)+means(1),centered_clust(hull_idx,2)+means(2),model_cstrings{modelctr},'facealpha',0.5);
+    %         patch(centered_clust(hull_idx,1)+means(1)-2*pi,centered_clust(hull_idx,2)+means(2),model_cstrings{modelctr},'facealpha',0.5);
+    %         patch(centered_clust(hull_idx,1)+means(1),centered_clust(hull_idx,2)+means(2)-2*pi,model_cstrings{modelctr},'facealpha',0.5);
+    %         patch(centered_clust(hull_idx,1)+means(1)-2*pi,centered_clust(hull_idx,2)+means(2)-2*pi,model_cstrings{modelctr},'facealpha',0.5);
+    %     end
+    % end
+    % toc
 
 %% Plot PDs against each other (one point per mean PD shift)
     figure
