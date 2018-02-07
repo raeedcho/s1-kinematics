@@ -38,7 +38,7 @@ for trial = 1:length(trial_data)
                 [az,el,r] = cart2sph(coords(:,1),coords(:,2),coords(:,3));
                 trial_data(trial).(['sphere_hand_' sphere_postfix{postfix_ctr}]) = [az el r];
             else
-                warning(['no hand marker ' sphere_postfix{ctr} ' found for one or more trials'])
+                warning(['no hand marker ' sphere_postfix{postfix_ctr} ' found for one or more trials'])
             end
         end
     else

@@ -145,7 +145,7 @@
 %% Bootstrap on PD shifts
     model_names = {'glm_ext_model','glm_ego_model','glm_musc_model','S1_spikes'};
     num_internal_boots = 1;
-    num_outer_boots = 1000;
+    num_outer_boots = 100;
     shift_tables = cell(length(model_names),1);
     trial_idx = randi(length(td_pm_test),length(td_pm_test),num_outer_boots);
     tic
