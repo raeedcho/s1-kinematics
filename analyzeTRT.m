@@ -38,33 +38,37 @@
     % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
     % PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
     %                     'do_plot',true);
-    PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len'))}}, 'do_plot',true);
+    PCAparams = struct('signals',{{'opensim',find(contains(td_train(1).opensim_names,'_len'))}}, 'do_plot',true);
     [td_train,pca_info] = getPCA(td_train,PCAparams);
-    td_test{1} = getPCA(td_test{1},pca_info);
-    td_test{2} = getPCA(td_test{2},pca_info);
+    for spacenum = 1:2
+        td_test{spacenum} = getPCA(td_test{spacenum},pca_info);
+    end
     
     % temporary hack to allow us to do PCA on velocity too
     for i=1:length(td_train)
         td_train(i).opensim_len_pca = td_train(i).opensim_pca;
     end
     for i=1:length(td_test{1})
-        td_test{1}(i).opensim_len_pca = td_test{1}(i).opensim_pca;
-        td_test{2}(i).opensim_len_pca = td_test{2}(i).opensim_pca;
+        for spacenum = 1:2
+            td_test{spacenum}(i).opensim_len_pca = td_test{spacenum}(i).opensim_pca;
+        end
     end
     
     % get rid of superfluous PCA
     td_train = rmfield(td_train,'opensim_pca');
-    td_test{1} = rmfield(td_test{1},'opensim_pca');
-    td_test{2} = rmfield(td_test{2},'opensim_pca');
+    for spacenum = 1:2
+        td_test{spacenum} = rmfield(td_test{spacenum},'opensim_pca');
+    end
 
     % get velocity PCA
     % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
     % PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
     %                     'do_plot',true);
-    PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel'))}}, 'do_plot',true);
+    PCAparams_vel = struct('signals',{{'opensim',find(contains(td_train(1).opensim_names,'_muscVel'))}}, 'do_plot',true);
     [td_train,pca_info_vel] = getPCA(td_train,PCAparams_vel);
-    td_test{1} = getPCA(td_test{1},pca_info_vel);
-    td_test{2} = getPCA(td_test{2},pca_info_vel);
+    for spacenum = 1:2
+        td_test{spacenum} = getPCA(td_test{spacenum},pca_info_vel);
+    end
     
     % temporary hack to allow us to save into something useful
     for i=1:length(td_train)
@@ -77,8 +81,9 @@
     
     % get rid of superfluous PCA
     td_train = rmfield(td_train,'opensim_pca');
-    td_test{1} = rmfield(td_test{1},'opensim_pca');
-    td_test{2} = rmfield(td_test{2},'opensim_pca');
+    for spacenum = 1:2
+        td_test{spacenum} = rmfield(td_test{spacenum},'opensim_pca');
+    end
     
     % clean up
     clearvars -except trial_data td_train td_test
@@ -88,7 +93,7 @@
     glm_params = cell(1,3);
     glm_info = cell(1,3);
     % cartesian hand coordinates for position and velocity
-    opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
+    opensim_hand_idx = find(contains(td_train(1).opensim_names,'_handPos') | contains(td_train(1).opensim_names,'_handVel'));
     glm_params{1} = struct('model_type','glm',...
                             'model_name','ext_model',...
                             'in_signals',{{'opensim',opensim_hand_idx}},...
@@ -105,14 +110,14 @@
         [~,glm_info{modelnum}] = getModel(td_train,glm_params{modelnum});
     end
 
-%% Predict firing rates
+    % Predict firing rates
     for modelnum = 1:3
         for spacenum = 1:2
             td_test{spacenum} = getModel(td_test{spacenum},glm_info{modelnum});
         end
     end
 
-%% Evaluate model fits
+    % Evaluate model fits
     % set up eval array
     % row 1 is PM, row 2 is DL, and row 3 is PM and DL together
     % col 1 is ext, col 2 is ego, col 3 is musc
@@ -121,13 +126,13 @@
     for modelnum = 1:3
         eval_params{modelnum}.eval_metric = 'pr2';
         for spacenum = 1:2
-            td_eval{spacenum,modelnum} = squeeze(evalModel(td_test{spacenum},eval_params));
+            td_eval{spacenum,modelnum} = squeeze(evalModel(td_test{spacenum},eval_params{modelnum}));
         end
-        td_eval{end,modelnum} = squeeze(evalModel([td_test{2} td_test{1}],eval_params));
+        td_eval{end,modelnum} = squeeze(evalModel([td_test{2} td_test{1}],eval_params{modelnum}));
     end
     
     % clean up
-    clearvars modelnum spacenum 
+    clearvars opensim_hand_idx modelnum spacenum 
 
 %% Get PDs and tuning curves for the modeled and actual neurons
     % set up outputs
@@ -139,17 +144,17 @@
     
     % set up parameters
     % PDs
-    num_boots = 1000;
-    pd_params{1} = struct('num_boots',num_boots,'out_signals',{{'glm_ext_model'}},'out_signal_names',td(1).S1_unit_guide,'disp_times',true);
-    pd_params{2} = struct('num_boots',num_boots,'out_signals',{{'glm_ego_model'}},'out_signal_names',td(1).S1_unit_guide,'disp_times',true);
-    pd_params{3} = struct('num_boots',num_boots,'out_signals',{{'glm_musc_model'}},'out_signal_names',td(1).S1_unit_guide,'disp_times',true);
-    pd_params{4} = struct('num_boots',num_boots,'out_signals',{{'S1_spikes'}},'out_signal_names',td(1).S1_unit_guide,'disp_times',true);
+    num_boots = 100;
+    pd_params{1} = struct('num_boots',num_boots,'out_signals',{{'glm_ext_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
+    pd_params{2} = struct('num_boots',num_boots,'out_signals',{{'glm_ego_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
+    pd_params{3} = struct('num_boots',num_boots,'out_signals',{{'glm_musc_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
+    pd_params{4} = struct('num_boots',num_boots,'out_signals',{{'S1_spikes'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
     % tuning curves
     num_bins = 8;
-    tuning_params{1} = struct('num_bins',num_bins,'out_signals',{{'glm_ext_model'}},'out_signal_names',td(1).S1_unit_guide);
-    tuning_params{2} = struct('num_bins',num_bins,'out_signals',{{'glm_ego_model'}},'out_signal_names',td(1).S1_unit_guide);
-    tuning_params{3} = struct('num_bins',num_bins,'out_signals',{{'glm_musc_model'}},'out_signal_names',td(1).S1_unit_guide);
-    tuning_params{4} = struct('num_bins',num_bins,'out_signals',{{'S1_spikes'}},'out_signal_names',td(1).S1_unit_guide);
+    tuning_params{1} = struct('num_bins',num_bins,'out_signals',{{'glm_ext_model'}},'out_signal_names',td_train(1).S1_unit_guide);
+    tuning_params{2} = struct('num_bins',num_bins,'out_signals',{{'glm_ego_model'}},'out_signal_names',td_train(1).S1_unit_guide);
+    tuning_params{3} = struct('num_bins',num_bins,'out_signals',{{'glm_musc_model'}},'out_signal_names',td_train(1).S1_unit_guide);
+    tuning_params{4} = struct('num_bins',num_bins,'out_signals',{{'S1_spikes'}},'out_signal_names',td_train(1).S1_unit_guide);
     
     % get PDs and tuning curves
     for modelnum = 1:4
@@ -165,15 +170,15 @@
 
 %% Bootstrap on PD shifts
     model_names = {'glm_ext_model','glm_ego_model','glm_musc_model','S1_spikes'};
-    num_internal_boots = 1;
-    num_outer_boots = 1000;
     shift_tables = cell(length(model_names),1);
+    num_internal_boots = 1;
+    num_outer_boots = 100;
     trial_idx = randi(length(td_test{1}),length(td_test{1}),num_outer_boots);
     tic
     for bootctr = 1:num_outer_boots
         disp(['Bootstrap sample ' num2str(bootctr) ', starting at ' num2str(toc) 's'])
         for modelctr = 1:length(model_names)
-            pd_params = struct('num_boots',num_internal_boots,'out_signals',{model_names(modelctr)},'out_signal_names',td(1).S1_unit_guide);
+            pd_params = struct('num_boots',num_internal_boots,'out_signals',{model_names(modelctr)},'out_signal_names',td_train(1).S1_unit_guide);
 
             pm_pdTable = getTDPDs(td_test{1}(trial_idx(:,bootctr)),pd_params);
             dl_pdTable = getTDPDs(td_test{2}(trial_idx(:,bootctr)),pd_params);
@@ -195,16 +200,20 @@
         end
     end
 
+    % clean up
+    clearvars num_*_boots trial_idx bootctr modelctr pd_params *_pdTable temp_shift_table
+
 %% Plot handle positions
     figure
     pos_dl = cat(1,td_test{2}.pos);
     plot(pos_dl(:,1),pos_dl(:,2),'r')
-    mean(pos_dl)
     hold on
     pos_pm = cat(1,td_test{1}.pos);
     plot(pos_pm(:,1),pos_pm(:,2),'b')
     axis equal
-    clear pos_*
+
+    % clean up
+    clearvars pos_*
 
 %% Plot example neuron model fit
     % neuron 1 has decent pseudo R2
@@ -232,6 +241,9 @@
         linkaxes([ax1 ax2],'x')
         waitforbuttonpress
     end
+
+    % clean up
+    clearvars neuron_idx temp_* ax1 ax2
 
 %% Plot pR2s against each other
     % av_pR2_ext_dl = mean(td_ext_dl_eval,2);
@@ -262,9 +274,9 @@
     % good_neurons = td_ext_eval(:,1) > 0 & td_musc_eval(:,1) > 0;
     good_neurons = isTuned{4}
     figure
-    plot(repmat(av_pR2_ext(good_neurons)',2,1),td_musc_eval(good_neurons,:)','b-','linewidth',2)
+    plot(repmat(av_pR2_ext(good_neurons)',2,1),td_eval{end,3}(good_neurons,:)','b-','linewidth',2)
     hold on
-    plot(td_ext_eval(good_neurons,:)',repmat(av_pR2_musc(good_neurons)',2,1),'b-','linewidth',2)
+    plot(td_eval{end,1}(good_neurons,:)',repmat(av_pR2_musc(good_neurons)',2,1),'b-','linewidth',2)
     plot([-1 1],[-1 1],'k--','linewidth',2)
     plot([0 0],[-1 1],'k-','linewidth',2)
     plot([-1 1],[0 0],'k-','linewidth',2)
@@ -272,20 +284,20 @@
     xlabel 'Hand-based pR2'
     ylabel 'Muscle-based pR2'
 
+    % clean up
+    clearvars av_pR2* good_neurons
+
 %% Plot comparison of actual tuning curves with various modeled tuning curves
     % first compare PM and DL tuning for each model
-    figure;compareTuning(tuning_curves(:,1),pdTables(:,1),bins,find(isTuned_real))
-    figure;compareTuning(tuning_curves(:,2),pdTables(:,2),bins,find(isTuned_real))
-    figure;compareTuning(tuning_curves(:,3),pdTables(:,3),bins,find(isTuned_real))
-    figure;compareTuning(tuning_curves(:,4),pdTables(:,4),bins,find(isTuned_real))
+    for modelnum = 1:4
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),bins,find(isTuned{4}))
+    end
 
-    % then compare PM tuning for each model
+    % then compare PM and DL tuning for each model
     % reorder for color consistency..
-    figure;compareTuning(tuning_curves(1,[3,1,2,4]),pdTables(1,[3,1,2,4]),bins,find(isTuned_real))
-
-    % then compare DL tuning for each model
-    % reorder for color consistency..
-    figure;compareTuning(tuning_curves(2,[3,1,2,4]),pdTables(2,[3,1,2,4]),bins,find(isTuned_real))
+    for spacenum = 1:2
+        figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),bins,find(isTuned{4}))
+    end
 
 %% Plot DL vs PM just for neurons actually tuned to velocity
     figure
@@ -298,20 +310,17 @@
     ylabel 'DL preferred direction'
     
 %% Plot PD shift clouds for each neuron individually
-    tic;
-    comparePDClouds(shift_tables{4},shift_tables{1},struct('filter_tuning',1),'r','facealpha',0.5)
-    xlabel 'Actual PD Shift'
-    ylabel 'Modeled PD Shift'
-    title 'Hand-based model PD shift vs Actual PD shift'
-    comparePDClouds(shift_tables{4},shift_tables{2},struct('filter_tuning',1),'g','facealpha',0.5)
-    xlabel 'Actual PD Shift'
-    ylabel 'Modeled PD Shift'
-    title 'Egocentric model PD shift vs Actual PD shift'
-    comparePDClouds(shift_tables{4},shift_tables{3},struct('filter_tuning',1),'b','facealpha',0.5)
-    xlabel 'Actual PD Shift'
-    ylabel 'Modeled PD Shift'
-    title 'Muscle-based model PD shift vs Actual PD shift'
-    toc
+    colors = {'r','g','b'}
+    titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'}
+    for modelnum = 1:3
+        comparePDClouds(shift_tables{4},shift_tables{modelnum},struct('filter_tuning',1),colors{modelnum},'facealpha',0.5)
+        xlabel 'Actual PD Shift'
+        ylabel 'Modeled PD Shift'
+        title(titles{modelnum})
+    end
+
+    % clean up
+    clearvars colors titles
 
 %% Find bootstrapped nonparametric shifts
 
