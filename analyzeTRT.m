@@ -144,7 +144,7 @@
     
     % set up parameters
     % PDs
-    num_boots = 100;
+    num_boots = 1000;
     pd_params{1} = struct('num_boots',num_boots,'out_signals',{{'glm_ext_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
     pd_params{2} = struct('num_boots',num_boots,'out_signals',{{'glm_ego_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
     pd_params{3} = struct('num_boots',num_boots,'out_signals',{{'glm_musc_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
@@ -172,7 +172,7 @@
     model_names = {'glm_ext_model','glm_ego_model','glm_musc_model','S1_spikes'};
     shift_tables = cell(length(model_names),1);
     num_internal_boots = 1;
-    num_outer_boots = 100;
+    num_outer_boots = 1000;
     trial_idx = randi(length(td_test{1}),length(td_test{1}),num_outer_boots);
     tic
     for bootctr = 1:num_outer_boots
@@ -272,7 +272,7 @@
     % set(gca,'box','off','tickdir','out','xlim',[-0.1 0.5],'ylim',[-0.1 0.5])
 
     % good_neurons = td_ext_eval(:,1) > 0 & td_musc_eval(:,1) > 0;
-    good_neurons = isTuned{4}
+    good_neurons = isTuned{4};
     figure
     plot(repmat(av_pR2_ext(good_neurons)',2,1),td_eval{end,3}(good_neurons,:)','b-','linewidth',2)
     hold on
@@ -310,8 +310,8 @@
     ylabel 'DL preferred direction'
     
 %% Plot PD shift clouds for each neuron individually
-    colors = {'r','g','b'}
-    titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'}
+    colors = {'r','g','b'};
+    titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
         comparePDClouds(shift_tables{4},shift_tables{modelnum},struct('filter_tuning',1),colors{modelnum},'facealpha',0.5)
         xlabel 'Actual PD Shift'
