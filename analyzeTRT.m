@@ -144,7 +144,7 @@
     
     % set up parameters
     % PDs
-    num_boots = 1000;
+    num_boots = 10;
     pd_params{1} = struct('num_boots',num_boots,'out_signals',{{'glm_ext_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
     pd_params{2} = struct('num_boots',num_boots,'out_signals',{{'glm_ego_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
     pd_params{3} = struct('num_boots',num_boots,'out_signals',{{'glm_musc_model'}},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',true);
@@ -160,7 +160,7 @@
     for modelnum = 1:4
         for spacenum = 1:2
             pdTables{spacenum,modelnum} = getTDPDs(td_test{spacenum},pd_params{modelnum});
-            [tuning_curves{spacenum,modelnum},bins] = getTuningCurves(td_test{spacenum},tuning_params{modelnum});
+            tuning_curves{spacenum,modelnum} = getTuningCurves(td_test{spacenum},tuning_params{modelnum});
         end
         isTuned{modelnum} = checkIsTuned(pdTables{1,modelnum}) & checkIsTuned(pdTables{2,modelnum});
     end
@@ -202,6 +202,8 @@
 
     % clean up
     clearvars num_*_boots trial_idx bootctr modelctr pd_params *_pdTable temp_shift_table
+
+%% Look at dot products of model parameters from simulated neural tuning to actual neural tuning
 
 %% Plot handle positions
     figure
@@ -290,13 +292,13 @@
 %% Plot comparison of actual tuning curves with various modeled tuning curves
     % first compare PM and DL tuning for each model
     for modelnum = 1:4
-        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),bins,find(isTuned{4}))
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned{4}))
     end
 
     % then compare PM and DL tuning for each model
     % reorder for color consistency..
     for spacenum = 1:2
-        figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),bins,find(isTuned{4}))
+        figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),find(isTuned{4}))
     end
 
 %% Plot DL vs PM just for neurons actually tuned to velocity
@@ -321,6 +323,4 @@
 
     % clean up
     clearvars colors titles
-
-%% Find bootstrapped nonparametric shifts
 
