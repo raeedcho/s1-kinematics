@@ -109,6 +109,7 @@
     glm_params = cell(1,3);
     glm_info = cell(1,3);
     % cartesian hand coordinates for position and velocity
+    model_names = {[model_type '_ext_model'],[model_type '_ego_model'],[model_type '_musc_model'],neural_signals};
     opensim_hand_idx = find(contains(td_train(1).opensim_names,'_handPos') | contains(td_train(1).opensim_names,'_handVel'));
     glm_params{1} = struct('model_type',model_type,...
                             'model_name','ext_model',...
@@ -160,7 +161,7 @@
     
     % set up parameters
     % PDs
-    model_names = {[model_type '_ext_model'],[model_type '_ego_model'],[model_type '_musc_model'],neural_signals};
+    
     num_boots = 100;
     num_bins = 8;
     % get PDs and tuning curves
@@ -212,7 +213,7 @@
     % clean up
     clearvars num_*_boots trial_idx bootctr modelctr pd_params *_pdTable temp_shift_table
 
-%% Look at dot products of model parameters from simulated neural tuning to actual neural tuning
+%% Pairwise correlation analysis
 
 %% Plot handle positions
     figure
