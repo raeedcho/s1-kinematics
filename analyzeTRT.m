@@ -209,7 +209,7 @@ function results = analyzeTRT(trial_data,params)
     num_bins = 8;
     % get PDs and tuning curves
     for modelnum = 1:4
-        pd_params{modelnum} = struct('num_boots',num_boots,'out_signals',{model_names(modelnum)},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',false,'distribution',glm_distribution);
+        pd_params{modelnum} = struct('num_boots',num_boots,'out_signals',{model_names(modelnum)},'out_signal_names',td_train(1).S1_unit_guide,'disp_times',verbose,'distribution',glm_distribution);
         tuning_params{modelnum} = struct('num_bins',num_bins,'out_signals',{model_names(modelnum)},'out_signal_names',td_train(1).S1_unit_guide);
     
         for spacenum = 1:2
