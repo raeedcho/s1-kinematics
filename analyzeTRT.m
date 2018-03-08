@@ -49,9 +49,9 @@ function results = analyzeTRT(trial_data,params)
     glm_distribution = 'poisson';
     model_eval_metric = 'pr2';
     model_type = 'glm';
-    num_musc_pcs = 3;
+    num_musc_pcs = 5;
     num_boots = 100;
-    verbose = true;
+    verbose = false;
     if nargin > 1, assignParams(who,params); end % overwrite parameters
 
 %% Compile training and test sets
