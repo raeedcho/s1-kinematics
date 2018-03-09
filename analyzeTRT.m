@@ -225,7 +225,6 @@ function results = analyzeTRT(trial_data,params)
 %% Bootstrap on PD shifts
     shift_tables = cell(1,length(model_names));
     num_internal_boots = 1;
-    num_boots = 100;
     trial_idx = randi(length(td_test{1}),length(td_test{1}),num_boots);
     if verbose
         tic
