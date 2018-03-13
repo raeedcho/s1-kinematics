@@ -9,21 +9,19 @@
 % INPUTS:
 %   trial_data : the struct
 %   params     : parameter struct
-%       .out_signals  : which signals to calculate PDs for
-%       .out_signal_names : names of signals to be used as signalID pdTable
-%                           default - empty
-%       .trial_idx    : trials to use.
-%                         DEFAULT: 1:length(trial_data
-%       .in_signals   : which signals to calculate PDs on
-%                           note: each signal must have only two columns for a PD to be calculated
-%                           default - 'vel'
-%       .block_trials : (NOT IMPLEMENTED) if true, takes input of trial indices and pools
-%                       them together for a single eval. If false, treats the trial indices
-%                       like a list of blocked testing segments
+%       .neural_signals  : which signals to calculate PDs for
+%                           default: 'S1_spikes'
+%       .model_type     :   type of model to fit
+%                           default; 'glm'
+%       .glm_distribution : distribution to use for GLM
+%                           default: 'poisson'
+%       .model_eval_metric : Evaluation metric for models
+%                           default: 'pr2'
+%       .num_musc_pcs   :   Number of muscle principle components to use
+%                           default: 5
 %       .num_boots    : # bootstrap iterations to use
-%       .distribution : distribution to use. See fitglm for options
-%       .do_plot      : plot of directions for diagnostics, not for general
-%                       use.
+%                           default: 100
+%       .verbose      :     Print diagnostic plots and information
 %
 % OUTPUTS:
 %   result  : results of analysis
@@ -35,6 +33,8 @@
 %                           Cols: ext_model, ego_model, musc_model, real
 %       .tuning_curves  : tuning curves in cell array, same as pdTables
 %       .shift_tables   : PD shift tables in cell array, cols same as above
+%       .glm_info       : output from fitting GLMs to different models
+%                           Cols: ext, ego, musc
 %       .isTuned        : cell array of isTuned, one for each model, as above
 %       .td_train       : trial data structure used to train models
 %       .td_test        : trial data structures used to test models
@@ -79,9 +79,6 @@ function results = analyzeTRT(trial_data,params)
     td_test = cell(2,1);
     td_test{1} = td_pm(test_idx);
     td_test{2} = td_dl(test_idx);
-    
-    % clean up
-    clearvars td td_pm td_dl minsize *_idx
 
 %% Get PCA for muscle space
     % do PCA on muscles, training on only the training set
@@ -134,9 +131,6 @@ function results = analyzeTRT(trial_data,params)
     for spacenum = 1:2
         td_test{spacenum} = rmfield(td_test{spacenum},'opensim_pca');
     end
-    
-    % clean up
-    clearvars PCAparams pca_info spacenum PCAparams_vel pca_info_vel i
 
 %% Get PCA for neural space
     PCAparams = struct('signals',{{'S1_spikes'}}, 'do_plot',verbose,'pca_recenter_for_proj',true,'sqrt_transform',true);
@@ -144,9 +138,6 @@ function results = analyzeTRT(trial_data,params)
     for spacenum = 1:2
         td_test{spacenum} = getPCA(td_test{spacenum},pca_info);
     end
-    
-    % clean up
-    clearvars PCAparams pca_info spacenum
 
 %% Fit models
     % set up parameters for models
@@ -191,9 +182,6 @@ function results = analyzeTRT(trial_data,params)
         end
         td_eval{end,modelnum} = squeeze(evalModel([td_test{2} td_test{1}],eval_params{modelnum}));
     end
-    
-    % clean up
-    clearvars opensim_hand_idx modelnum spacenum 
 
 %% Get PDs and tuning curves for the modeled and actual neurons
     % set up outputs
@@ -218,9 +206,6 @@ function results = analyzeTRT(trial_data,params)
         end
         isTuned{modelnum} = checkIsTuned(pdTables{1,modelnum}) & checkIsTuned(pdTables{2,modelnum});
     end
-    
-    % clean up
-    clearvars num_boots num_bins modelnum spacenum
 
 %% Bootstrap on PD shifts
     shift_tables = cell(1,length(model_names));
@@ -256,14 +241,12 @@ function results = analyzeTRT(trial_data,params)
         end
     end
 
-    % clean up
-    clearvars num_*_boots trial_idx bootctr modelctr pd_params *_pdTable temp_shift_table
-
 %% Package up outputs
     results = struct('td_eval',{td_eval},...
                         'pdTables',{pdTables},...
                         'tuning_curves',{tuning_curves},...
                         'shift_tables',{shift_tables},...
+                        'glm_info',{glm_info},...
                         'isTuned',{isTuned},...
                         'td_train',{td_train},...
                         'td_test',{td_test});
