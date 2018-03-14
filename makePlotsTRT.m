@@ -2,6 +2,42 @@
 % This script makes plots from results given by analyzeTRT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%% Main line figures %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Figure 1 - Task and classic analysis methods
+    % 1a - Monkey using manipulandum (in illustrator)
+    % 1b - example movements in two workspaces (with neural firing dots?)
+    % First, get example trials
+    [~,td_pm_ex] = getTDidx(trial_data,'spaceNum',1,'result','R','rand',1);
+    [~,td_dl_ex] = getTDidx(trial_data,'spaceNum',2,'result','R','rand',1);
+    % trim to just go from target start to end
+    td_ex = trimTD([td_pm_ex td_dl_ex],{'idx_ctHoldTime',0},{'idx_endTime',0});
+    % plot the example trials
+    figure
+    plotTRTTrials(td_ex);
+    % plot neural firing?
+    unit_idx = 1
+    plotSpikesOnHandle(td_ex,struct('unit_idx',unit_idx,'spikespec','b.','spikesize',10));
+
+    % 1c - example directional rasters and tuning curves?
+
+%% Figure 2 - Analysis block diagrams
+    % 2a - Block diagram of three different models
+    % 2b - Breaking up the data into training and testing sets
+    % 2c - Example neural predictions for each model
+
+%% Figure 3 - Comparison of modeled tuning curves
+    % 3a - a few example flat tuning curves (models on top of each other) DL under PM
+    % 3b - DNA plot for each model/real tuning for each monkey
+
+%% Figure 4 - Summaries
+    % 3c - Summary over neurons: PD shift plots for each model and each monkey
+    % 3d - Summary over monkeys/sessions: Bar chart of variance explained for each model by 1:1 line
+
+%%%%%%%%%%%%%%%%% Supplementary Figures %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Supplementary A - pR2s against each other for muscle vs endpoint
+
+%% Supplementary B - Figure showing why one monkey didn't have as large a change in tuning
+
 %% Plot handle positions
     if verbose
         figure
