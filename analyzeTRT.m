@@ -62,6 +62,9 @@ function results = analyzeTRT(trial_data,params)
     % add in spherical coordinates
     td = addSphereHand2TD(td);
 
+    % add firing rates rather than spike counts
+    td = addFiringRates(td,struct('array','S1'));
+
     % bin data at 50ms
     td = binTD(td,5);
     
