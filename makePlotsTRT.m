@@ -153,7 +153,7 @@
     colors = {'r','g','b'};
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
-        comparePDClouds(shift_tables{4},shift_tables{modelnum},struct('filter_tuning',1),colors{modelnum},'facealpha',0.5)
+        comparePDClouds(results.shift_tables{4},results.shift_tables{modelnum},struct('filter_tuning',1),colors{modelnum},'facealpha',0.5)
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
