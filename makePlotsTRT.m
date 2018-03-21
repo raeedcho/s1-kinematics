@@ -161,3 +161,6 @@
 
     % clean up
     clearvars colors titles
+
+%% Plot tuning weight clouds
+    tuningTable = results.tuningTable;
