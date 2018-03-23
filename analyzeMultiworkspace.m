@@ -191,8 +191,8 @@ function results = analyzeMultiworkspace(trial_data,params)
         end
 
         % make quiver plot
-        w_1 = weights{1,modelnum}(4:5,results.isTuned{4});
-        w_2 = weights{2,modelnum}(4:5,results.isTuned{4});
+        w_1 = weights{1,modelnum}(4:5,:);
+        w_2 = weights{2,modelnum}(4:5,:);
         dw = w_2-w_1;
 
         ax(modelnum) = subplot(2,2,modelnum);

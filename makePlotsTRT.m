@@ -163,4 +163,21 @@
     clearvars colors titles
 
 %% Plot tuning weight clouds
-    tuningTable = results.tuningTable;
+    tuningHull = getTuningHull(results.tuningTable);
+    % loop over each unit in one workspace
+    % n_rows = ceil(sqrt(height(signalIDs)+1));
+    cloud_fig = figure;
+    surf_fig = figure;
+    for neuron_idx = 10%1:height(signalIDs)
+        close_fig = figure;
+
+        figure(cloud_fig)
+        clf
+        plotMWTuningCloud(tuningHull,neuron_idx)
+
+        figure(surf_fig)
+        clf
+        plotMultiworkspaceTuning(results,neuron_idx)
+
+        waitfor(close_fig)
+    end
