@@ -1,4 +1,4 @@
-function plotMultiworkspaceTuning(results,neuron_idx)
+function plotMWTuningSurfaces(results,neuron_idx)
 %% Get tuning surfaces
     cm_viridis = viridis(200);
     model_names = {'glm_ext_model','glm_ego_model','glm_musc_model','S1_FR'};

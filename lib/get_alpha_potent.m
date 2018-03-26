@@ -1,4 +1,4 @@
-function [alpha_potent,alpha_null] = get_alpha_potent(trial_data)
+function [alpha_potent,alpha_null,del_Jinv] = get_alpha_potent(trial_data)
     % prep trial data by getting only rewards and trimming to only movements
     [~,td] = getTDidx(trial_data,'result','R');
     td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
@@ -78,3 +78,5 @@ function [alpha_potent,alpha_null] = get_alpha_potent(trial_data)
     % Making \alpha p-dimensional, this nullspace is at least (p-2)-dimensional
     alpha_null = null( pinv(J_dl')-pinv(J_pm') );
     alpha_potent = orth( pinv(J_dl')'-pinv(J_pm')' );
+
+    del_Jinv = pinv(J_dl')'-pinv(J_pm')';
