@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This script makes plots from results given by analyzeTRT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-results = analyzeTRT(trial_data)
+results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
 
 %%%%%%%%%%%%%%%%% Main line figures %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Figure 1 - Task and classic analysis methods
@@ -133,6 +133,7 @@ results = analyzeTRT(trial_data)
     tuning_curves = cell(2,4); % PM is first row, DL is second. Column order is Ext, Ego, Musc, Real
     pdTables = cell(2,4);
     tuning_params = cell(1,4);
+    model_names = results.model_names;
     
     % get PDs
     pdConvertedTable = getPDsFromWeights(results.tuningTable);
@@ -153,38 +154,67 @@ results = analyzeTRT(trial_data)
             temp.Properties.VariableNames = strrep(temp.Properties.VariableNames,[model_names{modelnum} '_'],'');
             pdTables{spacenum,modelnum} = temp;
 
-            tuning_curves{spacenum,modelnum} = getTuningCurves(td_test{spacenum},tuning_params{modelnum});
+            tuning_curves{spacenum,modelnum} = getTuningCurves(results.td_test{spacenum},tuning_params{modelnum});
         end
-        % isTuned{modelnum} = checkIsTuned(pdTables{1,modelnum}) & checkIsTuned(pdTables{2,modelnum});
+        isTuned{modelnum} = checkIsTuned(pdTables{1,modelnum}) & checkIsTuned(pdTables{2,modelnum});
+    end
+
+    % check whether each model is tuned
+    tuningHull = getTuningHull(results.tuningTable);
+    for modelnum = 1:4
+        % set up isTuned cell
+        isTuned{modelnum} = true(height(tuningHull)/2,1);
+        for spacenum = 1:2
+            % get only entries in given space
+            [~,tuningHull_space] = getNTidx(tuningHull,'spaceNum',spacenum);
+            for neuron_idx = 1:height(tuningHull_space)
+                hull = tuningHull_space(neuron_idx,:).([model_names{modelnum} '_velWeight']){1};
+                isTuned{modelnum}(neuron_idx) = isTuned{modelnum}(neuron_idx) & ~inpolygon(0,0,hull(:,1),hull(:,2));
+            end
+        end
     end
 
     % first compare PM and DL tuning for each model
     for modelnum = 1:4
-        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
-        % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(results.isTuned{4}))
+        % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned{4}))
     end
 
     % then compare PM and DL tuning for each model
     % reorder for color consistency..
-    for spacenum = 1:2
-        figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),find(results.isTuned{4}))
-    end
-
-%% Plot DL vs PM just for neurons actually tuned to velocity
-    figure
-    comparePDs(pm_real_pdTable(isTuned_real,:),dl_real_pdTable(isTuned_real,:),struct('move_corr','vel'),'ko','linewidth',2)
-    hold on
-    comparePDs(pm_ext_pdTable(isTuned_real,:),dl_ext_pdTable(isTuned_real,:),struct('move_corr','vel'),'ro','linewidth',2)
-    comparePDs(pm_ego_pdTable(isTuned_real,:),dl_ego_pdTable(isTuned_real,:),struct('move_corr','vel'),'go','linewidth',2)
-    comparePDs(pm_musc_pdTable(isTuned_real,:),dl_musc_pdTable(isTuned_real,:),struct('move_corr','vel'),'bo','linewidth',2)
-    xlabel 'PM preferred direction'
-    ylabel 'DL preferred direction'
+    % for spacenum = 1:2
+    %     figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),find(results.isTuned{4}))
+    % end
     
 %% Plot PD shift clouds for each neuron individually
+    % get shifts from weights
+    shift_tables = cell(1,length(results.model_names));
+    for modelnum = 1:length(results.model_names)
+        % select tables for each space
+        [~,pm_tuningTable] = getNTidx(results.tuningTable,'spaceNum',1);
+        [~,dl_tuningTable] = getNTidx(results.tuningTable,'spaceNum',2);
+
+        % compose shift table for this model/bootstrap sample
+        key_cols = ~contains(pm_tuningTable.Properties.VariableNames,'baseline') & ~contains(pm_tuningTable.Properties.VariableNames,'vel');
+        shift_tables{modelnum} = pm_tuningTable(:,key_cols);
+
+        % get PDs from pm and dl
+        weights = pm_tuningTable.([results.model_names{modelnum} '_velWeight']);
+        [pm_PDs,pm_moddepth] = cart2pol(weights(:,1),weights(:,2));
+        weights = dl_tuningTable.([results.model_names{modelnum} '_velWeight']);
+        [dl_PDs,dl_moddepth] = cart2pol(weights(:,1),weights(:,2));
+        dPDs = minusPi2Pi(dl_PDs-pm_PDs);
+        % use log for moddepth difference because of glm link?
+        dMod = log(dl_moddepth)-log(pm_moddepth);
+
+        tab_append = table(dPDs,dMod,'VariableNames',{'velPD','velModdepth'});
+        shift_tables{modelnum} = [shift_tables{modelnum} tab_append];
+    end
+
     colors = {'r','g','b'};
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
-        comparePDClouds(results.shift_tables{4},results.shift_tables{modelnum},struct('filter_tuning',1),colors{modelnum},'facealpha',0.5)
+        comparePDClouds(shift_tables{4},shift_tables{modelnum},struct('filter_tuning',[]),colors{modelnum},'facealpha',0.5)
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
@@ -194,7 +224,7 @@ results = analyzeTRT(trial_data)
     clearvars colors titles
 
 %% Plot tuning weight clouds
-    tuningHull = getTuningHull(results.tuningTable);
+    % tuningHull = getTuningHull(results.tuningTable);
     % loop over each unit in one workspace
     % n_rows = ceil(sqrt(height(signalIDs)+1));
     cloud_fig = figure;
@@ -212,3 +242,13 @@ results = analyzeTRT(trial_data)
 
         waitfor(close_fig)
     end
+
+%% Plot DL vs PM just for neurons actually tuned to velocity
+    % figure
+    % comparePDs(pm_real_pdTable(isTuned_real,:),dl_real_pdTable(isTuned_real,:),struct('move_corr','vel'),'ko','linewidth',2)
+    % hold on
+    % comparePDs(pm_ext_pdTable(isTuned_real,:),dl_ext_pdTable(isTuned_real,:),struct('move_corr','vel'),'ro','linewidth',2)
+    % comparePDs(pm_ego_pdTable(isTuned_real,:),dl_ego_pdTable(isTuned_real,:),struct('move_corr','vel'),'go','linewidth',2)
+    % comparePDs(pm_musc_pdTable(isTuned_real,:),dl_musc_pdTable(isTuned_real,:),struct('move_corr','vel'),'bo','linewidth',2)
+    % xlabel 'PM preferred direction'
+    % ylabel 'DL preferred direction'

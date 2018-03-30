@@ -191,7 +191,7 @@ function results = analyzeTRT(trial_data,params)
     tuningTable = table();
     trial_idx = randi(length(td_test{1}),length(td_test{1}),num_boots);
     if verbose
-        tic
+        h_tic = tic;
     end
     for bootctr = 1:num_boots
         for spacenum = 1:2
@@ -203,55 +203,20 @@ function results = analyzeTRT(trial_data,params)
                 temp_weight_table = getTDModelWeights(td_test{spacenum}(trial_idx(:,bootctr)),weightParams);
 
                 % append table to full tuning table for space
-                if modelnum = 1
+                if modelnum == 1
                     tempTuningTable = temp_weight_table;
                 else
                     tempTuningTable = join(tempTuningTable, temp_weight_table);
+                end
             end
 
             % smoosh space tables together
             tuningTable = [tuningTable;tempTuningTable];
         end
         if verbose
-            disp(['Bootstrap sample ' num2str(bootctr) ', ending at ' num2str(toc) 's'])
+            disp(['Bootstrap sample ' num2str(bootctr) ', ending at ' num2str(toc(h_tic)) 's'])
         end
     end
-
-
-%% Bootstrap on PD shifts
-    % get shifts from weights
-    % shift_tables = cell(1,length(model_names));
-    % num_internal_boots = 1;
-    % trial_idx = randi(length(td_test{1}),length(td_test{1}),num_boots);
-    % if verbose
-    %     tic
-    % end
-    % for bootctr = 1:num_boots
-    %     for modelctr = 1:length(model_names)
-    %         pd_params = struct('num_boots',num_internal_boots,'out_signals',{model_names(modelctr)},'out_signal_names',td_train(1).S1_unit_guide,'distribution',glm_distribution);
-
-    %         pm_pdTable = getTDPDs(td_test{1}(trial_idx(:,bootctr)),pd_params);
-    %         dl_pdTable = getTDPDs(td_test{2}(trial_idx(:,bootctr)),pd_params);
-
-    %         % compose shift table for this model/bootstrap sample
-    %         temp_shift_table = pm_pdTable;
-    %         temp_shift_table.velPD = minusPi2Pi(dl_pdTable.velPD-pm_pdTable.velPD);
-    %         temp_shift_table.velPDCI = minusPi2Pi(dl_pdTable.velPDCI-pm_pdTable.velPDCI); % this doesn't actually mean anything with one internal boot sample
-    %         % don't care about moddepth currently
-
-    %         if bootctr == 1
-    %             % slot new table into cell array
-    %             shift_tables{modelctr} = temp_shift_table;
-    %         else
-    %             % append to old table
-    %             shift_tables{modelctr} = [shift_tables{modelctr};temp_shift_table];
-    %         end
-
-    %     end
-    %     if verbose
-    %         disp(['Bootstrap sample ' num2str(bootctr) ', ending at ' num2str(toc) 's'])
-    %     end
-    % end
 
 %% Package up outputs
     results = struct('model_names',{model_names},...
