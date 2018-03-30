@@ -195,15 +195,18 @@ function results = analyzeTRT(trial_data,params)
     end
     for bootctr = 1:num_boots
         for spacenum = 1:2
-            tempTuningTable = makeNeuronTableStarter(td_train,struct('out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
-                                                                'meta',struct('spaceNum',spacenum)));
             for modelnum = 1:length(model_names)
                 % get tuning weights for each model
-                weightParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum});
+                weightParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
+                                        'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
+                                        'meta',struct('spaceNum',spacenum));
                 temp_weight_table = getTDModelWeights(td_test{spacenum}(trial_idx(:,bootctr)),weightParams);
 
                 % append table to full tuning table for space
-                tempTuningTable = [tempTuningTable temp_weight_table];
+                if modelnum = 1
+                    tempTuningTable = temp_weight_table;
+                else
+                    tempTuningTable = join(tempTuningTable, temp_weight_table);
             end
 
             % smoosh space tables together
@@ -214,25 +217,6 @@ function results = analyzeTRT(trial_data,params)
         end
     end
 
-%% Get PDs and tuning curves for the modeled and actual neurons
-    % set up outputs
-    pdTables = cell(2,4); % PM is first row, DL is second. Column order is Ext, Ego, Musc, Real
-    tuning_curves = cell(2,4); % PM is first row, DL is second. Column order is Ext, Ego, Musc, Real
-    isTuned = cell(1,4);
-    pd_params = cell(1,4);
-    tuning_params = cell(1,4);
-    
-    num_bins = 8;
-    % get PDs and tuning curves
-    for modelnum = 1:4
-        tuning_params{modelnum} = struct('num_bins',num_bins,'out_signals',{model_names(modelnum)},'out_signal_names',td_train(1).S1_unit_guide);
-    
-        for spacenum = 1:2
-            pdTables{spacenum,modelnum} = getPDsFromWeights(tuningTable);
-            tuning_curves{spacenum,modelnum} = getTuningCurves(td_test{spacenum},tuning_params{modelnum});
-        end
-        % isTuned{modelnum} = checkIsTuned(pdTables{1,modelnum}) & checkIsTuned(pdTables{2,modelnum});
-    end
 
 %% Bootstrap on PD shifts
     % get shifts from weights
@@ -270,7 +254,8 @@ function results = analyzeTRT(trial_data,params)
     % end
 
 %% Package up outputs
-    results = struct('td_eval',{td_eval},...
+    results = struct('model_names',{model_names},...
+                        'td_eval',{td_eval},...
                         'tuningTable',{tuningTable},...
                         'glm_info',{glm_info},...
                         'td_train',{td_train},...

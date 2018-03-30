@@ -129,15 +129,45 @@ results = analyzeTRT(trial_data)
     clearvars av_pR2* good_neurons
 
 %% Plot comparison of actual tuning curves with various modeled tuning curves
+    % Get PDs and tuning curves for the modeled and actual neurons
+    tuning_curves = cell(2,4); % PM is first row, DL is second. Column order is Ext, Ego, Musc, Real
+    pdTables = cell(2,4);
+    tuning_params = cell(1,4);
+    
+    % get PDs
+    pdConvertedTable = getPDsFromWeights(results.tuningTable);
+
+    num_bins = 8;
+    % get PDs and tuning curves
+    for modelnum = 1:4
+        tuning_params{modelnum} = struct('num_bins',num_bins,'out_signals',{model_names(modelnum)},'out_signal_names',results.td_train(1).S1_unit_guide);
+    
+        for spacenum = 1:2
+            % move converted PD table into separated cells with table selections
+            [~,temp] = getNTidx(pdConvertedTable,'spaceNum',spacenum);
+            % select only columns corresponding to the key or the model in question
+            key_cols = ~contains(temp.Properties.VariableNames,'baseline') & ~contains(temp.Properties.VariableNames,'vel');
+            model_cols = contains(temp.Properties.VariableNames,model_names{modelnum});
+            temp = temp(:,key_cols | model_cols);
+            % rename columns to get rid of model names
+            temp.Properties.VariableNames = strrep(temp.Properties.VariableNames,[model_names{modelnum} '_'],'');
+            pdTables{spacenum,modelnum} = temp;
+
+            tuning_curves{spacenum,modelnum} = getTuningCurves(td_test{spacenum},tuning_params{modelnum});
+        end
+        % isTuned{modelnum} = checkIsTuned(pdTables{1,modelnum}) & checkIsTuned(pdTables{2,modelnum});
+    end
+
     % first compare PM and DL tuning for each model
     for modelnum = 1:4
-        figure;compareTuning(results.tuning_curves(:,modelnum),results.pdTables(:,modelnum),find(results.isTuned{4}))
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
+        % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(results.isTuned{4}))
     end
 
     % then compare PM and DL tuning for each model
     % reorder for color consistency..
     for spacenum = 1:2
-        figure;compareTuning(results.tuning_curves(spacenum,[3,1,2,4]),results.pdTables(spacenum,[3,1,2,4]),find(results.isTuned{4}))
+        figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),find(results.isTuned{4}))
     end
 
 %% Plot DL vs PM just for neurons actually tuned to velocity
