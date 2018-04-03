@@ -218,6 +218,21 @@ function results = analyzeTRT(trial_data,params)
         end
     end
 
+    % check whether each model is tuned
+    % tuningHull = getTuningHull(results.tuningTable);
+    % for modelnum = 1:4
+    %     % set up isTuned cell
+    %     isTuned{modelnum} = true(height(tuningHull)/2,1);
+    %     for spacenum = 1:2
+    %         % get only entries in given space
+    %         [~,tuningHull_space] = getNTidx(tuningHull,'spaceNum',spacenum);
+    %         for neuron_idx = 1:height(tuningHull_space)
+    %             hull = tuningHull_space(neuron_idx,:).([model_names{modelnum} '_velWeight']){1};
+    %             isTuned{modelnum}(neuron_idx) = isTuned{modelnum}(neuron_idx) & ~inpolygon(0,0,hull(:,1),hull(:,2));
+    %         end
+    %     end
+    % end
+
 %% Package up outputs
     results = struct('model_names',{model_names},...
                         'td_eval',{td_eval},...

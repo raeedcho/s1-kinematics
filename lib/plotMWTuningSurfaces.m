@@ -1,4 +1,4 @@
-function plotMWTuningSurfaces(results,neuron_idx)
+function plotMWTuningSurfaces(td_test,pdTables,neuron_idx)
 %% Get tuning surfaces
     cm_viridis = viridis(200);
     model_names = {'glm_ext_model','glm_ego_model','glm_musc_model','S1_FR'};
@@ -6,12 +6,12 @@ function plotMWTuningSurfaces(results,neuron_idx)
     model_alias = {'Extrinsic','Egocentric','Muscle','Real'};
     space_alias = {'PM','DL'};
     % for each model and space
-    num_neurons = length(results.td_train(1).S1_unit_guide);
+    num_neurons = length(td_test{1}(1).S1_unit_guide);
     fr_total = [];
     for modelnum = 1:4
         for spacenum = 1:2
             % position plots
-            td = results.td_test{spacenum};
+            td = td_test{spacenum};
             poss = cat(1,td.pos);
             fr = get_vars(td,{model_names{modelnum},neuron_idx});
 
@@ -31,11 +31,14 @@ function plotMWTuningSurfaces(results,neuron_idx)
             plotSmoothFR(vels(:,1),vels(:,2),fr,[-40 40]);
 
             % Plot preferred direction in white
-            % pd = results.pdTables{spacenum,modelnum}.velPD(neuron_idx);
-            % pdCI = results.pdTables{spacenum,modelnum}.velPDCI(neuron_idx,:);
-            % hold on
-            % plot([0 20*cos(pd)],[0 20*sin(pd)],'-w','linewidth',2)
-            % patch([0 20*cos(pdCI(1)) 20*cos(pd) 20*cos(pdCI(2))],[0 20*sin(pdCI(1)) 20*sin(pd) 20*sin(pdCI(2))],'w','edgecolor','none','facealpha',0.6)
+            if ~isempty(pdTables)
+                pd = pdTables{spacenum,modelnum}.velPD(neuron_idx);
+                pdCI = pdTables{spacenum,modelnum}.velPDCI(neuron_idx,:);
+                hold on
+                plot([0 20*cos(pd)],[0 20*sin(pd)],'-r','linewidth',2)
+                plot([0 20*cos(pdCI(1)) 20*cos(pd) 20*cos(pdCI(2)) 0],[0 20*sin(pdCI(1)) 20*sin(pd) 20*sin(pdCI(2)) 0],'r','linewidth',1.74)
+                % patch([0 20*cos(pdCI(1)) 20*cos(pd) 20*cos(pdCI(2))],[0 20*sin(pdCI(1)) 20*sin(pd) 20*sin(pdCI(2))],'r','edgecolor','none','facealpha',0.6)
+            end
         end
     end
     linkaxes(ax_pos,'xy')
@@ -57,8 +60,8 @@ function plotMWTuningSurfaces(results,neuron_idx)
         end
     end
 
-    % subplot(4,3,2)
-    % label = ['Neuron ' num2str(signalIDs.signalID(neuron_idx))];
-    % title(label)
+    subplot(4,3,2)
+    label = ['Neuron ' num2str(td_test{1}(1).S1_unit_guide(neuron_idx,:))];
+    title(label)
 
     colormap(cm_viridis)

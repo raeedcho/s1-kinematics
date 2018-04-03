@@ -30,12 +30,12 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
 
     % 2c - Example neural predictions for each model
     % neuron 1 has decent pseudo R2
-    for neuron_idx = 1:length(td_eval{2,1})
+    for neuron_idx = 52%1:length(td_eval{2,1})
         h = figure;
-        temp_vel = cat(1,td_test{2}.vel);
-        temp_spikes = cat(1,td_test{2}.(neural_signals));
-        temp_pred_ext = cat(1,td_test{2}.(model_names{1}));
-        temp_pred_musc = cat(1,td_test{2}.(model_names{3}));
+        temp_vel = cat(1,results.td_test{2}.vel);
+        temp_spikes = cat(1,results.td_test{2}.S1_FR);
+        temp_pred_ext = cat(1,results.td_test{2}.(model_names{1}));
+        temp_pred_musc = cat(1,results.td_test{2}.(model_names{3}));
 
         clf
         ax1 = subplot(2,1,1);
@@ -91,8 +91,8 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     % av_pR2_musc_dl = mean(td_musc_dl_eval,2);
     % av_pR2_ext_pm = mean(td_ext_pm_eval,2);
     % av_pR2_musc_pm = mean(td_musc_pm_eval,2);
-    av_pR2_ext = mean(td_eval{end,1},2);
-    av_pR2_musc = mean(td_eval{end,3},2);
+    av_pR2_ext = mean(results.td_eval{end,1},2);
+    av_pR2_musc = mean(results.td_eval{end,3},2);
     
     % good_neurons = td_ext_dl_eval(:,1) > 0 & td_ext_pm_eval(:,1) > 0 & td_musc_pm_eval(:,1) > 0 & td_musc_dl_eval(:,1) > 0;
     % 
@@ -113,11 +113,12 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     % set(gca,'box','off','tickdir','out','xlim',[-0.1 0.5],'ylim',[-0.1 0.5])
 
     % good_neurons = td_ext_eval(:,1) > 0 & td_musc_eval(:,1) > 0;
-    good_neurons = isTuned{4};
+    % good_neurons = isTuned{4};
+    good_neurons = true(length(av_pR2_ext),1);
     figure
-    plot(repmat(av_pR2_ext(good_neurons)',2,1),td_eval{end,3}(good_neurons,:)','b-','linewidth',2)
+    plot(repmat(av_pR2_ext(good_neurons)',2,1),results.td_eval{end,3}(good_neurons,:)','k-','linewidth',2)
     hold on
-    plot(td_eval{end,1}(good_neurons,:)',repmat(av_pR2_musc(good_neurons)',2,1),'b-','linewidth',2)
+    plot(results.td_eval{end,1}(good_neurons,:)',repmat(av_pR2_musc(good_neurons)',2,1),'k-','linewidth',2)
     plot([-1 1],[-1 1],'k--','linewidth',2)
     plot([0 0],[-1 1],'k-','linewidth',2)
     plot([-1 1],[0 0],'k-','linewidth',2)
@@ -134,6 +135,8 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     pdTables = cell(2,4);
     tuning_params = cell(1,4);
     model_names = results.model_names;
+    isTuned = cell(1,4);
+    tunedNeurons = cell(1,4);
     
     % get PDs
     pdConvertedTable = getPDsFromWeights(results.tuningTable);
@@ -156,7 +159,6 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
 
             tuning_curves{spacenum,modelnum} = getTuningCurves(results.td_test{spacenum},tuning_params{modelnum});
         end
-        isTuned{modelnum} = checkIsTuned(pdTables{1,modelnum}) & checkIsTuned(pdTables{2,modelnum});
     end
 
     % check whether each model is tuned
@@ -164,6 +166,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     for modelnum = 1:4
         % set up isTuned cell
         isTuned{modelnum} = true(height(tuningHull)/2,1);
+        tunedNeurons{modelnum} = [];
         for spacenum = 1:2
             % get only entries in given space
             [~,tuningHull_space] = getNTidx(tuningHull,'spaceNum',spacenum);
@@ -172,6 +175,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
                 isTuned{modelnum}(neuron_idx) = isTuned{modelnum}(neuron_idx) & ~inpolygon(0,0,hull(:,1),hull(:,2));
             end
         end
+        tunedNeurons{modelnum} = tuningHull_space.signalID(isTuned{modelnum},:);
     end
 
     % first compare PM and DL tuning for each model
@@ -185,6 +189,23 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     % for spacenum = 1:2
     %     figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),find(results.isTuned{4}))
     % end
+
+%% Make iris and dna plots
+    % use only "tuned" neurons
+    num_models = 4
+    f1 = figure;
+    f2 = figure;
+    for modelnum = 1:num_models
+        figure(f1)
+        subplot(2,2,modelnum)
+        irisPlot(pdTables{1,modelnum}(isTuned{4},:),pdTables{2,modelnum}(isTuned{4},:));
+        title(model_names{modelnum})
+
+        figure(f2)
+        subplot(2,2,modelnum)
+        dnaPlot(pdTables{1,modelnum}(isTuned{4},:),pdTables{2,modelnum}(isTuned{4},:));
+        title(model_names{modelnum})
+    end
     
 %% Plot PD shift clouds for each neuron individually
     % get shifts from weights
@@ -214,7 +235,10 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     colors = {'r','g','b'};
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
-        comparePDClouds(shift_tables{4},shift_tables{modelnum},struct('filter_tuning',[]),colors{modelnum},'facealpha',0.5)
+        [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
+        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
+        % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'linewidth',1.85)
+        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'facealpha',0.5)
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
@@ -224,12 +248,13 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     clearvars colors titles
 
 %% Plot tuning weight clouds
-    % tuningHull = getTuningHull(results.tuningTable);
+    tuningHull = getTuningHull(results.tuningTable);
     % loop over each unit in one workspace
     % n_rows = ceil(sqrt(height(signalIDs)+1));
     cloud_fig = figure;
     surf_fig = figure;
-    for neuron_idx = 10%1:height(signalIDs)
+    % neuron_idx = getNTidx(pdTables{1,4},'signalID',[95 2]);
+    for neuron_idx = 1:height(tuningHull)
         close_fig = figure;
 
         figure(cloud_fig)
@@ -238,7 +263,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
 
         figure(surf_fig)
         clf
-        plotMultiworkspaceTuning(results,neuron_idx)
+        plotMWTuningSurfaces(results.td_test,[],neuron_idx)
 
         waitfor(close_fig)
     end
