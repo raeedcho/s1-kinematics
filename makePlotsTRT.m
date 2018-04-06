@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This script makes plots from results given by analyzeTRT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
+results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
 
 %%%%%%%%%%%%%%%%% Main line figures %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Figure 1 - Task and classic analysis methods
@@ -17,7 +17,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
     figure
     plotTRTTrials(td_ex);
     % plot neural firing?
-    unit_idx = 1
+    unit_idx = 1;
     plotSpikesOnHandle(td_ex,struct('unit_idx',unit_idx,'spikespec','b.','spikesize',10));
     % plot of same muscle movement given different Jacobians?
 
@@ -192,7 +192,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
 
 %% Make iris and dna plots
     % use only "tuned" neurons
-    num_models = 4
+    num_models = 4;
     f1 = figure;
     f2 = figure;
     for modelnum = 1:num_models
@@ -238,7 +238,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true))
         [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
         [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
         % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'linewidth',1.85)
-        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'facealpha',0.5)
+        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',1),colors{modelnum},'facealpha',0.5)
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
