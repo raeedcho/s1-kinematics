@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function results = analyzeTRT(trial_data,params)
+% function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
 % 
 % For multiworkspace files, with dl and pm workspaces:
 %   * Fits three different coordinate frame models to data from both workspaces
@@ -21,8 +21,9 @@
 %                           default: 5
 %       .num_boots    : # bootstrap iterations to use
 %                           default: 100
-%       .verbose      :     Print diagnostic plots and information
-%                           default: false
+%       .verbose      :     Print diagnostic information
+%                           default: true
+%       .do_plots     : print diagnostic plots
 %
 % OUTPUTS:
 %   result  : results of analysis
@@ -41,14 +42,15 @@
 %       .td_test        : trial data structures used to test models
 %                           PM is first, DL is second
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function results = analyzeTRT(trial_data,params)
+function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Set up
     % default parameters
     num_folds = 5;
     num_repeats = 20;
-    verbose = false;
+    verbose = true;
+    do_plots = false;
     if nargin > 1, assignParams(who,params); end % overwrite parameters
 
 %% Preprocess trial_data structure
@@ -67,7 +69,7 @@ function results = analyzeTRT(trial_data,params)
     % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
     % PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
     %                     'do_plot',true);
-    PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len'))}}, 'do_plot',verbose);
+    PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len'))}}, 'do_plot',do_plots);
     [td,~] = getPCA(td,PCAparams);
     % temporary hack to allow us to do PCA on velocity too
     for i=1:length(td)
@@ -79,7 +81,7 @@ function results = analyzeTRT(trial_data,params)
     % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
     % PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
     %                     'do_plot',true);
-    PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel'))}}, 'do_plot',verbose);
+    PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel'))}}, 'do_plot',do_plots);
     [td,~] = getPCA(td,PCAparams_vel);
     % temporary hack to allow us to save into something useful
     for i=1:length(td)
@@ -89,7 +91,7 @@ function results = analyzeTRT(trial_data,params)
     td = rmfield(td,'opensim_pca');
 
     %% Get PCA for neural space
-    PCAparams = struct('signals',{{'S1_spikes'}}, 'do_plot',verbose,'pca_recenter_for_proj',true,'sqrt_transform',true);
+    PCAparams = struct('signals',{{'S1_spikes'}}, 'do_plot',do_plots,'pca_recenter_for_proj',true,'sqrt_transform',true);
     [td,~] = getPCA(td,PCAparams);
 
 %% Compile training and test sets
@@ -101,33 +103,131 @@ function results = analyzeTRT(trial_data,params)
     td_pm = td_pm(1:minsize);
     td_dl = td_dl(1:minsize);
     
-    % get training and test set indices
-    [train_idx,test_idx] = crossvalind('HoldOut',minsize,0.2);
-    td_train = [td_pm(train_idx) td_dl(train_idx)];
-    td_test = cell(2,1);
-    td_test{1} = td_pm(test_idx);
-    td_test{2} = td_dl(test_idx);
+    % inialize temporary eval holders
+    repeatEval = cell(num_repeats,1);
+    repeatTuning = cell(num_repeats,1);
 
-    [foldEval,foldTuning] = analyzeFold(td_train,td_test);
+    % loop over num repeats
+    if verbose
+        repeat_timer = tic;
+        fprintf('Starting %dx%d-fold crossvalidation at time %f\n',num_repeats,num_folds,toc(repeat_timer));
+    end
+    for repeatctr = 1:num_repeats
+        % get fold indices
+        indices = crossvalind('Kfold',minsize,num_folds);
 
-%% Package up outputs
-    results = struct('model_names',{model_names},...
-                        'td_eval',{td_eval},...
-                        'tuningTable',{tuningTable},...
-                        'glm_info',{glm_info},...
-                        'td_train',{td_train},...
-                        'td_test',{td_test});
+        % initialize temporary fold evaluation structure
+        foldEval = cell(num_folds,1);
+        foldTuning = cell(num_folds,1);
 
-    % results = struct('td_eval',{td_eval},...
-    %                     'weight_tables',{weight_tables},...
-    %                     %'pdTables',{pdTables},...
-    %                     %'tuning_curves',{tuning_curves},...
-    %                     %'shift_tables',{shift_tables},...
-    %                     'glm_info',{glm_info},...
-    %                     %'isTuned',{isTuned},...
-    %                     'td_train',{td_train},...
-    %                     'td_test',{td_test});
+        % loop over number of folds
+        if verbose
+            fold_timer = tic;
+        end
+        for foldctr = 1:num_folds
+            % Get test and training indices for this fold
+            test_idx = (indices==foldctr);
+            train_idx = ~test_idx;
+            td_train = [td_pm(train_idx) td_dl(train_idx)];
+            td_test = {td_pm(test_idx); td_dl(test_idx)};
 
+            % analyze fold to get model evaluations
+            if exist('params','var')
+                [foldEval{foldctr},foldTuning{foldctr}] = analyzeFold(td_train,td_test,params);
+            else
+                [foldEval{foldctr},foldTuning{foldctr}] = analyzeFold(td_train,td_test);
+            end
+
+            if verbose
+                fprintf('\tEvaluated fold %d of %d at time %f\n',foldctr,num_folds,toc(fold_timer));
+            end
+        end
+
+        % put fold outputs into larger table
+        repeatEval{repeatctr} = vertcat(foldEval{:});
+        repeatTuning{repeatctr} = vertcat(foldTuning{:});
+
+        if verbose
+            fprintf('Evaluated repeat %d of %d at time %f\n',repeatctr,num_repeats,toc(repeat_timer));
+        end
+    end
+
+    % put all evals together
+    crossEval = vertcat(repeatEval{:});
+    crossTuning = vertcat(repeatTuning{:});
+
+%% Diagnostics...
+    % [foldEval,foldTuning] = analyzeFold(td_train,td_test);
+    % musc_err = minusPi2Pi(foldEval.glm_musc_model_velPDShift-foldEval.S1_FR_velPDShift);
+    % ext_err = minusPi2Pi(foldEval.glm_ext_model_velPDShift-foldEval.S1_FR_velPDShift);
+    % ego_err = minusPi2Pi(foldEval.glm_ego_model_velPDShift-foldEval.S1_FR_velPDShift);
+
+    % err_frac_musc = circ_var(musc_err)/circ_var(foldEval.S1_FR_velPDShift);
+    % err_frac_ext = circ_var(ext_err)/circ_var(foldEval.S1_FR_velPDShift);
+    % err_frac_ego = circ_var(ego_err)/circ_var(foldEval.S1_FR_velPDShift);
+
+    % figure
+    % scatter(foldEval.S1_FR_velPDShift,foldEval.glm_musc_model_velPDShift,[],'b')
+    % hold on
+    % scatter(foldEval.S1_FR_velPDShift,foldEval.glm_ext_model_velPDShift,[],'r')
+    % scatter(foldEval.S1_FR_velPDShift,foldEval.glm_ego_model_velPDShift,[],'g')
+    % plot([-pi pi],[-pi pi],'--k','linewidth',2)
+    % axis equal
+
+    % figure
+    % polar(musc_err,ones(size(musc_err)),'bo')
+    % hold on
+    % polar([0 circ_mean(musc_err)],[0 circ_r(musc_err)],'b-')
+    % set(gca,'xlim',[-1 1],'ylim',[-1 1])
+    % axis equal
+    % figure
+    % polar(ext_err,ones(size(ext_err)),'ro')
+    % hold on
+    % polar([0 circ_mean(ext_err)],[0 circ_r(ext_err)],'r-')
+    % set(gca,'xlim',[-1 1],'ylim',[-1 1])
+    % axis equal
+    % figure
+    % polar(ego_err,ones(size(ego_err)),'go')
+    % hold on
+    % polar([0 circ_mean(ego_err)],[0 circ_r(ego_err)],'g-')
+    % set(gca,'xlim',[-1 1],'ylim',[-1 1])
+    % axis equal
+
+    % figure
+    % subplot(2,1,1)
+    % scatter(cos(foldEval.S1_FR_velPDShift),cos(foldEval.glm_musc_model_velPDShift),[],'b')
+    % hold on
+    % plot([-1 1],[-1 1],'--k','linewidth',2)
+    % axis equal
+    % subplot(2,1,2)
+    % scatter(sin(foldEval.S1_FR_velPDShift),sin(foldEval.glm_musc_model_velPDShift),[],'b')
+    % hold on
+    % plot([-1 1],[-1 1],'--k','linewidth',2)
+    % axis equal
+
+    % figure
+    % subplot(2,1,1)
+    % scatter(cos(foldEval.S1_FR_velPDShift),cos(foldEval.glm_ext_model_velPDShift),[],'r')
+    % hold on
+    % plot([-1 1],[-1 1],'--k','linewidth',2)
+    % axis equal
+    % subplot(2,1,2)
+    % scatter(sin(foldEval.S1_FR_velPDShift),sin(foldEval.glm_ext_model_velPDShift),[],'r')
+    % hold on
+    % plot([-1 1],[-1 1],'--k','linewidth',2)
+    % axis equal
+
+    % figure
+    % subplot(2,1,1)
+    % scatter(cos(foldEval.S1_FR_velPDShift),cos(foldEval.glm_ego_model_velPDShift),[],'g')
+    % hold on
+    % plot([-1 1],[-1 1],'--k','linewidth',2)
+    % axis equal
+    % subplot(2,1,2)
+    % scatter(sin(foldEval.S1_FR_velPDShift),sin(foldEval.glm_ego_model_velPDShift),[],'g')
+    % hold on
+    % plot([-1 1],[-1 1],'--k','linewidth',2)
+    % axis equal
 
 end
 
