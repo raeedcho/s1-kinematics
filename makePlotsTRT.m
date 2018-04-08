@@ -93,8 +93,8 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
     % av_pR2_musc_dl = mean(td_musc_dl_eval,2);
     % av_pR2_ext_pm = mean(td_ext_pm_eval,2);
     % av_pR2_musc_pm = mean(td_musc_pm_eval,2);
-    av_pR2_ext = mean(results.td_eval{end,1},2);
-    av_pR2_musc = mean(results.td_eval{end,3},2);
+    av_pR2_ext = mean(td_eval{end,1},2);
+    av_pR2_musc = mean(td_eval{end,3},2);
     
     % good_neurons = td_ext_dl_eval(:,1) > 0 & td_ext_pm_eval(:,1) > 0 & td_musc_pm_eval(:,1) > 0 & td_musc_dl_eval(:,1) > 0;
     % 
@@ -136,17 +136,18 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
     tuning_curves = cell(2,4); % PM is first row, DL is second. Column order is Ext, Ego, Musc, Real
     pdTables = cell(2,4);
     tuning_params = cell(1,4);
-    model_names = results.model_names;
+    model_type = 'glm';
+    model_names = [strcat(model_type,{'_ext','_ego','_musc'},'_model') {'S1_FR'}];
     isTuned = cell(1,4);
     tunedNeurons = cell(1,4);
     
     % get PDs
-    pdConvertedTable = getPDsFromWeights(results.tuningTable);
+    pdConvertedTable = getPDsFromWeights(crossTuning);
 
     num_bins = 8;
     % get PDs and tuning curves
     for modelnum = 1:4
-        tuning_params{modelnum} = struct('num_bins',num_bins,'out_signals',{model_names(modelnum)},'out_signal_names',results.td_train(1).S1_unit_guide);
+        tuning_params{modelnum} = struct('num_bins',num_bins,'out_signals',{model_names(modelnum)},'out_signal_names',trial_data(1).S1_unit_guide);
     
         for spacenum = 1:2
             % move converted PD table into separated cells with table selections
@@ -159,12 +160,12 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
             temp.Properties.VariableNames = strrep(temp.Properties.VariableNames,[model_names{modelnum} '_'],'');
             pdTables{spacenum,modelnum} = temp;
 
-            tuning_curves{spacenum,modelnum} = getTuningCurves(results.td_test{spacenum},tuning_params{modelnum});
+            % tuning_curves{spacenum,modelnum} = getTuningCurves(results.td_test{spacenum},tuning_params{modelnum});
         end
     end
 
     % check whether each model is tuned
-    tuningHull = getTuningHull(results.tuningTable);
+    tuningHull = getTuningHull(crossTuning);
     for modelnum = 1:4
         % set up isTuned cell
         isTuned{modelnum} = true(height(tuningHull)/2,1);
@@ -183,7 +184,8 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
     % first compare PM and DL tuning for each model
     for modelnum = 1:4
         % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
-        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned{4}))
+        figure;compareTuning([],pdTables(:,modelnum),find(isTuned{4}))
+        % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned{4}))
     end
 
     % then compare PM and DL tuning for each model
@@ -211,20 +213,20 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
     
 %% Plot PD shift clouds for each neuron individually
     % get shifts from weights
-    shift_tables = cell(1,length(results.model_names));
-    for modelnum = 1:length(results.model_names)
+    shift_tables = cell(1,num_models);
+    for modelnum = 1:num_models
         % select tables for each space
-        [~,pm_tuningTable] = getNTidx(results.tuningTable,'spaceNum',1);
-        [~,dl_tuningTable] = getNTidx(results.tuningTable,'spaceNum',2);
+        [~,pm_tuningTable] = getNTidx(crossTuning,'spaceNum',1);
+        [~,dl_tuningTable] = getNTidx(crossTuning,'spaceNum',2);
 
         % compose shift table for this model/bootstrap sample
         key_cols = ~contains(pm_tuningTable.Properties.VariableNames,'baseline') & ~contains(pm_tuningTable.Properties.VariableNames,'vel');
         shift_tables{modelnum} = pm_tuningTable(:,key_cols);
 
         % get PDs from pm and dl
-        weights = pm_tuningTable.([results.model_names{modelnum} '_velWeight']);
+        weights = pm_tuningTable.([model_names{modelnum} '_velWeight']);
         [pm_PDs,pm_moddepth] = cart2pol(weights(:,1),weights(:,2));
-        weights = dl_tuningTable.([results.model_names{modelnum} '_velWeight']);
+        weights = dl_tuningTable.([model_names{modelnum} '_velWeight']);
         [dl_PDs,dl_moddepth] = cart2pol(weights(:,1),weights(:,2));
         dPDs = minusPi2Pi(dl_PDs-pm_PDs);
         % use log for moddepth difference because of glm link?
@@ -240,7 +242,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
         [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
         [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
         % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'linewidth',1.85)
-        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',1),colors{modelnum},'facealpha',0.5)
+        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[]),colors{modelnum},'facealpha',0.5)
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
