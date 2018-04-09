@@ -26,23 +26,8 @@
 %       .do_plots     : print diagnostic plots
 %
 % OUTPUTS:
-%   result  : results of analysis
-%       .td_eval        : evaluation metrics for various models, in cell array
-%                           rows: PM, DL, full
-%                           cols: ext, ego, musc
-%       .pdTables       : PD tables in cell array
-%                           Rows: PM, DL
-%                           Cols: ext_model, ego_model, musc_model, real
-%       .tuning_curves  : tuning curves in cell array, same as pdTables
-%       .shift_tables   : PD shift tables in cell array, cols same as above
-%       .glm_info       : output from fitting GLMs to different models
-%                           Cols: ext, ego, musc
-%       .isTuned        : cell array of isTuned, one for each model, as above
-%       .td_train       : trial data structure used to train models
-%       .td_test        : trial data structures used to test models
-%                           PM is first, DL is second
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
+function [crossEval, crossTuning, td] = analyzeTRT(trial_data,params)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Set up
@@ -320,11 +305,17 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
                                     'do_eval_model',true,'meta',struct('spaceNum',spacenum));
             temp_weight_table = getTDModelWeights(td_test{spacenum},weightParams);
 
+            tuningParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
+                                    'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
+                                    'calc_CIs',false,'meta',struct('spaceNum',spacenum));
+            temp_tuning_table = getTuningCurves(td_test{spacenum},tuningParams);
+            temp_table = join(temp_weight_table,temp_tuning_table);
+
             % append table to full tuning table for space
             if modelnum == 1
-                tempTuningTable{spacenum} = temp_weight_table;
+                tempTuningTable{spacenum} = temp_table;
             else
-                tempTuningTable{spacenum} = join(tempTuningTable{spacenum}, temp_weight_table);
+                tempTuningTable{spacenum} = join(tempTuningTable{spacenum}, temp_table);
             end
         end
     end

@@ -3,7 +3,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % get results
-results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
 
 %%%%%%%%%%%%%%%%% Main line figures %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Figure 1 - Task and classic analysis methods
@@ -143,17 +142,15 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
     
     % get PDs
     pdConvertedTable = getPDsFromWeights(crossTuning);
+    curveTable = getCurvesFromCrossval(crossTuning);
 
-    num_bins = 8;
     % get PDs and tuning curves
     for modelnum = 1:4
-        tuning_params{modelnum} = struct('num_bins',num_bins,'out_signals',{model_names(modelnum)},'out_signal_names',trial_data(1).S1_unit_guide);
-    
         for spacenum = 1:2
             % move converted PD table into separated cells with table selections
             [~,temp] = getNTidx(pdConvertedTable,'spaceNum',spacenum);
             % select only columns corresponding to the key or the model in question
-            key_cols = ~contains(temp.Properties.VariableNames,'baseline') & ~contains(temp.Properties.VariableNames,'vel');
+            key_cols = contains(temp.Properties.VariableDescriptions,'meta');
             model_cols = contains(temp.Properties.VariableNames,model_names{modelnum});
             temp = temp(:,key_cols | model_cols);
             % rename columns to get rid of model names
@@ -161,6 +158,15 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
             pdTables{spacenum,modelnum} = temp;
 
             % tuning_curves{spacenum,modelnum} = getTuningCurves(results.td_test{spacenum},tuning_params{modelnum});
+            [~,temp] = getNTidx(curveTable,'spaceNum',spacenum);
+            % select only columns corresponding to the key or the model in question
+            key_cols = contains(temp.Properties.VariableDescriptions,'meta');
+            bins_cols = endsWith(temp.Properties.VariableNames,'bins');
+            model_cols = contains(temp.Properties.VariableNames,model_names{modelnum});
+            temp = temp(:,key_cols | bins_cols | model_cols);
+            % rename columns to get rid of model names
+            temp.Properties.VariableNames = strrep(temp.Properties.VariableNames,[model_names{modelnum} '_'],'');
+            tuning_curves{spacenum,modelnum} = temp;
         end
     end
 
@@ -181,11 +187,10 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
         tunedNeurons{modelnum} = tuningHull_space.signalID(isTuned{modelnum},:);
     end
 
-    % first compare PM and DL tuning for each model
+    % compare PM and DL tuning for each model
     for modelnum = 1:4
         % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
-        figure;compareTuning([],pdTables(:,modelnum),find(isTuned{4}))
-        % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned{4}))
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned{4}))
     end
 
     % then compare PM and DL tuning for each model
@@ -220,7 +225,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
         [~,dl_tuningTable] = getNTidx(crossTuning,'spaceNum',2);
 
         % compose shift table for this model/bootstrap sample
-        key_cols = ~contains(pm_tuningTable.Properties.VariableNames,'baseline') & ~contains(pm_tuningTable.Properties.VariableNames,'vel');
+        key_cols = contains(pm_tuningTable.Properties.VariableDescriptions,'meta');
         shift_tables{modelnum} = pm_tuningTable(:,key_cols);
 
         % get PDs from pm and dl
@@ -242,7 +247,7 @@ results = analyzeTRT(trial_data,struct('num_boots',1000,'verbose',true));
         [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
         [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
         % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'linewidth',1.85)
-        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[]),colors{modelnum},'facealpha',0.5)
+        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[]),colors{modelnum},'facealpha',0.2)
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
