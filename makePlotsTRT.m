@@ -258,7 +258,7 @@
     % clean up
     clearvars colors titles
 
-%% Calculate error variance on shifts
+%% Calculate mean error on shifts
     err = zeros(100,3);
     for modelnum = 1:3
         [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
@@ -267,16 +267,42 @@
         for i = 1:100
             err_idx = 1:length(tunedNeurons{4});
             err_idx = err_idx + (i-1)*length(tunedNeurons{4});
-            err(i,modelnum) = 1-circ_r(err_arr(err_idx));
+            % use a 1-cos style error because of circular data
+            % This value will range between 0 and 2
+            err(i,modelnum) = mean(1-cos(err_arr(err_idx)));
         end
     end
 
+    % plot histograms
+    figure
+    for modelnum = 1:3
+        h = histogram(gca,err(:,modelnum),'DisplayStyle','bar');
+        set(h,'edgecolor',colors{modelnum},'facecolor',colors{modelnum})
+        hold on
+    end
+
+    % plot errors
+    figure
+    for modelnum = 1:3
+        scatter(err(:,modelnum),repmat(modelnum/10,size(err,1),1),50,colors{modelnum},'filled')
+        hold on
+        plot(mean(err(:,modelnum)),modelnum/10,'k.','linewidth',3,'markersize',40)
+    end
+    set(gca,'tickdir','out','box','off','ytick',(1:3)/10,'yticklabel',{'Hand-based','Egocentric','Muscle-based'},'xtick',[0 1])
+    axis equal
+    axis ij
+    xlim([0 1])
+    ylim([0 4/10])
+    xlabel('Cosine error of model')
+
+    % compute statistics
+    alpha = 0.05/3; % bonferroni correction for multiple comparisons...?
     diffstat = err(:,3)-err(:,1);
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
-    alphaup = 1-0.05/2;
-    alphalow = 0.05/2;
+    alphaup = 1-alpha/2;
+    alphalow = alpha/2;
     upp = tinv(alphaup,99);
     low = tinv(alphalow,99);
     CIhigh = mudiff + upp * sqrt(correction*vardiff);
