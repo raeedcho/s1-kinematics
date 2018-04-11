@@ -92,34 +92,14 @@
     % av_pR2_musc_dl = mean(td_musc_dl_eval,2);
     % av_pR2_ext_pm = mean(td_ext_pm_eval,2);
     % av_pR2_musc_pm = mean(td_musc_pm_eval,2);
-    av_pR2_ext = mean(td_eval{end,1},2);
-    av_pR2_musc = mean(td_eval{end,3},2);
-    
-    % good_neurons = td_ext_dl_eval(:,1) > 0 & td_ext_pm_eval(:,1) > 0 & td_musc_pm_eval(:,1) > 0 & td_musc_dl_eval(:,1) > 0;
-    % 
-    % figure
-    % plot(av_pR2_ext_dl(good_neurons),av_pR2_musc_dl(good_neurons),'ro','linewidth',2)
-    % hold on
-    % plot([-1 1],[-1 1],'k--','linewidth',2)
-    % plot([0 0],[-1 1],'k-','linewidth',2)
-    % plot([-1 1],[0 0],'k-','linewidth',2)
-    % set(gca,'box','off','tickdir','out','xlim',[-0.1 0.5],'ylim',[-0.1 0.5])
-    % 
-    % figure
-    % plot(av_pR2_ext_pm(good_neurons),av_pR2_musc_pm(good_neurons),'bo','linewidth',2)
-    % hold on
-    % plot([-1 1],[-1 1],'k--','linewidth',2)
-    % plot([0 0],[-1 1],'k-','linewidth',2)
-    % plot([-1 1],[0 0],'k-','linewidth',2)
-    % set(gca,'box','off','tickdir','out','xlim',[-0.1 0.5],'ylim',[-0.1 0.5])
+    avgEval = neuronAverage(crossEval,contains(crossEval.Properties.VariableDescriptions,'meta'));
+    av_pR2_ext = avgEval.glm_ext_model_eval;
+    av_pR2_musc = avgEval.glm_musc_model_eval;
 
-    % good_neurons = td_ext_eval(:,1) > 0 & td_musc_eval(:,1) > 0;
-    % good_neurons = isTuned{4};
-    good_neurons = true(length(av_pR2_ext),1);
+    good_neurons = isTuned{4};
     figure
-    plot(repmat(av_pR2_ext(good_neurons)',2,1),results.td_eval{end,3}(good_neurons,:)','k-','linewidth',2)
+    scatter(av_pR2_ext(good_neurons),av_pR2_musc(good_neurons),50,'k','filled')
     hold on
-    plot(results.td_eval{end,1}(good_neurons,:)',repmat(av_pR2_musc(good_neurons)',2,1),'k-','linewidth',2)
     plot([-1 1],[-1 1],'k--','linewidth',2)
     plot([0 0],[-1 1],'k-','linewidth',2)
     plot([-1 1],[0 0],'k-','linewidth',2)
@@ -131,6 +111,7 @@
     clearvars av_pR2* good_neurons
 
 %% Plot comparison of actual tuning curves with various modeled tuning curves
+    % TODO: Redo this block so that PDs and tuning curves are calculated from whole trial_data w/ bootstrapping
     % Get PDs and tuning curves for the modeled and actual neurons
     tuning_curves = cell(2,4); % PM is first row, DL is second. Column order is Ext, Ego, Musc, Real
     pdTables = cell(2,4);
@@ -219,6 +200,7 @@
 %% Plot PD shift clouds for each neuron individually
     % get shifts from weights
     shift_tables = cell(1,num_models);
+    mean_shifts = cell(1,num_models);
     for modelnum = 1:num_models
         % select tables for each space
         [~,pm_tuningTable] = getNTidx(crossTuning,'spaceNum',1);
@@ -227,6 +209,9 @@
         % compose shift table for this model/bootstrap sample
         key_cols = contains(pm_tuningTable.Properties.VariableDescriptions,'meta');
         shift_tables{modelnum} = pm_tuningTable(:,key_cols);
+
+        % remove spaceNum from columns
+        shift_tables{modelnum}.spaceNum = [];
 
         % get PDs from pm and dl
         weights = pm_tuningTable.([model_names{modelnum} '_velWeight']);
@@ -238,23 +223,64 @@
         dMod = log(dl_moddepth)-log(pm_moddepth);
 
         tab_append = table(dPDs,dMod,'VariableNames',{'velPD','velModdepth'});
+        tab_append.Properties.VariableDescriptions = {'circular','linear'};
         shift_tables{modelnum} = [shift_tables{modelnum} tab_append];
+
+        mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
     end
 
     colors = {'r','g','b'};
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
-        [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
-        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
+        % [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
+        % [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
+        % real_shifts = shift_tables{4};
+        % model_shifts = shift_tables{modelnum};
         % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'linewidth',1.85)
-        comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[]),colors{modelnum},'facealpha',0.2)
+        % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[]),colors{modelnum},'facealpha',0.1)
+        [~,real_shifts] = getNTidx(mean_shifts{4},'signalID',tunedNeurons{4});
+        [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',tunedNeurons{4});
+        figure
+        plot([-pi pi],[0 0],'-k','linewidth',2)
+        hold on
+        plot([0 0],[-pi pi],'-k','linewidth',2)
+        plot([-pi pi],[-pi pi],'--k','linewidth',2)
+        axis equal
+        set(gca,'box','off','tickdir','out','xtick',[-pi pi],'ytick',[-pi pi],'xlim',[-pi pi],'ylim',[-pi pi],...
+            'xticklabel',{'-\pi','\pi'},'yticklabel',{'-\pi','\pi'})
+        scatter(real_shifts.velPD,model_shifts.velPD,50,colors{modelnum},'filled')
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
+        % 1-circ_r(model_shifts.velPD-real_shifts.velPD)
     end
 
     % clean up
     clearvars colors titles
+
+%% Calculate error variance on shifts
+    err = zeros(100,3);
+    for modelnum = 1:3
+        [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
+        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
+        err_arr = model_shifts.velPD-real_shifts.velPD;
+        for i = 1:100
+            err_idx = 1:length(tunedNeurons{4});
+            err_idx = err_idx + (i-1)*length(tunedNeurons{4});
+            err(i,modelnum) = 1-circ_r(err_arr(err_idx));
+        end
+    end
+
+    diffstat = err(:,3)-err(:,1);
+    mudiff = mean(diffstat);
+    vardiff = var(diffstat);
+    correction = 1/100 + 1/4;
+    alphaup = 1-0.05/2;
+    alphalow = 0.05/2;
+    upp = tinv(alphaup,99);
+    low = tinv(alphalow,99);
+    CIhigh = mudiff + upp * sqrt(correction*vardiff);
+    CIlow = mudiff + low * sqrt(correction*vardiff);
 
 %% Plot tuning weight clouds
     tuningHull = getTuningHull(results.tuningTable);
@@ -286,3 +312,21 @@
     % comparePDs(pm_musc_pdTable(isTuned_real,:),dl_musc_pdTable(isTuned_real,:),struct('move_corr','vel'),'bo','linewidth',2)
     % xlabel 'PM preferred direction'
     % ylabel 'DL preferred direction'
+
+%% Plot tuning pR2 distribution for each neuron
+    neuron_list = trial_data(1).S1_unit_guide;
+    figure
+    for neuron_idx = 1:length(neuron_list)
+        clf
+        for spacenum = 1:2
+            [~,temp] = getNTidx(crossTuning,'signalID',neuron_list(neuron_idx,:),'spaceNum',spacenum);
+
+            subplot(2,1,spacenum)
+            hist(temp.S1_FR_eval)
+            title(sprintf('Neuron %d %d, Space %d',neuron_list(neuron_idx,:),spacenum))
+        end
+        if ~isTuned{4}(neuron_idx)
+            xlabel 'This is not tuned'
+        end
+        waitforbuttonpress
+    end

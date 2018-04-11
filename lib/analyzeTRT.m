@@ -323,25 +323,27 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     foldTuning = vertcat(tempTuningTable{:});
 
 %% Get PD shifts
-    % get shifts from weights
-    shift_tables = cell(1,length(model_names));
-    for modelnum = 1:length(model_names)
-        % select tables for each space
-        [~,pm_foldTuning] = getNTidx(foldTuning,'spaceNum',1);
-        [~,dl_foldTuning] = getNTidx(foldTuning,'spaceNum',2);
+    % Shift calculation is done outside now, based on crossTuning
+    % % get shifts from weights
+    % shift_tables = cell(1,length(model_names));
+    % for modelnum = 1:length(model_names)
+    %     % select tables for each space
+    %     [~,pm_foldTuning] = getNTidx(foldTuning,'spaceNum',1);
+    %     [~,dl_foldTuning] = getNTidx(foldTuning,'spaceNum',2);
 
-        % get PDs from pm and dl
-        weights = pm_foldTuning.([model_names{modelnum} '_velWeight']);
-        [pm_PDs,pm_moddepth] = cart2pol(weights(:,1),weights(:,2));
-        weights = dl_foldTuning.([model_names{modelnum} '_velWeight']);
-        [dl_PDs,dl_moddepth] = cart2pol(weights(:,1),weights(:,2));
-        dPDs = minusPi2Pi(dl_PDs-pm_PDs);
-        % use ratio because of glm link?
-        dMod = (dl_moddepth)./(pm_moddepth);
+    %     % get PDs from pm and dl
+    %     weights = pm_foldTuning.([model_names{modelnum} '_velWeight']);
+    %     [pm_PDs,pm_moddepth] = cart2pol(weights(:,1),weights(:,2));
+    %     weights = dl_foldTuning.([model_names{modelnum} '_velWeight']);
+    %     [dl_PDs,dl_moddepth] = cart2pol(weights(:,1),weights(:,2));
+    %     dPDs = minusPi2Pi(dl_PDs-pm_PDs);
+    %     % use ratio because of glm link?
+    %     dMod = (dl_moddepth)./(pm_moddepth);
 
-        shift_tables{modelnum} = table(dPDs,dMod,'VariableNames',strcat(model_names{modelnum},{'_velPDShift','_velModdepthRatio'}));
-    end
+    %     shift_tables{modelnum} = table(dPDs,dMod,'VariableNames',strcat(model_names{modelnum},{'_velPDShift','_velModdepthRatio'}));
+    %     shift_tables{modelnum}.Properties.VariableDescriptions = {'circular','linear'};
+    % end
 
-    foldEval = horzcat(foldEval,shift_tables{:});
+    % foldEval = horzcat(foldEval,shift_tables{:});
 
 end
