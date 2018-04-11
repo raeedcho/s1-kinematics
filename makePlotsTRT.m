@@ -230,6 +230,8 @@
     end
 
     colors = {'r','g','b'};
+    markers = {'x','+','.'};
+    markersize = [15,15,40];
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
         % [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
@@ -252,7 +254,6 @@
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
-        % 1-circ_r(model_shifts.velPD-real_shifts.velPD)
     end
 
     % clean up
