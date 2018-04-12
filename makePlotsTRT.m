@@ -256,9 +256,6 @@
         title(titles{modelnum})
     end
 
-    % clean up
-    clearvars colors titles
-
 %% Calculate mean error on shifts
     err = zeros(100,3);
     for modelnum = 1:3
