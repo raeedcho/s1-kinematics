@@ -197,7 +197,10 @@
         title(model_names{modelnum})
     end
     
-%% Plot PD shift clouds for each neuron individually
+%% Cross-validate models of neural data
+    % Get crossval info
+    [crossEval,crossTuning] = analyzeTRT(trial_data);
+
     % get shifts from weights
     shift_tables = cell(1,num_models);
     mean_shifts = cell(1,num_models);
