@@ -22,6 +22,7 @@
     plotSpikesOnHandle(td_ex,struct('unit_idx',unit_idx,'spikespec','b.','spikesize',10));
     % plot of same muscle movement given different Jacobians?
 
+    % Switch to classical PDs?
     % 1c - example directional rasters and tuning curves?
 
 %% Figure 2 - Analysis block diagrams
@@ -71,129 +72,151 @@
 
 %% Supplementary B - Figure showing why one monkey didn't have as large a change in tuning
 
-%% Plot handle positions
-    if verbose
-        figure
-        pos_dl = cat(1,results.td_test{2}.pos);
-        plot(pos_dl(:,1),pos_dl(:,2),'r')
-        hold on
-        pos_pm = cat(1,results.td_test{1}.pos);
-        plot(pos_pm(:,1),pos_pm(:,2),'b')
-        axis equal
+%% Split up trial data and preprocess
+    % prep trial data by getting only rewards and trimming to only movements
+    [~,td] = getTDidx(trial_data,'result','R');
+    td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
+    % bin data at 50ms
+    td = binTD(td,5);
+    % add in spherical coordinates
+    td = addSphereHand2TD(td);
+    % add firing rates rather than spike counts
+    td = addFiringRates(td,struct('array','S1'));
 
-        % clean up
-        clearvars pos_*
+    %% Do PCA on muscle space
+    % do PCA on muscles, training on only the training set
+    % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
+    % PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
+    %                     'do_plot',true);
+    PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len'))}}, 'do_plot',true);
+    [td,~] = getPCA(td,PCAparams);
+    % temporary hack to allow us to do PCA on velocity too
+    for i=1:length(td)
+        td(i).opensim_len_pca = td(i).opensim_pca;
     end
+    % get rid of superfluous PCA
+    td = rmfield(td,'opensim_pca');
+    % get velocity PCA
+    % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
+    % PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
+    %                     'do_plot',true);
+    PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel'))}}, 'do_plot',true);
+    [td,~] = getPCA(td,PCAparams_vel);
+    % temporary hack to allow us to save into something useful
+    for i=1:length(td)
+        td(i).opensim_muscVel_pca = td(i).opensim_pca;
+    end
+    % get rid of superfluous PCA
+    td = rmfield(td,'opensim_pca');
 
-%% Plot example neuron model fit
+    % Get PCA for neural space
+    % PCAparams = struct('signals',{{'S1_spikes'}}, 'do_plot',true,'pca_recenter_for_proj',true,'sqrt_transform',true);
+    % [td,~] = getPCA(td,PCAparams);
 
-%% Plot pR2s against each other
-    % av_pR2_ext_dl = mean(td_ext_dl_eval,2);
-    % av_pR2_musc_dl = mean(td_musc_dl_eval,2);
-    % av_pR2_ext_pm = mean(td_ext_pm_eval,2);
-    % av_pR2_musc_pm = mean(td_musc_pm_eval,2);
-    avgEval = neuronAverage(crossEval,contains(crossEval.Properties.VariableDescriptions,'meta'));
-    av_pR2_ext = avgEval.glm_ext_model_eval;
-    av_pR2_musc = avgEval.glm_musc_model_eval;
+    % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
+    % also make sure we have balanced workspaces (slightly biases us towards early trials, but this isn't too bad)
+    [~,td_pm] = getTDidx(td,'spaceNum',1);
+    [~,td_dl] = getTDidx(td,'spaceNum',2);
+    minsize = min(length(td_pm),length(td_dl));
+    td_pm = td_pm(1:minsize);
+    td_dl = td_dl(1:minsize);
 
-    good_neurons = isTuned{4};
-    figure
-    scatter(av_pR2_ext(good_neurons),av_pR2_musc(good_neurons),50,'k','filled')
-    hold on
-    plot([-1 1],[-1 1],'k--','linewidth',2)
-    plot([0 0],[-1 1],'k-','linewidth',2)
-    plot([-1 1],[0 0],'k-','linewidth',2)
-    set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    xlabel 'Hand-based pR2'
-    ylabel 'Muscle-based pR2'
+    % recombine for later...
+    td = [td_pm td_dl];
 
-    % clean up
-    clearvars av_pR2* good_neurons
+%% Set up model variables
+    num_models = 4;
+    model_type = 'glm';
+    % TODO: change order to extrinsic, muscle, ego, cylinder, joint, S1_FR
+    model_names = [strcat(model_type,{'_ext','_ego','_musc'},'_model') {'S1_FR'}];
+
+%% Figure out which neurons are tuned
+    % Figure out which neurons are tuned in both workspaces
+    % isTuned_pm = checkIsTuned(td_pm,struct('out_signals','S1_FR'));
+    % isTuned_dl = checkIsTuned(td_dl,struct('out_signals','S1_FR'));
+    % isTuned = isTuned_pm & isTuned_dl;
 
 %% Plot comparison of actual tuning curves with various modeled tuning curves
-    % TODO: Redo this block so that PDs and tuning curves are calculated from whole trial_data w/ bootstrapping
-    % Get PDs and tuning curves for the modeled and actual neurons
-    tuning_curves = cell(2,4); % PM is first row, DL is second. Column order is Ext, Ego, Musc, Real
-    pdTables = cell(2,4);
-    tuning_params = cell(1,4);
-    model_type = 'glm';
-    model_names = [strcat(model_type,{'_ext','_ego','_musc'},'_model') {'S1_FR'}];
-    isTuned = cell(1,4);
-    tunedNeurons = cell(1,4);
+    % use K-fold crossvalidation to get neural predictions from each model for tuning curves and PDs
+    num_folds = 5;
+    indices = crossvalind('Kfold',length(td_pm),num_folds);
+    td_test = cell(2,num_folds);
     
-    % get PDs
-    pdConvertedTable = getPDsFromWeights(crossTuning);
-    curveTable = getCurvesFromCrossval(crossTuning);
+    % set up glm parameters
+    num_musc_pcs = 5;
+    opensim_hand_idx = find(contains(td_train(1).opensim_names,'_handPos') | contains(td_train(1).opensim_names,'_handVel'));
+    % TODO: make these arguments for the crossval
+    glm_params{1} = struct('model_type',model_type,...
+                            'model_name','ext_model',...
+                            'in_signals',{{'opensim',opensim_hand_idx}},...
+                            'out_signals','S1_FR');
+    glm_params{2} = struct('model_type',model_type,...
+                            'model_name','ego_model',...
+                            'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
+                            'out_signals','S1_FR');
+    glm_params{3} = struct('model_type',model_type,...
+                            'model_name','musc_model',...
+                            'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
+                            'out_signals','S1_FR');
 
-    % get PDs and tuning curves
-    for modelnum = 1:4
-        for spacenum = 1:2
-            % move converted PD table into separated cells with table selections
-            [~,temp] = getNTidx(pdConvertedTable,'spaceNum',spacenum);
-            % select only columns corresponding to the key or the model in question
-            key_cols = contains(temp.Properties.VariableDescriptions,'meta');
-            model_cols = contains(temp.Properties.VariableNames,model_names{modelnum});
-            temp = temp(:,key_cols | model_cols);
-            % rename columns to get rid of model names
-            temp.Properties.VariableNames = strrep(temp.Properties.VariableNames,[model_names{modelnum} '_'],'');
-            pdTables{spacenum,modelnum} = temp;
+    % do the crossval
+    for foldctr = 1:num_folds
+        % split into testing and training
+        test_idx = (indices==foldctr);
+        train_idx = ~test_idx;
+        td_train = [td_pm(train_idx) td_dl(train_idx)];
+        td_test{1,foldctr} = td_pm(test_idx);
+        td_test{2,foldctr} = td_dl(test_idx);
 
-            % tuning_curves{spacenum,modelnum} = getTuningCurves(results.td_test{spacenum},tuning_params{modelnum});
-            [~,temp] = getNTidx(curveTable,'spaceNum',spacenum);
-            % select only columns corresponding to the key or the model in question
-            key_cols = contains(temp.Properties.VariableDescriptions,'meta');
-            bins_cols = endsWith(temp.Properties.VariableNames,'bins');
-            model_cols = contains(temp.Properties.VariableNames,model_names{modelnum});
-            temp = temp(:,key_cols | bins_cols | model_cols);
-            % rename columns to get rid of model names
-            temp.Properties.VariableNames = strrep(temp.Properties.VariableNames,[model_names{modelnum} '_'],'');
-            tuning_curves{spacenum,modelnum} = temp;
-        end
-    end
+        % Fit models on training data
+        for modelnum = 1:num_models-1
+            [~,glm_info] = getModel(td_train,glm_params{modelnum});
 
-    % check whether each model is tuned
-    tuningHull = getTuningHull(crossTuning);
-    for modelnum = 1:4
-        % set up isTuned cell
-        isTuned{modelnum} = true(height(tuningHull)/2,1);
-        tunedNeurons{modelnum} = [];
-        for spacenum = 1:2
-            % get only entries in given space
-            [~,tuningHull_space] = getNTidx(tuningHull,'spaceNum',spacenum);
-            for neuron_idx = 1:height(tuningHull_space)
-                hull = tuningHull_space(neuron_idx,:).([model_names{modelnum} '_velWeight']){1};
-                isTuned{modelnum}(neuron_idx) = isTuned{modelnum}(neuron_idx) & ~inpolygon(0,0,hull(:,1),hull(:,2));
+            % predict firing rates for td_test
+            for spacenum = 1:2
+                td_test{spacenum,foldctr} = getModel(td_test{spacenum,foldctr},glm_info);
             end
         end
-        tunedNeurons{modelnum} = tuningHull_space.signalID(isTuned{modelnum},:);
+    end
+    td_tuning = {horzcat(td_test{1,:}); horzcat(td_test{2,:})};
+    
+    % get PDs and tuning curves
+    pdTables = cell(2,num_models);
+    tuning_curves = cell(2,num_models);
+    for modelnum = 1:num_models
+        for spacenum = 1:2
+            % First PDs
+            pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'do_plot',true,'meta',struct('spaceNum',spacenum));
+            pdTables{spacenum,modelnum} = getTDClassicalPDs(td_tuning{spacenum},pd_params);
+
+            tuning_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'meta',struct('spaceNum',spacenum));
+            tuning_curves{spacenum,modelnum} = getTuningCurves(td_tuning{spacenum},tuning_params);
+        end
     end
 
     % compare PM and DL tuning for each model
-    for modelnum = 1:4
+    isTuned = pdTables{1,4}.velTuned & pdTables{2,4}.velTuned;
+    for modelnum = 1:num_models
         % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
-        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned{4}))
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned))
     end
 
-    % then compare PM and DL tuning for each model
-    % reorder for color consistency..
-    % for spacenum = 1:2
-    %     figure;compareTuning(tuning_curves(spacenum,[3,1,2,4]),pdTables(spacenum,[3,1,2,4]),find(results.isTuned{4}))
-    % end
-
 %% Make iris and dna plots
-    % use only "tuned" neurons
-    num_models = 4;
+    % get names of tuned neurons
+    signalIDs = td_pm(1).S1_unit_guide;
+    tunedNeurons = signalIDs(isTuned,:);
+
     f1 = figure;
     f2 = figure;
     for modelnum = 1:num_models
         figure(f1)
         subplot(2,2,modelnum)
-        irisPlot(pdTables{1,modelnum}(isTuned{4},:),pdTables{2,modelnum}(isTuned{4},:));
+        irisPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
         title(model_names{modelnum})
 
         figure(f2)
         subplot(2,2,modelnum)
-        dnaPlot(pdTables{1,modelnum}(isTuned{4},:),pdTables{2,modelnum}(isTuned{4},:));
+        dnaPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
         title(model_names{modelnum})
     end
     
@@ -237,14 +260,14 @@
     markersize = [15,15,40];
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
-        % [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
-        % [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
+        % [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons);
+        % [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons);
         % real_shifts = shift_tables{4};
         % model_shifts = shift_tables{modelnum};
         % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'linewidth',1.85)
         % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[]),colors{modelnum},'facealpha',0.1)
-        [~,real_shifts] = getNTidx(mean_shifts{4},'signalID',tunedNeurons{4});
-        [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',tunedNeurons{4});
+        [~,real_shifts] = getNTidx(mean_shifts{4},'signalID',tunedNeurons);
+        [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',tunedNeurons);
         figure
         plot([-pi pi],[0 0],'-k','linewidth',2)
         hold on
@@ -262,12 +285,12 @@
 %% Calculate mean error on shifts
     err = zeros(100,3);
     for modelnum = 1:3
-        [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons{4});
-        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons{4});
+        [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons);
+        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons);
         err_arr = model_shifts.velPD-real_shifts.velPD;
         for i = 1:100
-            err_idx = 1:length(tunedNeurons{4});
-            err_idx = err_idx + (i-1)*length(tunedNeurons{4});
+            err_idx = 1:length(tunedNeurons);
+            err_idx = err_idx + (i-1)*length(tunedNeurons);
             % use a 1-cos style error because of circular data
             % This value will range between 0 and 2
             err(i,modelnum) = mean(1-cos(err_arr(err_idx)));
@@ -309,6 +332,42 @@
     CIhigh = mudiff + upp * sqrt(correction*vardiff);
     CIlow = mudiff + low * sqrt(correction*vardiff);
 
+%% Plot pR2s against each other
+    % av_pR2_ext_dl = mean(td_ext_dl_eval,2);
+    % av_pR2_musc_dl = mean(td_musc_dl_eval,2);
+    % av_pR2_ext_pm = mean(td_ext_pm_eval,2);
+    % av_pR2_musc_pm = mean(td_musc_pm_eval,2);
+    avgEval = neuronAverage(crossEval,contains(crossEval.Properties.VariableDescriptions,'meta'));
+    av_pR2_ext = avgEval.glm_ext_model_eval;
+    av_pR2_musc = avgEval.glm_musc_model_eval;
+
+    good_neurons = isTuned;
+    figure
+    scatter(av_pR2_ext(good_neurons),av_pR2_musc(good_neurons),50,'k','filled')
+    hold on
+    plot([-1 1],[-1 1],'k--','linewidth',2)
+    plot([0 0],[-1 1],'k-','linewidth',2)
+    plot([-1 1],[0 0],'k-','linewidth',2)
+    set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
+    xlabel 'Hand-based pR2'
+    ylabel 'Muscle-based pR2'
+
+%% Plot handle positions
+    if verbose
+        figure
+        pos_dl = cat(1,results.td_test{2}.pos);
+        plot(pos_dl(:,1),pos_dl(:,2),'r')
+        hold on
+        pos_pm = cat(1,results.td_test{1}.pos);
+        plot(pos_pm(:,1),pos_pm(:,2),'b')
+        axis equal
+
+        % clean up
+        clearvars pos_*
+    end
+
+%% Plot example neuron model fit
+
 %% Plot tuning weight clouds
     tuningHull = getTuningHull(results.tuningTable);
     % loop over each unit in one workspace
@@ -330,30 +389,21 @@
         waitfor(close_fig)
     end
 
-%% Plot DL vs PM just for neurons actually tuned to velocity
-    % figure
-    % comparePDs(pm_real_pdTable(isTuned_real,:),dl_real_pdTable(isTuned_real,:),struct('move_corr','vel'),'ko','linewidth',2)
-    % hold on
-    % comparePDs(pm_ext_pdTable(isTuned_real,:),dl_ext_pdTable(isTuned_real,:),struct('move_corr','vel'),'ro','linewidth',2)
-    % comparePDs(pm_ego_pdTable(isTuned_real,:),dl_ego_pdTable(isTuned_real,:),struct('move_corr','vel'),'go','linewidth',2)
-    % comparePDs(pm_musc_pdTable(isTuned_real,:),dl_musc_pdTable(isTuned_real,:),struct('move_corr','vel'),'bo','linewidth',2)
-    % xlabel 'PM preferred direction'
-    % ylabel 'DL preferred direction'
-
 %% Plot tuning pR2 distribution for each neuron
-    neuron_list = trial_data(1).S1_unit_guide;
-    figure
-    for neuron_idx = 1:length(neuron_list)
-        clf
-        for spacenum = 1:2
-            [~,temp] = getNTidx(crossTuning,'signalID',neuron_list(neuron_idx,:),'spaceNum',spacenum);
+    % neuron_list = trial_data(1).S1_unit_guide;
+    % figure
+    % for neuron_idx = 1:length(neuron_list)
+    %     clf
+    %     for spacenum = 1:2
+    %         [~,temp] = getNTidx(crossTuning,'signalID',neuron_list(neuron_idx,:),'spaceNum',spacenum);
 
-            subplot(2,1,spacenum)
-            hist(temp.S1_FR_eval)
-            title(sprintf('Neuron %d %d, Space %d',neuron_list(neuron_idx,:),spacenum))
-        end
-        if ~isTuned{4}(neuron_idx)
-            xlabel 'This is not tuned'
-        end
-        waitforbuttonpress
-    end
+    %         subplot(2,1,spacenum)
+    %         hist(temp.S1_FR_eval)
+    %         title(sprintf('Neuron %d %d, Space %d',neuron_list(neuron_idx,:),spacenum))
+    %     end
+    %     if ~isTuned(neuron_idx)
+    %         xlabel 'This is not tuned'
+    %     end
+    %     waitforbuttonpress
+    % end
+

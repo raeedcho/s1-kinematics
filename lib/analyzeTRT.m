@@ -23,7 +23,6 @@
 %                           default: 100
 %       .verbose      :     Print diagnostic information
 %                           default: true
-%       .do_plots     : print diagnostic plots
 %
 % OUTPUTS:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -35,62 +34,20 @@ function [crossEval, crossTuning, td] = analyzeTRT(trial_data,params)
     num_folds = 5;
     num_repeats = 20;
     verbose = true;
-    do_plots = false;
     if nargin > 1, assignParams(who,params); end % overwrite parameters
 
 %% Preprocess trial_data structure
-    % prep trial data by getting only rewards and trimming to only movements
-    [~,td] = getTDidx(trial_data,'result','R');
-    td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
-    % bin data at 50ms
-    td = binTD(td,5);
-    % add in spherical coordinates
-    td = addSphereHand2TD(td);
-    % add firing rates rather than spike counts
-    td = addFiringRates(td,struct('array','S1'));
-
-    %% Do PCA on muscle space
-    % do PCA on muscles, training on only the training set
-    % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
-    % PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
-    %                     'do_plot',true);
-    PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len'))}}, 'do_plot',do_plots);
-    [td,~] = getPCA(td,PCAparams);
-    % temporary hack to allow us to do PCA on velocity too
-    for i=1:length(td)
-        td(i).opensim_len_pca = td(i).opensim_pca;
-    end
-    % get rid of superfluous PCA
-    td = rmfield(td,'opensim_pca');
-    % get velocity PCA
-    % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
-    % PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
-    %                     'do_plot',true);
-    PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel'))}}, 'do_plot',do_plots);
-    [td,~] = getPCA(td,PCAparams_vel);
-    % temporary hack to allow us to save into something useful
-    for i=1:length(td)
-        td(i).opensim_muscVel_pca = td(i).opensim_pca;
-    end
-    % get rid of superfluous PCA
-    td = rmfield(td,'opensim_pca');
-
-    %% Get PCA for neural space
-    PCAparams = struct('signals',{{'S1_spikes'}}, 'do_plot',do_plots,'pca_recenter_for_proj',true,'sqrt_transform',true);
-    [td,~] = getPCA(td,PCAparams);
+    % copy trial_data into td for ease of reading and writing
+    td = trial_data;
 
 %% Compile training and test sets
-    % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
-    % also make sure we have balanced workspaces (slightly biases us towards early trials, but this isn't too bad)
-    [~,td_pm] = getTDidx(td,'spaceNum',1);
-    [~,td_dl] = getTDidx(td,'spaceNum',2);
-    minsize = min(length(td_pm),length(td_dl));
-    td_pm = td_pm(1:minsize);
-    td_dl = td_dl(1:minsize);
-    
     % inialize temporary eval holders
     repeatEval = cell(num_repeats,1);
     repeatTuning = cell(num_repeats,1);
+
+    % extract td_pm and td_dl
+    [~,td_pm] = getTDidx(td,'spaceNum',1);
+    [~,td_dl] = getTDidx(td,'spaceNum',2);
 
     % loop over num repeats
     if verbose
@@ -99,7 +56,7 @@ function [crossEval, crossTuning, td] = analyzeTRT(trial_data,params)
     end
     for repeatctr = 1:num_repeats
         % get fold indices
-        indices = crossvalind('Kfold',minsize,num_folds);
+        indices = crossvalind('Kfold',length(td_pm),num_folds);
 
         % initialize temporary fold evaluation structure
         foldEval = cell(num_folds,1);
