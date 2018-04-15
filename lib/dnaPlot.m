@@ -7,9 +7,7 @@ function dnaPlot( PM_pdData, DL_pdData)
 
 %extract relevant information
 angsPM = PM_pdData.velPD;
-dirCIPM = PM_pdData.velPDCI;
 angsDL = DL_pdData.velPD;
-dirCIDL = DL_pdData.velPDCI;
 
 % check tuned neurons
 % isTuned_params = struct('move_corr','vel','CIthresh',pi/3);
