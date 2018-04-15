@@ -125,10 +125,31 @@
     td = [td_pm td_dl];
 
 %% Set up model variables
-    num_models = 4;
+    num_folds = 5; % 5 is default number of folds, no need to pass in
+    num_repeats = 20; % 20 is default number of repeats, no need to pass in
     model_type = 'glm';
     % TODO: change order to extrinsic, muscle, ego, cylinder, joint, S1_FR
     model_names = [strcat(model_type,{'_ext','_ego','_musc'},'_model') {'S1_FR'}];
+    num_models = length(model_names);
+    
+    % set up glm parameters
+    num_musc_pcs = 5;
+    neural_signals = 'S1_FR';
+    % indices for cartesian hand coordinates
+    opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
+    % TODO: make these arguments for the crossval
+    glm_params{1} = struct('model_type',model_type,...
+                            'model_name','ext_model',...
+                            'in_signals',{{'opensim',opensim_hand_idx}},...
+                            'out_signals',neural_signals);
+    glm_params{2} = struct('model_type',model_type,...
+                            'model_name','ego_model',...
+                            'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
+                            'out_signals',neural_signals);
+    glm_params{3} = struct('model_type',model_type,...
+                            'model_name','musc_model',...
+                            'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
+                            'out_signals',neural_signals);
 
 %% Figure out which neurons are tuned
     % Figure out which neurons are tuned in both workspaces
@@ -138,26 +159,8 @@
 
 %% Plot comparison of actual tuning curves with various modeled tuning curves
     % use K-fold crossvalidation to get neural predictions from each model for tuning curves and PDs
-    num_folds = 5;
     indices = crossvalind('Kfold',length(td_pm),num_folds);
     td_test = cell(2,num_folds);
-    
-    % set up glm parameters
-    num_musc_pcs = 5;
-    opensim_hand_idx = find(contains(td_train(1).opensim_names,'_handPos') | contains(td_train(1).opensim_names,'_handVel'));
-    % TODO: make these arguments for the crossval
-    glm_params{1} = struct('model_type',model_type,...
-                            'model_name','ext_model',...
-                            'in_signals',{{'opensim',opensim_hand_idx}},...
-                            'out_signals','S1_FR');
-    glm_params{2} = struct('model_type',model_type,...
-                            'model_name','ego_model',...
-                            'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
-                            'out_signals','S1_FR');
-    glm_params{3} = struct('model_type',model_type,...
-                            'model_name','musc_model',...
-                            'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
-                            'out_signals','S1_FR');
 
     % do the crossval
     for foldctr = 1:num_folds
@@ -222,7 +225,8 @@
     
 %% Cross-validate models of neural data
     % Get crossval info
-    [crossEval,crossTuning] = analyzeTRT(trial_data);
+    crossval_params = struct('model_names',{model_names},'glm_params',{glm_params});
+    [crossEval,crossTuning] = analyzeTRT(td,crossval_params);
 
     % get shifts from weights
     shift_tables = cell(1,num_models);
@@ -240,16 +244,12 @@
         shift_tables{modelnum}.spaceNum = [];
 
         % get PDs from pm and dl
-        weights = pm_tuningTable.([model_names{modelnum} '_velWeight']);
-        [pm_PDs,pm_moddepth] = cart2pol(weights(:,1),weights(:,2));
-        weights = dl_tuningTable.([model_names{modelnum} '_velWeight']);
-        [dl_PDs,dl_moddepth] = cart2pol(weights(:,1),weights(:,2));
+        pm_PDs = pm_tuningTable.([model_names{modelnum} '_velPD']);
+        dl_PDs = dl_tuningTable.([model_names{modelnum} '_velPD']);
         dPDs = minusPi2Pi(dl_PDs-pm_PDs);
-        % use log for moddepth difference because of glm link?
-        dMod = log(dl_moddepth)-log(pm_moddepth);
 
-        tab_append = table(dPDs,dMod,'VariableNames',{'velPD','velModdepth'});
-        tab_append.Properties.VariableDescriptions = {'circular','linear'};
+        tab_append = table(dPDs,'VariableNames',{'velPD'});
+        tab_append.Properties.VariableDescriptions = {'circular'};
         shift_tables{modelnum} = [shift_tables{modelnum} tab_append];
 
         mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
@@ -260,12 +260,6 @@
     markersize = [15,15,40];
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
     for modelnum = 1:3
-        % [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons);
-        % [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons);
-        % real_shifts = shift_tables{4};
-        % model_shifts = shift_tables{modelnum};
-        % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[1]),colors{modelnum},'linewidth',1.85)
-        % comparePDClouds(real_shifts,model_shifts,struct('filter_tuning',[]),colors{modelnum},'facealpha',0.1)
         [~,real_shifts] = getNTidx(mean_shifts{4},'signalID',tunedNeurons);
         [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',tunedNeurons);
         figure
@@ -329,8 +323,8 @@
     alphalow = alpha/2;
     upp = tinv(alphaup,99);
     low = tinv(alphalow,99);
-    CIhigh = mudiff + upp * sqrt(correction*vardiff);
-    CIlow = mudiff + low * sqrt(correction*vardiff);
+    errCIhigh = mudiff + upp * sqrt(correction*vardiff);
+    errCIlow = mudiff + low * sqrt(correction*vardiff);
 
 %% Plot pR2s against each other
     % av_pR2_ext_dl = mean(td_ext_dl_eval,2);
@@ -341,16 +335,36 @@
     av_pR2_ext = avgEval.glm_ext_model_eval;
     av_pR2_musc = avgEval.glm_musc_model_eval;
 
-    good_neurons = isTuned;
+    % make plot of pR2 of muscle against ext
     figure
-    scatter(av_pR2_ext(good_neurons),av_pR2_musc(good_neurons),50,'k','filled')
-    hold on
     plot([-1 1],[-1 1],'k--','linewidth',2)
+    hold on
     plot([0 0],[-1 1],'k-','linewidth',2)
     plot([-1 1],[0 0],'k-','linewidth',2)
+    scatter(crossEval.glm_ext_model_eval(:),crossEval.glm_musc_model_eval(:),25,'k','filled')
+    scatter(av_pR2_ext(:),av_pR2_musc(:),50,'r','filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
     xlabel 'Hand-based pR2'
     ylabel 'Muscle-based pR2'
+
+    % plot histogram of dpR2
+    diffstat = crossEval.glm_musc_model_eval-crossEval.glm_ext_model_eval;
+    figure
+    histogram(diffstat)
+    hold on
+    plot([0 0],get(gca,'ylim'),'--k','linewidth',3)
+
+    % get stats on pR2 diff between musc model and ext model
+    alpha = 0.05; % bonferroni correction for multiple comparisons...?
+    mudiff = mean(diffstat);
+    vardiff = var(diffstat);
+    correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+    alphaup = 1-alpha/2;
+    alphalow = alpha/2;
+    upp = tinv(alphaup,num_folds*num_repeats-1);
+    low = tinv(alphalow,num_folds*num_repeats-1);
+    dpR2CIhigh = mudiff + upp * sqrt(correction*vardiff);
+    dpR2CIlow = mudiff + low * sqrt(correction*vardiff);
 
 %% Plot handle positions
     if verbose

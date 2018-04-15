@@ -26,7 +26,7 @@
 %
 % OUTPUTS:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [crossEval, crossTuning, td] = analyzeTRT(trial_data,params)
+function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Set up
@@ -36,18 +36,15 @@ function [crossEval, crossTuning, td] = analyzeTRT(trial_data,params)
     verbose = true;
     if nargin > 1, assignParams(who,params); end % overwrite parameters
 
-%% Preprocess trial_data structure
-    % copy trial_data into td for ease of reading and writing
-    td = trial_data;
-
 %% Compile training and test sets
     % inialize temporary eval holders
     repeatEval = cell(num_repeats,1);
     repeatTuning = cell(num_repeats,1);
 
     % extract td_pm and td_dl
-    [~,td_pm] = getTDidx(td,'spaceNum',1);
-    [~,td_dl] = getTDidx(td,'spaceNum',2);
+    [~,td_pm] = getTDidx(trial_data,'spaceNum',1);
+    [~,td_dl] = getTDidx(trial_data,'spaceNum',2);
+    assert(length(td_pm)==length(td_dl),'Number of trials in each workspace should be the same')
 
     % loop over num repeats
     if verbose
@@ -184,51 +181,40 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
 %   td_train - trial data structure with trials to be used for training
 %   td_test - cell array of trial_data structures to be used for testing two workspaces
 %   params - parameters struct
-%       .
+%       .model_eval_metric - metric for model evaluation (default: pR2)
+%       .glm_params - cell array of paramter structs to fit glm models with getModel
+%       .model_names - names of models to check classical tuning for
+%           (including actual neural signal)
 %
 % Outputs:
 %   foldEval - NeuronTable structure with evaluation information from fold
 %       Each row corresponds to a neuron's evaluation over both workspaces
 %       .{model_name}_eval - pseudo-R2 for a given model to that neuron
-%       .{model_name}_PDshift - pseudo-R2 for a given model to that neuron
 %   foldTuning - NeuronTable structure with tuning weight information from fold
 %       Each row corresponds to a neuron evaluated in one of the workspaces
 %       Columns past the header columns correspond to evaluation criteria:
-%       .{model_name}_*Weight - extrinsic tuning weights for given model's
-%           predicted firing rates
-%       .{model_name}_tuningEval - pseudo-R2 for the tuning of each model's
+%       .{model_name}_*PD - classical PD for given model's predicted firing rates
+%       .{model_name}_*curve - empirical tuning curve for given model's
 %           predicted firing rates
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Set up
     % default parameters
-    neural_signals = 'S1_FR';
-    glm_distribution = 'poisson';
     model_eval_metric = 'pr2';
-    model_type = 'glm';
-    num_musc_pcs = 5;
+    glm_params = {};
+    model_names = {};
     if nargin > 2
         assignParams(who,params);
     end % overwrite parameters
 
+    % check inputs
+    assert(~isempty(glm_params),'Must pass in glm parameters')
+    assert(~isempty(model_names),'Must pass in model names')
+    assert(length(model_names) == length(glm_params) + 1,'Model names must have one more element than glm_params')
+
 %% Fit models
+    % TODO: move model parameter specs into input params struct
     % set up parameters for models
-    model_names = [strcat(model_type,{'_ext','_ego','_musc'},'_model') {'S1_FR'}];
-    glm_params = cell(1,length(model_names)-1);
     glm_info = cell(1,length(model_names)-1);
-    % cartesian hand coordinates for position and velocity
-    opensim_hand_idx = find(contains(td_train(1).opensim_names,'_handPos') | contains(td_train(1).opensim_names,'_handVel'));
-    glm_params{1} = struct('model_type',model_type,...
-                            'model_name','ext_model',...
-                            'in_signals',{{'opensim',opensim_hand_idx}},...
-                            'out_signals',{{neural_signals}},'glm_distribution',glm_distribution);
-    glm_params{2} = struct('model_type',model_type,...
-                            'model_name','ego_model',...
-                            'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
-                            'out_signals',{{neural_signals}},'glm_distribution',glm_distribution);
-    glm_params{3} = struct('model_type',model_type,...
-                            'model_name','musc_model',...
-                            'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
-                            'out_signals',{{neural_signals}},'glm_distribution',glm_distribution);
     for modelnum = 1:length(model_names)-1
         [~,glm_info{modelnum}] = getModel(td_train,glm_params{modelnum});
     end
@@ -257,16 +243,16 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     for spacenum = 1:2
         for modelnum = 1:length(model_names)
             % get tuning weights for each model
-            weightParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
+            pdParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
                                     'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
-                                    'do_eval_model',true,'meta',struct('spaceNum',spacenum));
-            temp_weight_table = getTDModelWeights(td_test{spacenum},weightParams);
+                                    'bootForTuning',false,'verbose',false,'meta',struct('spaceNum',spacenum));
+            temp_pdTable = getTDClassicalPDs(td_test{spacenum},pdParams);
 
             tuningParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
                                     'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
                                     'calc_CIs',false,'meta',struct('spaceNum',spacenum));
             temp_tuning_table = getTuningCurves(td_test{spacenum},tuningParams);
-            temp_table = join(temp_weight_table,temp_tuning_table);
+            temp_table = join(temp_pdTable,temp_tuning_table);
 
             % append table to full tuning table for space
             if modelnum == 1
@@ -278,29 +264,5 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     end
     % smoosh space tables together
     foldTuning = vertcat(tempTuningTable{:});
-
-%% Get PD shifts
-    % Shift calculation is done outside now, based on crossTuning
-    % % get shifts from weights
-    % shift_tables = cell(1,length(model_names));
-    % for modelnum = 1:length(model_names)
-    %     % select tables for each space
-    %     [~,pm_foldTuning] = getNTidx(foldTuning,'spaceNum',1);
-    %     [~,dl_foldTuning] = getNTidx(foldTuning,'spaceNum',2);
-
-    %     % get PDs from pm and dl
-    %     weights = pm_foldTuning.([model_names{modelnum} '_velWeight']);
-    %     [pm_PDs,pm_moddepth] = cart2pol(weights(:,1),weights(:,2));
-    %     weights = dl_foldTuning.([model_names{modelnum} '_velWeight']);
-    %     [dl_PDs,dl_moddepth] = cart2pol(weights(:,1),weights(:,2));
-    %     dPDs = minusPi2Pi(dl_PDs-pm_PDs);
-    %     % use ratio because of glm link?
-    %     dMod = (dl_moddepth)./(pm_moddepth);
-
-    %     shift_tables{modelnum} = table(dPDs,dMod,'VariableNames',strcat(model_names{modelnum},{'_velPDShift','_velModdepthRatio'}));
-    %     shift_tables{modelnum}.Properties.VariableDescriptions = {'circular','linear'};
-    % end
-
-    % foldEval = horzcat(foldEval,shift_tables{:});
 
 end
