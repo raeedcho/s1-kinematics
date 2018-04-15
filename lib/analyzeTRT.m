@@ -212,7 +212,6 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     assert(length(model_names) == length(glm_params) + 1,'Model names must have one more element than glm_params')
 
 %% Fit models
-    % TODO: move model parameter specs into input params struct
     % set up parameters for models
     glm_info = cell(1,length(model_names)-1);
     for modelnum = 1:length(model_names)-1

@@ -79,7 +79,7 @@
     % add in spherical coordinates
     td = addSphereHand2TD(td);
     % add in cylindrical coordinates
-    td = addSphereHand2TD(td);
+    td = addCylHand2TD(td);
     % add firing rates rather than spike counts
     td = addFiringRates(td,struct('array','S1'));
 
@@ -128,7 +128,6 @@
     num_folds = 5; % 5 is default number of folds, no need to pass in
     num_repeats = 20; % 20 is default number of repeats, no need to pass in
     model_type = 'glm';
-    % TODO: change order to extrinsic, muscle, ego, cylinder, joint, S1_FR
     model_names = [strcat(model_type,'_',{'musc','ext','ego','cyl','joint'},'_model') {'S1_FR'}];
     num_models = length(model_names);
     % colors for models
@@ -148,7 +147,6 @@
     % indices for cartesian hand coordinates
     opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
     opensim_joint_idx = find(contains(td(1).opensim_names,'_ang') | contains(td(1).opensim_names,'_vel'));
-    % TODO: make these arguments for the crossval
     glm_params{1} = struct('model_type',model_type,...
                             'model_name','musc_model',...
                             'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
@@ -209,7 +207,7 @@
             tuning_curves{spacenum,modelnum} = getTuningCurves(td_tuning{spacenum},tuning_params);
         end
     end
-    isTuned = pdTables{1,4}.velTuned & pdTables{2,4}.velTuned;
+    isTuned = pdTables{1,end}.velTuned & pdTables{2,end}.velTuned;
 
     % compare PM and DL tuning for each model
     for modelnum = 1:num_models
@@ -226,12 +224,12 @@
     f2 = figure;
     for modelnum = 1:num_models
         figure(f1)
-        subplot(2,2,modelnum)
+        subplot(2,num_models/2,modelnum)
         irisPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
         title(model_names{modelnum})
 
         figure(f2)
-        subplot(2,2,modelnum)
+        subplot(2,num_models/2,modelnum)
         dnaPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
         title(model_names{modelnum})
     end
@@ -270,9 +268,13 @@
 
     markers = {'x','+','.'};
     markersize = [15,15,40];
-    titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
-    for modelnum = 1:3
-        [~,real_shifts] = getNTidx(mean_shifts{4},'signalID',tunedNeurons);
+    titles = {'Hand-based model PD shift vs Actual PD shift',...
+        'Egocentric model PD shift vs Actual PD shift',...
+        'Muscle-based model PD shift vs Actual PD shift',...
+        'Cylindrical ego model PD shift vs Actual PD shift',...
+        'Joint-based model PD shift vs Actual PD shift'};
+    for modelnum = 1:num_models-1
+        [~,real_shifts] = getNTidx(mean_shifts{end},'signalID',tunedNeurons);
         [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',tunedNeurons);
         figure
         plot([-pi pi],[0 0],'-k','linewidth',2)
@@ -289,9 +291,9 @@
     end
 
 %% Calculate mean error on shifts
-    err = zeros(100,3);
-    for modelnum = 1:3
-        [~,real_shifts] = getNTidx(shift_tables{4},'signalID',tunedNeurons);
+    err = zeros(100,num_models-1);
+    for modelnum = 1:num_models-1
+        [~,real_shifts] = getNTidx(shift_tables{end},'signalID',tunedNeurons);
         [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons);
         err_arr = model_shifts.velPD-real_shifts.velPD;
         for i = 1:100
@@ -305,7 +307,7 @@
 
     % plot histograms
     figure
-    for modelnum = 1:3
+    for modelnum = 1:num_models-1
         h = histogram(gca,err(:,modelnum),'DisplayStyle','bar');
         set(h,'edgecolor',model_colors(modelnum,:),'facecolor',model_colors(modelnum,:))
         hold on
@@ -313,12 +315,12 @@
 
     % plot errors
     figure
-    for modelnum = 1:3
+    for modelnum = 1:num_models-1
         scatter(err(:,modelnum),repmat(modelnum/10,size(err,1),1),50,model_colors(modelnum,:),'filled')
         hold on
         plot(mean(err(:,modelnum)),modelnum/10,'k.','linewidth',3,'markersize',40)
     end
-    set(gca,'tickdir','out','box','off','ytick',(1:3)/10,'yticklabel',{'Hand-based','Egocentric','Muscle-based'},'xtick',[0 1])
+    set(gca,'tickdir','out','box','off','ytick',(1:(num_models-1))/10,'yticklabel',{'Hand-based','Egocentric','Muscle-based'},'xtick',[0 1])
     axis equal
     axis ij
     xlim([0 1])
@@ -327,7 +329,7 @@
 
     % compute statistics
     alpha = 0.05/3; % bonferroni correction for multiple comparisons...?
-    diffstat = err(:,3)-err(:,1);
+    diffstat = err(:,1)-err(:,2); % musc - ext
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
