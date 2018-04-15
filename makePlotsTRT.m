@@ -131,6 +131,14 @@
     % TODO: change order to extrinsic, muscle, ego, cylinder, joint, S1_FR
     model_names = [strcat(model_type,{'_ext','_ego','_musc'},'_model') {'S1_FR'}];
     num_models = length(model_names);
+    % colors for models
+    model_colors = [247,148, 30;...
+                    105,189, 69;...
+                      0,174,239]/255;
+
+    % colors for pm, dl conditions
+    cond_colors = [0.6,0.5,0.7;...
+                   1,0,0];
     
     % set up glm parameters
     num_musc_pcs = 5;
@@ -150,12 +158,6 @@
                             'model_name','musc_model',...
                             'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
                             'out_signals',neural_signals);
-
-%% Figure out which neurons are tuned
-    % Figure out which neurons are tuned in both workspaces
-    % isTuned_pm = checkIsTuned(td_pm,struct('out_signals','S1_FR'));
-    % isTuned_dl = checkIsTuned(td_dl,struct('out_signals','S1_FR'));
-    % isTuned = isTuned_pm & isTuned_dl;
 
 %% Plot comparison of actual tuning curves with various modeled tuning curves
     % use K-fold crossvalidation to get neural predictions from each model for tuning curves and PDs
@@ -196,12 +198,12 @@
             tuning_curves{spacenum,modelnum} = getTuningCurves(td_tuning{spacenum},tuning_params);
         end
     end
+    isTuned = pdTables{1,4}.velTuned & pdTables{2,4}.velTuned;
 
     % compare PM and DL tuning for each model
-    isTuned = pdTables{1,4}.velTuned & pdTables{2,4}.velTuned;
     for modelnum = 1:num_models
         % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
-        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),find(isTuned))
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors))
     end
 
 %% Make iris and dna plots
@@ -255,7 +257,6 @@
         mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
     end
 
-    colors = {'r','g','b'};
     markers = {'x','+','.'};
     markersize = [15,15,40];
     titles = {'Hand-based model PD shift vs Actual PD shift','Egocentric model PD shift vs Actual PD shift','Muscle-based model PD shift vs Actual PD shift'};
@@ -270,7 +271,7 @@
         axis equal
         set(gca,'box','off','tickdir','out','xtick',[-pi pi],'ytick',[-pi pi],'xlim',[-pi pi],'ylim',[-pi pi],...
             'xticklabel',{'-\pi','\pi'},'yticklabel',{'-\pi','\pi'})
-        scatter(real_shifts.velPD,model_shifts.velPD,50,colors{modelnum},'filled')
+        scatter(real_shifts.velPD,model_shifts.velPD,50,model_colors(modelnum,:),'filled')
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
@@ -295,14 +296,14 @@
     figure
     for modelnum = 1:3
         h = histogram(gca,err(:,modelnum),'DisplayStyle','bar');
-        set(h,'edgecolor',colors{modelnum},'facecolor',colors{modelnum})
+        set(h,'edgecolor',model_colors(modelnum,:),'facecolor',model_colors(modelnum,:))
         hold on
     end
 
     % plot errors
     figure
     for modelnum = 1:3
-        scatter(err(:,modelnum),repmat(modelnum/10,size(err,1),1),50,colors{modelnum},'filled')
+        scatter(err(:,modelnum),repmat(modelnum/10,size(err,1),1),50,model_colors(modelnum,:),'filled')
         hold on
         plot(mean(err(:,modelnum)),modelnum/10,'k.','linewidth',3,'markersize',40)
     end
