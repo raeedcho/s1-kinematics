@@ -74,6 +74,12 @@
     % prep trial data by getting only rewards and trimming to only movements
     [~,td] = getTDidx(trial_data,'result','R');
     td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
+
+    % for bumps
+    % [~,td] = getTDidx(trial_data,'result','R');
+    % td = td(~isnan(cat(1,td.idx_bumpTime)));
+    % td = trimTD(td,{'idx_bumpTime',0},{'idx_bumpTime',15});
+
     % bin data at 50ms
     td = binTD(td,5);
     % add in spherical coordinates
