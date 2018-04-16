@@ -201,7 +201,8 @@
         for spacenum = 1:2
             % First PDs
             pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'do_plot',true,'meta',struct('spaceNum',spacenum));
-            pdTables{spacenum,modelnum} = getTDClassicalPDs(td_tuning{spacenum},pd_params);
+            % pdTables{spacenum,modelnum} = getTDClassicalPDs(td_tuning{spacenum},pd_params);
+            pdTables{spacenum,modelnum} = getTDPDs(td_tuning{spacenum},pd_params);
 
             tuning_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'meta',struct('spaceNum',spacenum));
             tuning_curves{spacenum,modelnum} = getTuningCurves(td_tuning{spacenum},tuning_params);
@@ -211,7 +212,6 @@
 
     % compare PM and DL tuning for each model
     for modelnum = 1:num_models
-        % figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum))
         figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors))
     end
 
@@ -328,7 +328,7 @@
     xlabel('Cosine error of model')
 
     % compute statistics
-    alpha = 0.05/3; % bonferroni correction for multiple comparisons...?
+    alpha = 0.05; % bonferroni correction for multiple comparisons...?
     diffstat = err(:,1)-err(:,2); % musc - ext
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
