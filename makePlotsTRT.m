@@ -206,7 +206,7 @@
     for modelnum = 1:num_models
         for spacenum = 1:2
             % First PDs
-            pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'do_plot',true,'meta',struct('spaceNum',spacenum));
+            pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'do_plot',false,'meta',struct('spaceNum',spacenum));
             % pdTables{spacenum,modelnum} = getTDClassicalPDs(td_tuning{spacenum},pd_params);
             pdTables{spacenum,modelnum} = getTDPDs(td_tuning{spacenum},pd_params);
 
