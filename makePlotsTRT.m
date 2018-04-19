@@ -334,7 +334,7 @@
     xlabel('Cosine error of model')
 
     % compute statistics
-    alpha = 0.05; % bonferroni correction for multiple comparisons...?
+    alpha = 0.05/3; % bonferroni correction for multiple comparisons...?
     diffstat = err(:,1)-err(:,2); % musc - ext
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
