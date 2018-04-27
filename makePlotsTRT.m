@@ -239,7 +239,7 @@
         dnaPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
         title(model_names{modelnum})
     end
-    
+
 %% Cross-validate models of neural data
     % Get crossval info
     crossval_params = struct('model_names',{model_names},'glm_params',{glm_params});
@@ -295,6 +295,20 @@
         ylabel 'Modeled PD Shift'
         title(titles{modelnum})
     end
+    
+%% Make histogram plots of PD changes
+    figure
+    subplot(4,1,1)
+    h = histogram(gca,mean_shifts{end}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+    set(h,'edgecolor','k')
+    set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
+    for modelnum = 1:3
+        subplot(4,1,modelnum+1)
+        h = histogram(gca,mean_shifts{modelnum}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+        set(h,'edgecolor',model_colors(modelnum,:))
+        set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
+    end
+    xlabel 'Change in Preferred Direction'
 
 %% Calculate mean error on shifts
     err = zeros(100,num_models-1);
@@ -334,17 +348,22 @@
     xlabel('Cosine error of model')
 
     % compute statistics
-    alpha = 0.05/3; % bonferroni correction for multiple comparisons...?
+    alpha = 0.05/2; % bonferroni correction for multiple comparisons...?
     diffstat = err(:,1)-err(:,2); % musc - ext
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
-    alphaup = 1-alpha/2;
-    alphalow = alpha/2;
+    alphaup = 1-alpha;
     upp = tinv(alphaup,99);
-    low = tinv(alphalow,99);
-    errCIhigh = mudiff + upp * sqrt(correction*vardiff);
-    errCIlow = mudiff + low * sqrt(correction*vardiff);
+    errCIhigh_ext = mudiff + upp * sqrt(correction*vardiff);
+
+    diffstat = err(:,1)-err(:,3); % musc - ego
+    mudiff = mean(diffstat);
+    vardiff = var(diffstat);
+    correction = 1/100 + 1/4;
+    alphaup = 1-alpha;
+    upp = tinv(alphaup,99);
+    errCIhigh_ego = mudiff + upp * sqrt(correction*vardiff);
 
 %% Plot pR2s against each other
     % av_pR2_ext_dl = mean(td_ext_dl_eval,2);
