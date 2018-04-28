@@ -218,7 +218,7 @@
 
     % compare PM and DL tuning for each model
     for modelnum = 1:num_models
-        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors))
+        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors,'maxFR',1))
     end
 
 %% Make iris and dna plots
@@ -326,26 +326,12 @@
     end
 
     % plot histograms
-    figure
-    for modelnum = 1:num_models-1
-        h = histogram(gca,err(:,modelnum),'DisplayStyle','bar');
-        set(h,'edgecolor',model_colors(modelnum,:),'facecolor',model_colors(modelnum,:))
-        hold on
-    end
-
-    % plot errors
-    figure
-    for modelnum = 1:num_models-1
-        scatter(err(:,modelnum),repmat(modelnum/10,size(err,1),1),50,model_colors(modelnum,:),'filled')
-        hold on
-        plot(mean(err(:,modelnum)),modelnum/10,'k.','linewidth',3,'markersize',40)
-    end
-    set(gca,'tickdir','out','box','off','ytick',(1:(num_models-1))/10,'yticklabel',{'Muscle-based','Hand-based','Egocentric','Cylindrical','Joint-based'},'xtick',[0 1])
-    axis equal
-    axis ij
-    xlim([0 1])
-    ylim([0 num_models/10])
-    xlabel('Cosine error of model')
+    % figure
+    % for modelnum = 1:num_models-1
+    %     h = histogram(gca,err(:,modelnum),'DisplayStyle','bar');
+    %     set(h,'edgecolor',model_colors(modelnum,:),'facecolor',model_colors(modelnum,:))
+    %     hold on
+    % end
 
     % compute statistics
     alpha = 0.05/2; % bonferroni correction for multiple comparisons...?
@@ -364,6 +350,20 @@
     alphaup = 1-alpha;
     upp = tinv(alphaup,99);
     errCIhigh_ego = mudiff + upp * sqrt(correction*vardiff);
+
+    % plot errors
+    figure
+    for modelnum = 1:num_models-1
+        scatter(err(:,modelnum),repmat(modelnum/10,size(err,1),1),50,model_colors(modelnum,:),'filled')
+        hold on
+        plot(mean(err(:,modelnum)),modelnum/10,'k.','linewidth',3,'markersize',40)
+    end
+    set(gca,'tickdir','out','box','off','ytick',(1:(num_models-1))/10,'yticklabel',{'Muscle-based','Hand-based','Egocentric','Cylindrical','Joint-based'},'xtick',[0 1])
+    axis equal
+    axis ij
+    xlim([0 1])
+    ylim([0 num_models/10])
+    xlabel('Cosine error of model')
 
 %% Plot pR2s against each other
     % av_pR2_ext_dl = mean(td_ext_dl_eval,2);
@@ -419,7 +419,34 @@
         clearvars pos_*
     end
 
-%% Plot example neuron model fit
+%% Plot error on all monkeys (requires already saved errors)
+    % get mean and standard error of errors
+    err = [han_err chips_err lando_err];
+    mean_err = mean(err);
+    var_err = var(err);
+    correction = 1/100 + 1/4;
+    std_err_err = sqrt(correction*var_err);
+
+    num_monks = 3;
+    num_models = 3;
+    num_cols = num_monks*num_models; % this should be the number columns in err now
+    model_colors_rep = repmat(model_colors,num_monks,1);
+    model_x = [1.5 2 2.5 4.5 5 5.5 7.5 8 8.5]/10;
+    figure
+    for colnum = 1:num_cols
+        % scatter(repmat(colnum/10,size(err,1),1),err(:,colnum),50,model_colors_rep(colnum,:),'filled')
+        % hold on
+        % plot(colnum/10,mean(err(:,colnum)),'.','color',model_colors_rep(colnum,:),'linewidth',3,'markersize',40)
+        bar(model_x(colnum),mean(err(:,colnum)),0.05,'facecolor',model_colors_rep(colnum,:))
+        hold on
+        % errorbar(colnum/10,mean_err(:,colnum),std_err_err(:,colnum),'color',model_colors_rep(colnum,:),'linewidth',3)
+    end
+    errorbar(model_x,mean_err,std_err_err,'k.','linewidth',3)
+    set(gca,'tickdir','out','box','off','xtick',[2 5 8]/10,'xticklabel',{'Monkey H','Monkey C','Monkey L'},'ytick',[0 1])
+    axis equal
+    ylim([0 1])
+    xlim([0 1])
+    ylabel('Error of model')
 
 %% Plot tuning weight clouds
     tuningHull = getTuningHull(results.tuningTable);
