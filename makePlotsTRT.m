@@ -429,11 +429,16 @@
     set(gca,'box','off','tickdir','out','ylim',[0 1+height(avgEval)],'ytick',[1 height(avgEval)])
 
 %% Tuning curve covariances
-    tuning_covar = 
+    tuning_covar = zeros(2,num_models,height(tuning_curves{1,1}));
     for neuron_idx = 1:height(tuning_curves{1,1})
-        for modelnum = 1:num_models
-            for spacenum = 1:2
+        for spacenum = 1:2
+            tuning_curve_mat = zeros(8,num_models);
+            for modelnum = 1:num_models
+                tuning_curve_mat(:,modelnum) = tuning_curves{spacenum,modelnum}(neuron_idx,:).velCurve';
             end
+            covar_mat = cov(tuning_curve_mat);
+            true_tuning_idx = contains(model_names,'S1');
+            tuning_covar(spacenum,:,neuron_idx) = covar_mat(:,true_tuning_idx)/covar_mat(true_tuning_idx,true_tuning_idx);
         end
     end
 
