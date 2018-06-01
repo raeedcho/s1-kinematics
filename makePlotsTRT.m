@@ -29,32 +29,6 @@
     % 2b - Breaking up the data into training and testing sets
 
     % 2c - Example neural predictions for each model
-    % neuron 1 has decent pseudo R2
-    for neuron_idx = 52%1:length(td_eval{2,1})
-        h = figure;
-        temp_vel = cat(1,results.td_test{2}.vel);
-        temp_spikes = cat(1,results.td_test{2}.S1_FR);
-        temp_pred_ext = cat(1,results.td_test{2}.(model_names{1}));
-        temp_pred_musc = cat(1,results.td_test{2}.(model_names{3}));
-
-        clf
-        ax1 = subplot(2,1,1);
-        plot(temp_vel(:,1),'b','linewidth',2)
-        hold on
-        plot(temp_vel(:,2),'g','linewidth',2)
-        set(gca,'box','off','tickdir','out')
-
-        ax2 = subplot(2,1,2);
-        plot(temp_spikes(:,neuron_idx),'k','linewidth',2)
-        hold on
-        plot(temp_pred_ext(:,neuron_idx),'r','linewidth',2)
-        plot(temp_pred_musc(:,neuron_idx),'c','linewidth',2)
-        set(gca,'box','off','tickdir','out')
-
-        linkaxes([ax1 ax2],'x')
-        waitfor(h)
-    end
-    clearvars neuron_idx temp_* ax1 ax2
 
 %% Figure 3 - Comparison of modeled tuning curves
     % 3a - a few example flat tuning curves (models on top of each other) DL under PM
@@ -374,36 +348,122 @@
     av_pR2_ext = avgEval.glm_ext_model_eval;
     av_pR2_musc = avgEval.glm_musc_model_eval;
 
+    % get stats on pR2 diff between musc model and ext model
+    alpha = 0.05;
+    diffstat = crossEval.glm_musc_model_eval-crossEval.glm_ext_model_eval;
+    correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+    alphaup = 1-alpha/2;
+    alphalow = alpha/2;
+
+    dpR2CI = zeros(height(avgEval),2);
+    for i = 1:height(avgEval)
+        sigID = avgEval.signalID(i,:);
+        idx = getNTidx(crossEval,'signalID',sigID);
+        mudiff = mean(diffstat(idx));
+        vardiff = var(diffstat(idx));
+        upp = tinv(alphaup,num_folds*num_repeats-1);
+        low = tinv(alphalow,num_folds*num_repeats-1);
+
+        dpR2CI(i,1) = mudiff + low * sqrt(correction*vardiff);
+        dpR2CI(i,2) = mudiff + upp * sqrt(correction*vardiff);
+    end
+
+    % classify neurons
+    musc_neurons = dpR2CI(:,1)>0;
+    hand_neurons = dpR2CI(:,2)<0;
+
     % make plot of pR2 of muscle against ext
     figure
     plot([-1 1],[-1 1],'k--','linewidth',2)
     hold on
     plot([0 0],[-1 1],'k-','linewidth',2)
     plot([-1 1],[0 0],'k-','linewidth',2)
-    scatter(crossEval.glm_ext_model_eval(:),crossEval.glm_musc_model_eval(:),25,'k','filled')
+    for i = 1:height(avgEval)
+        sigID = avgEval.signalID(i,:);
+        idx = getNTidx(crossEval,'signalID',sigID);
+        if musc_neurons(i)
+            color = model_colors(contains(model_names,'musc'),:);
+        elseif hand_neurons(i)
+            color = model_colors(contains(model_names,'ext'),:);
+        else
+            color = [0 0 0];
+        end
+        scatter(crossEval.glm_ext_model_eval(idx),crossEval.glm_musc_model_eval(idx),25,color,'filled')
+    end
+    clear i idx color sigID;
     scatter(av_pR2_ext(:),av_pR2_musc(:),50,'r','filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
     xlabel 'Hand-based pR2'
     ylabel 'Muscle-based pR2'
 
-    % plot histogram of dpR2
-    diffstat = crossEval.glm_musc_model_eval-crossEval.glm_ext_model_eval;
     figure
-    histogram(diffstat)
+    plot([-1 1],[-1 1],'k--','linewidth',2)
     hold on
-    plot([0 0],get(gca,'ylim'),'--k','linewidth',3)
+    plot([0 0],[-1 1],'k-','linewidth',2)
+    plot([-1 1],[0 0],'k-','linewidth',2)
+    color = zeros(height(avgEval),3);
+    color(musc_neurons,:) = repmat(model_colors(contains(model_names,'musc'),:),sum(musc_neurons),1);
+    color(hand_neurons,:) = repmat(model_colors(contains(model_names,'ext'),:),sum(hand_neurons),1);
+    scatter(av_pR2_ext(:),av_pR2_musc(:),50,color,'filled')
+    set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
+    xlabel 'Hand-based pR2'
+    ylabel 'Muscle-based pR2'
 
-    % get stats on pR2 diff between musc model and ext model
-    alpha = 0.05; % bonferroni correction for multiple comparisons...?
-    mudiff = mean(diffstat);
-    vardiff = var(diffstat);
-    correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
-    alphaup = 1-alpha/2;
-    alphalow = alpha/2;
-    upp = tinv(alphaup,num_folds*num_repeats-1);
-    low = tinv(alphalow,num_folds*num_repeats-1);
-    dpR2CIhigh = mudiff + upp * sqrt(correction*vardiff);
-    dpR2CIlow = mudiff + low * sqrt(correction*vardiff);
+    % make plot
+    figure
+    for i = 1:height(avgEval)
+        if musc_neurons(i)
+            color = model_colors(contains(model_names,'musc'),:);
+        elseif hand_neurons(i)
+            color = model_colors(contains(model_names,'ext'),:);
+        else
+            color = [0 0 0];
+        end
+        plot(dpR2CI(i,:),[i i],'-','color',color,'linewidth',2);
+        hold on
+        plot(dpR2CI(i,:),[i i],'.','color',color,'markersize',30);
+    end
+    plot([0 0],[0 1+height(avgEval)],'k-','linewidth',2);
+    axis ij
+    axis([-0.15 0.15 -inf inf])
+    set(gca,'box','off','tickdir','out','ylim',[0 1+height(avgEval)],'ytick',[1 height(avgEval)])
+
+%% Tuning curve covariances
+    tuning_covar = 
+    for neuron_idx = 1:height(tuning_curves{1,1})
+        for modelnum = 1:num_models
+            for spacenum = 1:2
+            end
+        end
+    end
+
+%% Example predictions
+    for neuron_idx = 23% 1:height(avgEval)
+        h = figure;
+        temp_vel = cat(1,td_tuning{2}.vel);
+        temp_spikes = get_vars(td_tuning{2},{'S1_FR',neuron_idx});
+        temp_pred_ext = get_vars(td_tuning{2},{'glm_ext_model',neuron_idx});
+        temp_pred_musc = get_vars(td_tuning{2},{'glm_musc_model',neuron_idx});
+
+        clf
+        ax1 = subplot(2,1,1);
+        plot(temp_vel(:,1),'b','linewidth',2)
+        hold on
+        plot(temp_vel(:,2),'g','linewidth',2)
+        set(gca,'box','off','tickdir','out')
+
+        ax2 = subplot(2,1,2);
+        plot(temp_spikes,'k','linewidth',2)
+        hold on
+        plot(temp_pred_ext,'color',model_colors(contains(model_names,'ext'),:),'linewidth',2)
+        plot(temp_pred_musc,'color',model_colors(contains(model_names,'musc'),:),'linewidth',2)
+        title(sprintf('Hand-based pR^2: %f, Musc-based pR^2: %f',av_pR2_ext(neuron_idx),av_pR2_musc(neuron_idx)))
+        set(gca,'box','off','tickdir','out')
+
+        linkaxes([ax1 ax2],'x')
+        waitfor(h)
+    end
+    clearvars neuron_idx temp_* ax1 ax2
 
 %% Plot handle positions
     if verbose
@@ -468,22 +528,3 @@
 
         waitfor(close_fig)
     end
-
-%% Plot tuning pR2 distribution for each neuron
-    % neuron_list = trial_data(1).S1_unit_guide;
-    % figure
-    % for neuron_idx = 1:length(neuron_list)
-    %     clf
-    %     for spacenum = 1:2
-    %         [~,temp] = getNTidx(crossTuning,'signalID',neuron_list(neuron_idx,:),'spaceNum',spacenum);
-
-    %         subplot(2,1,spacenum)
-    %         hist(temp.S1_FR_eval)
-    %         title(sprintf('Neuron %d %d, Space %d',neuron_list(neuron_idx,:),spacenum))
-    %     end
-    %     if ~isTuned(neuron_idx)
-    %         xlabel 'This is not tuned'
-    %     end
-    %     waitforbuttonpress
-    % end
-
