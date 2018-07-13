@@ -47,6 +47,11 @@
 %% Split up trial data and preprocess
     % prep trial data by getting only rewards and trimming to only movements
     [~,td] = getTDidx(trial_data,'result','R');
+
+    % first process marker data
+    td = smoothSignals(td,struct('signals','markers'));
+    td = getDifferential(td,struct('signal','markers','alias','marker_vel'));
+
     td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
 
     % for bumps
@@ -93,6 +98,10 @@
     % PCAparams = struct('signals',{{'S1_spikes'}}, 'do_plot',true,'pca_recenter_for_proj',true,'sqrt_transform',true);
     % [td,~] = getPCA(td,PCAparams);
 
+    % Get PCA for marker space
+    td = getPCA(td,struct('signals','markers'));
+    td = getPCA(td,struct('signals','marker_vel'));
+
     % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
     % also make sure we have balanced workspaces (slightly biases us towards early trials, but this isn't too bad)
     [~,td_pm] = getTDidx(td,'spaceNum',1);
@@ -108,14 +117,29 @@
     num_folds = 5; % 5 is default number of folds, no need to pass in
     num_repeats = 20; % 20 is default number of repeats, no need to pass in
     model_type = 'glm';
-    model_names = [strcat(model_type,'_',{'musc','ext','ego','cyl','joint'},'_model') {'S1_FR'}];
+    % model_aliases = {'musc','ext','cyl','joint'};
+    model_aliases = {'ext','ego','musc','markers'};
+    model_names = [strcat(model_type,'_',model_aliases,'_model') {'S1_FR'}];
     num_models = length(model_names);
+    model_titles = cell(num_models-1,1);
+    for modelnum = 1:num_models-1
+        switch model_aliases{modelnum}
+        case 'musc'
+            model_titles{modelnum} = 'Muscle-based';
+        case 'ext'
+            model_titles{modelnum} = 'Hand-based';
+        case 'ego'
+            model_titles{modelnum} = 'Egocentric';
+        case 'cyl'
+            model_titles{modelnum} = 'Cylindrical ego';
+        case 'joint'
+            model_titles{modelnum} = 'Joint-based';
+        case 'markers'
+            model_titles{modelnum} = 'Marker-based';
+        end
+    end
     % colors for models
-    model_colors = [  0,174,239;...
-                    247,148, 30;...
-                    105,189, 69;...
-                    113,191,110;...
-                     38, 34, 98]/255;
+    model_colors = zeros(num_models-1,3);
 
     % colors for pm, dl conditions
     cond_colors = [0.6,0.5,0.7;...
@@ -127,26 +151,47 @@
     % indices for cartesian hand coordinates
     opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
     opensim_joint_idx = find(contains(td(1).opensim_names,'_ang') | contains(td(1).opensim_names,'_vel'));
-    glm_params{1} = struct('model_type',model_type,...
-                            'model_name','musc_model',...
-                            'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
-                            'out_signals',neural_signals);
-    glm_params{2} = struct('model_type',model_type,...
-                            'model_name','ext_model',...
-                            'in_signals',{{'opensim',opensim_hand_idx}},...
-                            'out_signals',neural_signals);
-    glm_params{3} = struct('model_type',model_type,...
-                            'model_name','ego_model',...
-                            'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
-                            'out_signals',neural_signals);
-    glm_params{4} = struct('model_type',model_type,...
-                            'model_name','cyl_model',...
-                            'in_signals',{{'cyl_hand_pos';'cyl_hand_vel'}},...
-                            'out_signals',neural_signals);
-    glm_params{5} = struct('model_type',model_type,...
-                            'model_name','joint_model',...
-                            'in_signals',{{'opensim',opensim_joint_idx}},...
-                            'out_signals',neural_signals);
+    glm_params = cell(num_models-1,1);
+    for modelnum = 1:num_models-1
+        switch model_aliases{modelnum}
+        case 'musc'
+            model_colors(modelnum,:) = [0, 174, 239]/255;
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name','musc_model',...
+                                    'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
+                                    'out_signals',neural_signals);
+        case 'ext'
+            model_colors(modelnum,:) = [247, 148, 30]/255;
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name','ext_model',...
+                                    'in_signals',{{'opensim',opensim_hand_idx}},...
+                                    'out_signals',neural_signals);
+        case 'ego'
+            model_colors(modelnum,:) = [105, 189, 69]/255;
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name','ego_model',...
+                                    'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
+                                    'out_signals',neural_signals);
+        case 'cyl'
+            model_colors(modelnum,:) = [113, 191, 110]/255;
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name','cyl_model',...
+                                    'in_signals',{{'cyl_hand_pos';'cyl_hand_vel'}},...
+                                    'out_signals',neural_signals);
+        case 'joint'
+            model_colors(modelnum,:) = [38, 34, 98]/255;
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name','joint_model',...
+                                    'in_signals',{{'opensim',opensim_joint_idx}},...
+                                    'out_signals',neural_signals);
+        case 'markers'
+            model_colors(modelnum,:) = [193, 25, 47]/255;
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name','markers_model',...
+                                    'in_signals',{{'markers_pca',1:num_musc_pcs;'marker_vel_pca',1:num_musc_pcs}},...
+                                    'out_signals',neural_signals);
+        end
+    end
 
 %% Plot comparison of actual tuning curves with various modeled tuning curves
     % use K-fold crossvalidation to get neural predictions from each model for tuning curves and PDs
@@ -192,7 +237,9 @@
 
     % compare PM and DL tuning for each model
     for modelnum = 1:num_models
-        figure;compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors,'maxFR',1))
+        figure
+        title(model_names{modelnum})
+        compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors,'maxFR',1))
     end
 
 %% Make iris and dna plots
@@ -204,12 +251,12 @@
     f2 = figure;
     for modelnum = 1:num_models
         figure(f1)
-        subplot(2,num_models/2,modelnum)
+        subplot(2,ceil(num_models/2),modelnum)
         irisPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
         title(model_names{modelnum})
 
         figure(f2)
-        subplot(2,num_models/2,modelnum)
+        subplot(2,ceil(num_models/2),modelnum)
         dnaPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
         title(model_names{modelnum})
     end
@@ -248,15 +295,12 @@
 
     markers = {'x','+','.'};
     markersize = [15,15,40];
-    titles = {'Muscle-based model PD shift vs Actual PD shift',...
-        'Hand-based model PD shift vs Actual PD shift',...
-        'Egocentric model PD shift vs Actual PD shift',...
-        'Cylindrical ego model PD shift vs Actual PD shift',...
-        'Joint-based model PD shift vs Actual PD shift'};
+    figure
     for modelnum = 1:num_models-1
         [~,real_shifts] = getNTidx(mean_shifts{end},'signalID',tunedNeurons);
         [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',tunedNeurons);
-        figure
+
+        subplot(1,num_models-1,modelnum)
         plot([-pi pi],[0 0],'-k','linewidth',2)
         hold on
         plot([0 0],[-pi pi],'-k','linewidth',2)
@@ -265,19 +309,21 @@
         set(gca,'box','off','tickdir','out','xtick',[-pi pi],'ytick',[-pi pi],'xlim',[-pi pi],'ylim',[-pi pi],...
             'xticklabel',{'-\pi','\pi'},'yticklabel',{'-\pi','\pi'})
         scatter(real_shifts.velPD,model_shifts.velPD,50,model_colors(modelnum,:),'filled')
+
+        % labels
         xlabel 'Actual PD Shift'
         ylabel 'Modeled PD Shift'
-        title(titles{modelnum})
+        title(sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum}))
     end
     
 %% Make histogram plots of PD changes
     figure
-    subplot(4,1,1)
+    subplot(num_models,1,1)
     h = histogram(gca,mean_shifts{end}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
     set(h,'edgecolor','k')
     set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
-    for modelnum = 1:3
-        subplot(4,1,modelnum+1)
+    for modelnum = 1:num_models-1
+        subplot(num_models,1,modelnum+1)
         h = histogram(gca,mean_shifts{modelnum}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
         set(h,'edgecolor',model_colors(modelnum,:))
         set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
@@ -308,8 +354,9 @@
     % end
 
     % compute statistics
+    models_to_compare = [find(contains(model_alias,'musc')) find(contains(model_alias,'ext'))];
     alpha = 0.05/2; % bonferroni correction for multiple comparisons...?
-    diffstat = err(:,1)-err(:,2); % musc - ext
+    diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(2)); % musc - ext
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
@@ -317,7 +364,7 @@
     upp = tinv(alphaup,99);
     errCIhigh_ext = mudiff + upp * sqrt(correction*vardiff);
 
-    diffstat = err(:,1)-err(:,3); % musc - ego
+    diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(3)); % musc - ego
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
@@ -332,7 +379,7 @@
         hold on
         plot(mean(err(:,modelnum)),modelnum/10,'k.','linewidth',3,'markersize',40)
     end
-    set(gca,'tickdir','out','box','off','ytick',(1:(num_models-1))/10,'yticklabel',{'Muscle-based','Hand-based','Egocentric','Cylindrical','Joint-based'},'xtick',[0 1])
+    set(gca,'tickdir','out','box','off','ytick',(1:(num_models-1))/10,'yticklabel',model_titles,'xtick',[0 1])
     axis equal
     axis ij
     xlim([0 1])
@@ -492,22 +539,29 @@
     correction = 1/100 + 1/4;
     std_err_err = sqrt(correction*var_err);
 
-    num_monks = 3;
-    num_models = 3;
-    num_cols = num_monks*num_models; % this should be the number columns in err now
+    num_monks = 1;
+    % num_models = 3;
+    num_cols = num_monks*(num_models-1); % this should be the number columns in err now
     model_colors_rep = repmat(model_colors,num_monks,1);
-    model_x = [1.5 2 2.5 4.5 5 5.5 7.5 8 8.5]/10;
+    % model_x = [1.5 2 2.5 4.5 5 5.5 7.5 8 8.5]/10;
+    monk_x = (2:3:((num_monks-1)*3+2))/10;
+    template_x = linspace(-0.5,0.5,num_models-1)/10;
+    model_spacing = mode(diff(template_x));
+    model_x = [];
+    for i = 1:length(monk_x)
+        model_x = [model_x template_x+monk_x(i)];
+    end
     figure
     for colnum = 1:num_cols
         % scatter(repmat(colnum/10,size(err,1),1),err(:,colnum),50,model_colors_rep(colnum,:),'filled')
         % hold on
         % plot(colnum/10,mean(err(:,colnum)),'.','color',model_colors_rep(colnum,:),'linewidth',3,'markersize',40)
-        bar(model_x(colnum),mean(err(:,colnum)),0.05,'facecolor',model_colors_rep(colnum,:))
+        bar(model_x(colnum),mean(err(:,colnum)),model_spacing,'facecolor',model_colors_rep(colnum,:))
         hold on
         % errorbar(colnum/10,mean_err(:,colnum),std_err_err(:,colnum),'color',model_colors_rep(colnum,:),'linewidth',3)
     end
     errorbar(model_x,mean_err,std_err_err,'k.','linewidth',3)
-    set(gca,'tickdir','out','box','off','xtick',[2 5 8]/10,'xticklabel',{'Monkey H','Monkey C','Monkey L'},'ytick',[0 1])
+    set(gca,'tickdir','out','box','off','xtick',monk_x,'xticklabel',{'Monkey H','Monkey C','Monkey L'},'ytick',[0 1])
     axis equal
     ylim([0 1])
     xlim([0 1])
