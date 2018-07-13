@@ -354,7 +354,7 @@
     % end
 
     % compute statistics
-    models_to_compare = [find(contains(model_alias,'musc')) find(contains(model_alias,'ext'))];
+    models_to_compare = [find(contains(model_aliases,'musc')) find(contains(model_aliases,'ext'))];
     alpha = 0.05/2; % bonferroni correction for multiple comparisons...?
     diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(2)); % musc - ext
     mudiff = mean(diffstat);
@@ -392,12 +392,12 @@
     % av_pR2_ext_pm = mean(td_ext_pm_eval,2);
     % av_pR2_musc_pm = mean(td_musc_pm_eval,2);
     avgEval = neuronAverage(crossEval,contains(crossEval.Properties.VariableDescriptions,'meta'));
-    av_pR2_ext = avgEval.glm_ext_model_eval;
+    av_pR2_markers = avgEval.glm_markers_model_eval;
     av_pR2_musc = avgEval.glm_musc_model_eval;
 
-    % get stats on pR2 diff between musc model and ext model
+    % get stats on pR2 diff between musc model and markers model
     alpha = 0.05;
-    diffstat = crossEval.glm_musc_model_eval-crossEval.glm_ext_model_eval;
+    diffstat = crossEval.glm_musc_model_eval-crossEval.glm_markers_model_eval;
     correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
     alphaup = 1-alpha/2;
     alphalow = alpha/2;
@@ -417,9 +417,9 @@
 
     % classify neurons
     musc_neurons = dpR2CI(:,1)>0;
-    hand_neurons = dpR2CI(:,2)<0;
+    marker_neurons = dpR2CI(:,2)<0;
 
-    % make plot of pR2 of muscle against ext
+    % make plot of pR2 of muscle against markers
     figure
     plot([-1 1],[-1 1],'k--','linewidth',2)
     hold on
@@ -430,17 +430,17 @@
         idx = getNTidx(crossEval,'signalID',sigID);
         if musc_neurons(i)
             color = model_colors(contains(model_names,'musc'),:);
-        elseif hand_neurons(i)
-            color = model_colors(contains(model_names,'ext'),:);
+        elseif marker_neurons(i)
+            color = model_colors(contains(model_names,'markers'),:);
         else
             color = [0 0 0];
         end
-        scatter(crossEval.glm_ext_model_eval(idx),crossEval.glm_musc_model_eval(idx),25,color,'filled')
+        scatter(crossEval.glm_markers_model_eval(idx),crossEval.glm_musc_model_eval(idx),25,color,'filled')
     end
     clear i idx color sigID;
-    scatter(av_pR2_ext(:),av_pR2_musc(:),50,'r','filled')
+    scatter(av_pR2_markers(:),av_pR2_musc(:),50,'r','filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    xlabel 'Hand-based pR2'
+    xlabel 'marker-based pR2'
     ylabel 'Muscle-based pR2'
 
     figure
@@ -450,10 +450,10 @@
     plot([-1 1],[0 0],'k-','linewidth',2)
     color = zeros(height(avgEval),3);
     color(musc_neurons,:) = repmat(model_colors(contains(model_names,'musc'),:),sum(musc_neurons),1);
-    color(hand_neurons,:) = repmat(model_colors(contains(model_names,'ext'),:),sum(hand_neurons),1);
-    scatter(av_pR2_ext(:),av_pR2_musc(:),50,color,'filled')
+    color(marker_neurons,:) = repmat(model_colors(contains(model_names,'markers'),:),sum(marker_neurons),1);
+    scatter(av_pR2_markers(:),av_pR2_musc(:),50,color,'filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    xlabel 'Hand-based pR2'
+    xlabel 'marker-based pR2'
     ylabel 'Muscle-based pR2'
 
     % make plot
@@ -461,8 +461,8 @@
     for i = 1:height(avgEval)
         if musc_neurons(i)
             color = model_colors(contains(model_names,'musc'),:);
-        elseif hand_neurons(i)
-            color = model_colors(contains(model_names,'ext'),:);
+        elseif marker_neurons(i)
+            color = model_colors(contains(model_names,'markers'),:);
         else
             color = [0 0 0];
         end
