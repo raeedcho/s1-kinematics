@@ -118,7 +118,8 @@
     num_repeats = 20; % 20 is default number of repeats, no need to pass in
     model_type = 'glm';
     % model_aliases = {'musc','ext','cyl','joint'};
-    model_aliases = {'ext','ego','musc','markers'};
+    % model_aliases = {'ext','ego','musc','markers'};
+    model_aliases = {'musc','markers'};
     model_names = [strcat(model_type,'_',model_aliases,'_model') {'S1_FR'}];
     num_models = length(model_names);
     model_titles = cell(num_models-1,1);
