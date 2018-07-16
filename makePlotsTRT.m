@@ -46,12 +46,11 @@
 
 %% Split up trial data and preprocess
     % prep trial data by getting only rewards and trimming to only movements
-    [~,td] = getTDidx(trial_data,'result','R');
-
     % first process marker data
+    td = trial_data;
     td = smoothSignals(td,struct('signals','markers'));
     td = getDifferential(td,struct('signal','markers','alias','marker_vel'));
-
+    [~,td] = getTDidx(td,'result','R');
     td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
 
     % for bumps
@@ -355,17 +354,19 @@
     % end
 
     % compute statistics
-    models_to_compare = [find(contains(model_aliases,'musc')) find(contains(model_aliases,'ext'))];
+    models_to_compare = [find(contains(model_aliases,'musc')) find(contains(model_aliases,'marker'))];
     alpha = 0.05/2; % bonferroni correction for multiple comparisons...?
     diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(2)); % musc - ext
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
     alphaup = 1-alpha;
-    upp = tinv(alphaup,99);
-    errCIhigh_ext = mudiff + upp * sqrt(correction*vardiff);
+    upp = tinv(0.975,99);
+    low = tinv(0.025,99);
+    errCIhi = mudiff + upp * sqrt(correction*vardiff);
+    errCIlo = mudiff + low * sqrt(correction*vardiff);
 
-    diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(3)); % musc - ego
+    diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(2)); % musc - ego
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
@@ -441,7 +442,7 @@
     clear i idx color sigID;
     scatter(av_pR2_markers(:),av_pR2_musc(:),50,'r','filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    xlabel 'marker-based pR2'
+    xlabel 'Marker-based pR2'
     ylabel 'Muscle-based pR2'
 
     figure
@@ -454,7 +455,7 @@
     color(marker_neurons,:) = repmat(model_colors(contains(model_names,'markers'),:),sum(marker_neurons),1);
     scatter(av_pR2_markers(:),av_pR2_musc(:),50,color,'filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    xlabel 'marker-based pR2'
+    xlabel 'Marker-based pR2'
     ylabel 'Muscle-based pR2'
 
     % make plot
