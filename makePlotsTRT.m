@@ -118,7 +118,7 @@
     model_type = 'glm';
     % model_aliases = {'musc','ext','cyl','joint'};
     % model_aliases = {'ext','ego','musc','markers'};
-    model_aliases = {'musc','markers'};
+    model_aliases = {'ext','musc'};
     model_names = [strcat(model_type,'_',model_aliases,'_model') {'S1_FR'}];
     num_models = length(model_names);
     model_titles = cell(num_models-1,1);
@@ -222,7 +222,7 @@
     % get PDs and tuning curves
     pdTables = cell(2,num_models);
     tuning_curves = cell(2,num_models);
-    for modelnum = 1:num_models
+    for modelnum = num_models%1:num_models
         for spacenum = 1:2
             % First PDs
             pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'do_plot',false,'meta',struct('spaceNum',spacenum));
