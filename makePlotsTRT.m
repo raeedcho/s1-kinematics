@@ -67,6 +67,17 @@
     % add firing rates rather than spike counts
     td = addFiringRates(td,struct('array','S1'));
 
+    % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
+    % also make sure we have balanced workspaces (slightly biases us towards early trials, but this isn't too bad)
+    [~,td_pm] = getTDidx(td,'spaceNum',1);
+    [~,td_dl] = getTDidx(td,'spaceNum',2);
+    minsize = min(length(td_pm),length(td_dl));
+    td_pm = td_pm(1:minsize);
+    td_dl = td_dl(1:minsize);
+
+    % recombine for later...
+    td = [td_pm td_dl];
+
     %% Do PCA on muscle space
     % do PCA on muscles, training on only the training set
     % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
@@ -101,24 +112,11 @@
     td = getPCA(td,struct('signals','markers'));
     td = getPCA(td,struct('signals','marker_vel'));
 
-    % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
-    % also make sure we have balanced workspaces (slightly biases us towards early trials, but this isn't too bad)
-    [~,td_pm] = getTDidx(td,'spaceNum',1);
-    [~,td_dl] = getTDidx(td,'spaceNum',2);
-    minsize = min(length(td_pm),length(td_dl));
-    td_pm = td_pm(1:minsize);
-    td_dl = td_dl(1:minsize);
-
-    % recombine for later...
-    td = [td_pm td_dl];
-
 %% Set up model variables
     num_folds = 5; % 5 is default number of folds, no need to pass in
     num_repeats = 20; % 20 is default number of repeats, no need to pass in
     model_type = 'glm';
-    % model_aliases = {'musc','ext','cyl','joint'};
-    % model_aliases = {'ext','ego','musc','markers'};
-    model_aliases = {'ext','musc'};
+    model_aliases = {'ext','ego','musc','markers'};
     model_names = [strcat(model_type,'_',model_aliases,'_model') {'S1_FR'}];
     num_models = length(model_names);
     model_titles = cell(num_models-1,1);
@@ -194,6 +192,10 @@
     end
 
 %% Plot comparison of actual tuning curves with various modeled tuning curves
+    % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
+    [~,td_pm] = getTDidx(td,'spaceNum',1);
+    [~,td_dl] = getTDidx(td,'spaceNum',2);
+
     % use K-fold crossvalidation to get neural predictions from each model for tuning curves and PDs
     indices = crossvalind('Kfold',length(td_pm),num_folds);
     td_test = cell(2,num_folds);
@@ -222,7 +224,7 @@
     % get PDs and tuning curves
     pdTables = cell(2,num_models);
     tuning_curves = cell(2,num_models);
-    for modelnum = num_models%1:num_models
+    for modelnum = 1:num_models
         for spacenum = 1:2
             % First PDs
             pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'do_plot',false,'meta',struct('spaceNum',spacenum));
@@ -389,17 +391,47 @@
     xlabel('Cosine error of model')
 
 %% Plot pR2s against each other
-    % av_pR2_ext_dl = mean(td_ext_dl_eval,2);
-    % av_pR2_musc_dl = mean(td_musc_dl_eval,2);
-    % av_pR2_ext_pm = mean(td_ext_pm_eval,2);
-    % av_pR2_musc_pm = mean(td_musc_pm_eval,2);
+    % setup
+    x_model = 'markers';
+    y_model = 'ext';
+
+    % aliases
+    switch(x_model)
+    case 'ext'
+        x_model_alias = 'Hand';
+    case 'ego'
+        x_model_alias = 'Egocentric';
+    case 'musc'
+        x_model_alias = 'Muscle';
+    case 'cyl'
+        x_model_alias = 'Cylindrical Hand';
+    case 'joint'
+        x_model_alias = 'Joint';
+    case 'markers'
+        x_model_alias = 'Marker';
+    end
+    switch(y_model)
+    case 'ext'
+        y_model_alias = 'Hand';
+    case 'ego'
+        y_model_alias = 'Egocentric';
+    case 'musc'
+        y_model_alias = 'Muscle';
+    case 'cyl'
+        y_model_alias = 'Cylindrical Hand';
+    case 'joint'
+        y_model_alias = 'Joint';
+    case 'markers'
+        y_model_alias = 'Marker';
+    end
+
     avgEval = neuronAverage(crossEval,contains(crossEval.Properties.VariableDescriptions,'meta'));
-    av_pR2_markers = avgEval.glm_markers_model_eval;
-    av_pR2_musc = avgEval.glm_musc_model_eval;
+    av_pR2_x = avgEval.(sprintf('glm_%s_model_eval',x_model));
+    av_pR2_y = avgEval.(sprintf('glm_%s_model_eval',y_model));
 
     % get stats on pR2 diff between musc model and markers model
     alpha = 0.05;
-    diffstat = crossEval.glm_musc_model_eval-crossEval.glm_markers_model_eval;
+    diffstat = crossEval.(sprintf('glm_%s_model_eval',y_model))-crossEval.(sprintf('glm_%s_model_eval',x_model));
     correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
     alphaup = 1-alpha/2;
     alphalow = alpha/2;
@@ -418,53 +450,56 @@
     end
 
     % classify neurons
-    musc_neurons = dpR2CI(:,1)>0;
-    marker_neurons = dpR2CI(:,2)<0;
+    y_neurons = dpR2CI(:,1)>0;
+    x_neurons = dpR2CI(:,2)<0;
 
     % make plot of pR2 of muscle against markers
-    figure
-    plot([-1 1],[-1 1],'k--','linewidth',2)
-    hold on
-    plot([0 0],[-1 1],'k-','linewidth',2)
-    plot([-1 1],[0 0],'k-','linewidth',2)
-    for i = 1:height(avgEval)
-        sigID = avgEval.signalID(i,:);
-        idx = getNTidx(crossEval,'signalID',sigID);
-        if musc_neurons(i)
-            color = model_colors(contains(model_names,'musc'),:);
-        elseif marker_neurons(i)
-            color = model_colors(contains(model_names,'markers'),:);
-        else
-            color = [0 0 0];
-        end
-        scatter(crossEval.glm_markers_model_eval(idx),crossEval.glm_musc_model_eval(idx),25,color,'filled')
-    end
-    clear i idx color sigID;
-    scatter(av_pR2_markers(:),av_pR2_musc(:),50,'r','filled')
-    set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    xlabel 'Marker-based pR2'
-    ylabel 'Muscle-based pR2'
+    % figure
+    % plot([-1 1],[-1 1],'k--','linewidth',2)
+    % hold on
+    % plot([0 0],[-1 1],'k-','linewidth',2)
+    % plot([-1 1],[0 0],'k-','linewidth',2)
+    % for i = 1:height(avgEval)
+    %     sigID = avgEval.signalID(i,:);
+    %     idx = getNTidx(crossEval,'signalID',sigID);
+    %     if y_neurons(i)
+    %         color = model_colors(contains(model_names,y_model),:);
+    %     elseif x_neurons(i)
+    %         color = model_colors(contains(model_names,x_model),:);
+    %     else
+    %         color = [0 0 0];
+    %     end
+    %     scatter(crossEval.(sprintf('glm_%s_model_eval',x_model))(idx),crossEval.(sprintf('glm_%s_model_eval',y_model))(idx),25,color,'filled')
+    % end
+    % clear i idx color sigID;
+    % scatter(av_pR2_x(:),av_pR2_y(:),50,'r','filled')
+    % set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
+    % axis square
+    % xlabel(sprintf('%s-based pR2',x_model_alias))
+    % ylabel(sprintf('%s-based pR2',y_model_alias))
 
+    % Scatterplot of pR2 plotted against each other
     figure
     plot([-1 1],[-1 1],'k--','linewidth',2)
     hold on
     plot([0 0],[-1 1],'k-','linewidth',2)
     plot([-1 1],[0 0],'k-','linewidth',2)
     color = zeros(height(avgEval),3);
-    color(musc_neurons,:) = repmat(model_colors(contains(model_names,'musc'),:),sum(musc_neurons),1);
-    color(marker_neurons,:) = repmat(model_colors(contains(model_names,'markers'),:),sum(marker_neurons),1);
-    scatter(av_pR2_markers(:),av_pR2_musc(:),50,color,'filled')
+    color(y_neurons,:) = repmat(model_colors(contains(model_names,y_model),:),sum(y_neurons),1);
+    color(x_neurons,:) = repmat(model_colors(contains(model_names,x_model),:),sum(x_neurons),1);
+    scatter(av_pR2_x(:),av_pR2_y(:),50,color,'filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    xlabel 'Marker-based pR2'
-    ylabel 'Muscle-based pR2'
+    axis square
+    xlabel(sprintf('%s-based pR2',x_model_alias))
+    ylabel(sprintf('%s-based pR2',y_model_alias))
 
     % make plot
     figure
     for i = 1:height(avgEval)
-        if musc_neurons(i)
-            color = model_colors(contains(model_names,'musc'),:);
-        elseif marker_neurons(i)
-            color = model_colors(contains(model_names,'markers'),:);
+        if y_neurons(i)
+            color = model_colors(contains(model_names,y_model),:);
+        elseif x_neurons(i)
+            color = model_colors(contains(model_names,x_model),:);
         else
             color = [0 0 0];
         end
