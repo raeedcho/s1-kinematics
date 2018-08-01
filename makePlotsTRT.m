@@ -96,7 +96,7 @@
     % PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
     %                     'do_plot',true);
     PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel'))}}, 'do_plot',true);
-    [td,~] = getPCA(td,PCAparams_vel);
+    [td_temp,~] = getPCA(td,PCAparams_vel);
     % temporary hack to allow us to save into something useful
     for i=1:length(td)
         td(i).opensim_muscVel_pca = td(i).opensim_pca;
@@ -241,7 +241,8 @@
     for modelnum = 1:num_models
         figure
         title(model_names{modelnum})
-        compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors,'maxFR',1))
+        compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors))
+        % compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(isTuned),'cond_colors',cond_colors,'maxFR',1))
     end
 
 %% Make iris and dna plots
@@ -295,22 +296,19 @@
         mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
     end
 
-    markers = {'x','+','.'};
-    markersize = [15,15,40];
     figure
     for modelnum = 1:num_models-1
         [~,real_shifts] = getNTidx(mean_shifts{end},'signalID',tunedNeurons);
         [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',tunedNeurons);
 
         subplot(1,num_models-1,modelnum)
-        plot([-pi pi],[0 0],'-k','linewidth',2)
+        plot([-180 180],[0 0],'-k','linewidth',2)
         hold on
-        plot([0 0],[-pi pi],'-k','linewidth',2)
-        plot([-pi pi],[-pi pi],'--k','linewidth',2)
+        plot([0 0],[-180 180],'-k','linewidth',2)
+        plot([-180 180],[-180 180],'--k','linewidth',2)
         axis equal
-        set(gca,'box','off','tickdir','out','xtick',[-pi pi],'ytick',[-pi pi],'xlim',[-pi pi],'ylim',[-pi pi],...
-            'xticklabel',{'-\pi','\pi'},'yticklabel',{'-\pi','\pi'})
-        scatter(real_shifts.velPD,model_shifts.velPD,50,model_colors(modelnum,:),'filled')
+        set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
+        scatter(180/pi*real_shifts.velPD,180/pi*model_shifts.velPD,50,model_colors(modelnum,:),'filled')
 
         % labels
         xlabel 'Actual PD Shift'
@@ -392,8 +390,8 @@
 
 %% Plot pR2s against each other
     % setup
-    x_model = 'markers';
-    y_model = 'ext';
+    x_model = 'ext';
+    y_model = 'markers';
 
     % aliases
     switch(x_model)
@@ -512,6 +510,42 @@
     axis([-0.15 0.15 -inf inf])
     set(gca,'box','off','tickdir','out','ylim',[0 1+height(avgEval)],'ytick',[1 height(avgEval)])
 
+%% Plot error on all monkeys (requires already saved errors)
+    % get mean and standard error of errors
+    err = [han_err chips_err lando_err];
+    mean_err = mean(err);
+    var_err = var(err);
+    correction = 1/100 + 1/4;
+    std_err_err = sqrt(correction*var_err);
+
+    num_monks = 1;
+    % num_models = 3;
+    num_cols = num_monks*(num_models-1); % this should be the number columns in err now
+    model_colors_rep = repmat(model_colors,num_monks,1);
+    % model_x = [1.5 2 2.5 4.5 5 5.5 7.5 8 8.5]/10;
+    monk_x = (2:3:((num_monks-1)*3+2))/10;
+    template_x = linspace(-0.5,0.5,num_models-1)/10;
+    model_spacing = mode(diff(template_x));
+    model_x = [];
+    for i = 1:length(monk_x)
+        model_x = [model_x template_x+monk_x(i)];
+    end
+    figure
+    for colnum = 1:num_cols
+        % scatter(repmat(colnum/10,size(err,1),1),err(:,colnum),50,model_colors_rep(colnum,:),'filled')
+        % hold on
+        % plot(colnum/10,mean(err(:,colnum)),'.','color',model_colors_rep(colnum,:),'linewidth',3,'markersize',40)
+        bar(model_x(colnum),mean(err(:,colnum)),model_spacing,'facecolor',model_colors_rep(colnum,:))
+        hold on
+        % errorbar(colnum/10,mean_err(:,colnum),std_err_err(:,colnum),'color',model_colors_rep(colnum,:),'linewidth',3)
+    end
+    errorbar(model_x,mean_err,std_err_err,'k.','linewidth',3)
+    set(gca,'tickdir','out','box','off','xtick',monk_x,'xticklabel',{'Monkey H','Monkey C','Monkey L'},'ytick',[0 1])
+    axis equal
+    ylim([0 1])
+    xlim([0 1])
+    ylabel('Error of model')
+
 %% Tuning curve covariances
     tuning_covar = zeros(2,num_models,height(tuning_curves{1,1}));
     for neuron_idx = 1:height(tuning_curves{1,1})
@@ -568,59 +602,24 @@
         clearvars pos_*
     end
 
-%% Plot error on all monkeys (requires already saved errors)
-    % get mean and standard error of errors
-    err = [han_err chips_err lando_err];
-    mean_err = mean(err);
-    var_err = var(err);
-    correction = 1/100 + 1/4;
-    std_err_err = sqrt(correction*var_err);
-
-    num_monks = 1;
-    % num_models = 3;
-    num_cols = num_monks*(num_models-1); % this should be the number columns in err now
-    model_colors_rep = repmat(model_colors,num_monks,1);
-    % model_x = [1.5 2 2.5 4.5 5 5.5 7.5 8 8.5]/10;
-    monk_x = (2:3:((num_monks-1)*3+2))/10;
-    template_x = linspace(-0.5,0.5,num_models-1)/10;
-    model_spacing = mode(diff(template_x));
-    model_x = [];
-    for i = 1:length(monk_x)
-        model_x = [model_x template_x+monk_x(i)];
-    end
-    figure
-    for colnum = 1:num_cols
-        % scatter(repmat(colnum/10,size(err,1),1),err(:,colnum),50,model_colors_rep(colnum,:),'filled')
-        % hold on
-        % plot(colnum/10,mean(err(:,colnum)),'.','color',model_colors_rep(colnum,:),'linewidth',3,'markersize',40)
-        bar(model_x(colnum),mean(err(:,colnum)),model_spacing,'facecolor',model_colors_rep(colnum,:))
-        hold on
-        % errorbar(colnum/10,mean_err(:,colnum),std_err_err(:,colnum),'color',model_colors_rep(colnum,:),'linewidth',3)
-    end
-    errorbar(model_x,mean_err,std_err_err,'k.','linewidth',3)
-    set(gca,'tickdir','out','box','off','xtick',monk_x,'xticklabel',{'Monkey H','Monkey C','Monkey L'},'ytick',[0 1])
-    axis equal
-    ylim([0 1])
-    xlim([0 1])
-    ylabel('Error of model')
-
 %% Plot tuning weight clouds
-    tuningHull = getTuningHull(results.tuningTable);
+    % tuningHull = getTuningHull(results.tuningTable);
     % loop over each unit in one workspace
     % n_rows = ceil(sqrt(height(signalIDs)+1));
-    cloud_fig = figure;
-    surf_fig = figure;
+    % cloud_fig = figure;
+    % surf_fig = figure;
     % neuron_idx = getNTidx(pdTables{1,4},'signalID',[95 2]);
-    for neuron_idx = 1:height(tuningHull)
-        close_fig = figure;
+    for neuron_idx = 1:length(isTuned)
+        % close_fig = figure;
 
-        figure(cloud_fig)
+        % figure(cloud_fig)
+        % clf
+        % plotMWTuningCloud(tuningHull,neuron_idx)
+
+        surf_fig = figure;
         clf
-        plotMWTuningCloud(tuningHull,neuron_idx)
+        plotMWTuningSurfaces(td_tuning,pdTables,neuron_idx,model_aliases)
 
-        figure(surf_fig)
-        clf
-        plotMWTuningSurfaces(results.td_test,[],neuron_idx)
-
-        waitfor(close_fig)
+        waitfor(surf_fig)
     end
+
