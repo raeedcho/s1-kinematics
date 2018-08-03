@@ -15,8 +15,6 @@
     % Get future 150 ms of S1 activity to predict current kinematics
     % non-overlapping bins...
     td = dupeAndShift(td,'S1_spikes',-3);
-    td = dupeAndShift(td,'pos',-3);
-    td = dupeAndShift(td,'vel',-3);
 
     % get only rewards
     [~,td] = getTDidx(td,'result','R');
@@ -77,14 +75,14 @@
     td = getPCA(td,struct('signals','markers'));
     td = getPCA(td,struct('signals','marker_vel'));
 
-%% Train decoders and evaluate
+%% train decoders and evaluate
     % split into folds
     num_repeats = 10;
     num_folds = 10;
 
     % preallocate vaf holders
-    neur_decoder_err = zeros(num_repeats,num_folds);
-    hand_decoder_err = zeros(num_repeats,num_folds);
+    neur_decoder_vaf = zeros(num_repeats,num_folds);
+    hand_decoder_vaf = zeros(num_repeats,num_folds);
 
     % set model parameters
     % to predict elbow from both neurons and hand
@@ -98,7 +96,7 @@
         'in_signals',{{'markers',hand_idx;'marker_vel',hand_idx}},...
         'out_signals',{{'markers',elbow_idx;'marker_vel',elbow_idx}});
     for repeatnum = 1:num_repeats
-        inds = crossvalind('Kfold',length(td),num_folds);
+        inds = crossvalind('kfold',length(td),num_folds);
 
         for foldnum = 1:num_folds
             % fit models
@@ -112,30 +110,60 @@
 
             % get error on elbow
             elbow_true = get_vars(td_test,{'markers',elbow_idx;'marker_vel',elbow_idx});
+            elbow_mean = mean(elbow_true);
             elbow_pred_neur = get_vars(td_test,check_signals(td_test,'linmodel_neur_decoder'));
             elbow_pred_hand = get_vars(td_test,check_signals(td_test,'linmodel_hand_decoder'));
 
-            neur_decoder_err(repeatnum,foldnum) = sum(sum((elbow_pred_neur-elbow_true).^2));
-            hand_decoder_err(repeatnum,foldnum) = sum(sum((elbow_pred_hand-elbow_true).^2));
+            % calculate fraction of variance explained
+            SS_total = sum(sum((elbow_true-elbow_mean).^2));
+            neur_decoder_vaf(repeatnum,foldnum) = 1 - sum(sum((elbow_pred_neur-elbow_true).^2))/SS_total;
+            hand_decoder_vaf(repeatnum,foldnum) = 1 - sum(sum((elbow_pred_hand-elbow_true).^2))/SS_total;
         end
     end
     
-    err_diff = hand_decoder_err(:)-neur_decoder_err(:);
-    mean_err = mean(err_diff);
-    vardiff = var(err_diff);
+    vaf_diff = neur_decoder_vaf(:)-hand_decoder_vaf(:);
+    mean_vaf = mean(vaf_diff);
     correction = 1/100 + 1/9;
     % upp = tinv(0.975,99);
     low = tinv(0.01,99);
-    % errCIhi = mean_err + upp * sqrt(correction*vardiff);
-    errCIlo = mean_err + low * sqrt(correction*vardiff);
+    % vafcihi = mean_vaf + upp * sqrt(correction*vardiff);
+    vafcilo = mean_vaf + low * sqrt(correction*var(vaf_diff));
+    p_val = tcdf(-mean_vaf/sqrt(correction*var(vaf_diff)),99);
+
+    % plot vafs
+    figure
+    bar([mean(mean(hand_decoder_vaf)) mean(mean(neur_decoder_vaf))],0.25,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
+    hold on
+    plot([hand_decoder_vaf(:) neur_decoder_vaf(:)]','-k','linewidth',2)
+    plot([hand_decoder_vaf(:) neur_decoder_vaf(:)]','.k','markersize',30)
+    set(gca,'box','off','tickdir','out','xtick',[1 2],...
+        'xticklabel',{'Hand-only decoder','Hand+Neuron decoder'},...
+        'xlim',[0 3])
+    ylabel 'Fraction VAF'
+    title 'Decoding model performance'
 
     % plot example
-    for i = 1:length(td_test)
-        f = figure;
-        plot3(td_test(1).markers(:,elbow_idx(1)),td_test(1).markers(:,elbow_idx(2)),td_test(1).markers(:,elbow_idx(3)),'-k','linewidth',3)
-        hold on
-        plot3(td_test(1).linmodel_neur_decoder(:,(1)),td_test(1).linmodel_neur_decoder(:,(2)),td_test(1).markers(:,(3)),'-b','linewidth',2)
-        plot3(td_test(1).linmodel_hand_decoder(:,(1)),td_test(1).linmodel_hand_decoder(:,(2)),td_test(1).markers(:,(3)),'-r','linewidth',2)
-        axis equal
-        waitfor(f)
-    end
+    % for i = 1:length(td_test)
+    %     f = figure;
+
+    %     % plot3(td_test(1).markers(:,elbow_idx(1)),td_test(1).markers(:,elbow_idx(2)),td_test(1).markers(:,elbow_idx(3)),'-k','linewidth',3)
+    %     % hold on
+    %     % plot3(td_test(1).linmodel_neur_decoder(:,(1)),td_test(1).linmodel_neur_decoder(:,(2)),td_test(1).linmodel_neur_decoder(:,(3)),'-b','linewidth',2)
+    %     % plot3(td_test(1).linmodel_hand_decoder(:,(1)),td_test(1).linmodel_hand_decoder(:,(2)),td_test(1).linmodel_hand_decoder(:,(3)),'-r','linewidth',2)
+    %     % axis equal
+    %     subplot(2,1,1)
+    %     plot(td_test(i).markers(:,elbow_idx),'k-','linewidth',3)
+    %     hold on
+    %     plot(td_test(i).linmodel_neur_decoder(:,1:3),'b-','linewidth',1)
+    %     plot(td_test(i).linmodel_hand_decoder(:,1:3),'r-','linewidth',1)
+
+    %     subplot(2,1,2)
+    %     plot(td_test(i).marker_vel(:,elbow_idx),'k-','linewidth',3)
+    %     hold on
+    %     plot(td_test(i).linmodel_neur_decoder(:,4:6),'b-','linewidth',1)
+    %     plot(td_test(i).linmodel_hand_decoder(:,4:6),'r-','linewidth',1)
+
+
+    %     waitfor(f)
+    % end
+
