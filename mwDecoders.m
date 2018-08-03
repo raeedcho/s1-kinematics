@@ -81,20 +81,54 @@
     num_folds = 10;
 
     % preallocate vaf holders
-    neur_decoder_vaf = zeros(num_repeats,num_folds);
-    hand_decoder_vaf = zeros(num_repeats,num_folds);
+    neur_decoder_vaf = zeros(num_repeats,num_folds,2);
+    hand_decoder_vaf = zeros(num_repeats,num_folds,2);
+
+    % reverse model, predicing hand from elbow
+    reverse_neur_decoder_vaf = zeros(num_repeats,num_folds,2);
+    reverse_hand_decoder_vaf = zeros(num_repeats,num_folds,2);
+
+    % another control, predicting one hand marker from another
+    other_neur_decoder_vaf = zeros(num_repeats,num_folds,2);
+    other_hand_decoder_vaf = zeros(num_repeats,num_folds,2);
 
     % set model parameters
     % to predict elbow from both neurons and hand
     elbow_idx = 28:30;
     hand_idx = 1:3;
+    other_hand_idx = 4:6;
+
+    % decoder parameters
+    neural_signals = {'S1_spikes','all';'S1_spikes_shift','all'};
+    elbow_signals = {'markers',elbow_idx;'marker_vel',elbow_idx};
+    hand_signals = {'markers',hand_idx;'marker_vel',hand_idx};
+    other_hand_signals = {'markers',other_hand_idx;'marker_vel',other_hand_idx};
+
+    % predict elbow from either just hand or hand and neurons
     neur_decoder_params = struct('model_type','linmodel','model_name','neur_decoder',...
-        'in_signals',{{'S1_spikes','all';'S1_spikes_shift','all';'markers',hand_idx;'marker_vel',hand_idx}},...
-        'out_signals',{{'markers',elbow_idx;'marker_vel',elbow_idx}});
-    % to predict elbow from just hand
+        'in_signals',{[neural_signals;hand_signals]},...
+        'out_signals',{elbow_signals});
     hand_decoder_params = struct('model_type','linmodel','model_name','hand_decoder',...
-        'in_signals',{{'markers',hand_idx;'marker_vel',hand_idx}},...
-        'out_signals',{{'markers',elbow_idx;'marker_vel',elbow_idx}});
+        'in_signals',{hand_signals},...
+        'out_signals',{elbow_signals});
+    % predict hand from either elbow or hand and elbow
+    reverse_neur_decoder_params = struct('model_type','linmodel','model_name','reverse_neur_decoder',...
+        'in_signals',{[neural_signals;elbow_signals]},...
+        'out_signals',{hand_signals});
+    reverse_hand_decoder_params = struct('model_type','linmodel','model_name','reverse_hand_decoder',...
+        'in_signals',{elbow_signals},...
+        'out_signals',{hand_signals});
+    % predict hand from either hand or hand and neurons
+    other_neur_decoder_params = struct('model_type','linmodel','model_name','other_neur_decoder',...
+        'in_signals',{[neural_signals;hand_signals]},...
+        'out_signals',{other_hand_signals});
+    other_hand_decoder_params = struct('model_type','linmodel','model_name','other_hand_decoder',...
+        'in_signals',{hand_signals},...
+        'out_signals',{other_hand_signals});
+    % define helpful function...
+    square_sum = @(x) sum(x.^2,1)*[1 1 1 0 0 0; 0 0 0 1 1 1]';
+
+    % do crossval
     for repeatnum = 1:num_repeats
         inds = crossvalind('kfold',length(td),num_folds);
 
@@ -102,11 +136,19 @@
             % fit models
             [~,neur_decoder] = getModel(td(inds~=foldnum),neur_decoder_params);
             [~,hand_decoder] = getModel(td(inds~=foldnum),hand_decoder_params);
+            [~,reverse_neur_decoder] = getModel(td(inds~=foldnum),reverse_neur_decoder_params);
+            [~,reverse_hand_decoder] = getModel(td(inds~=foldnum),reverse_hand_decoder_params);
+            [~,other_neur_decoder] = getModel(td(inds~=foldnum),other_neur_decoder_params);
+            [~,other_hand_decoder] = getModel(td(inds~=foldnum),other_hand_decoder_params);
 
             % evaluate models and save into array
             td_test = td(inds==foldnum);
             td_test = getModel(td_test,neur_decoder);
             td_test = getModel(td_test,hand_decoder);
+            td_test = getModel(td_test,reverse_neur_decoder);
+            td_test = getModel(td_test,reverse_hand_decoder);
+            td_test = getModel(td_test,other_neur_decoder);
+            td_test = getModel(td_test,other_hand_decoder);
 
             % get error on elbow
             elbow_true = get_vars(td_test,{'markers',elbow_idx;'marker_vel',elbow_idx});
@@ -115,32 +157,99 @@
             elbow_pred_hand = get_vars(td_test,check_signals(td_test,'linmodel_hand_decoder'));
 
             % calculate fraction of variance explained
-            SS_total = sum(sum((elbow_true-elbow_mean).^2));
-            neur_decoder_vaf(repeatnum,foldnum) = 1 - sum(sum((elbow_pred_neur-elbow_true).^2))/SS_total;
-            hand_decoder_vaf(repeatnum,foldnum) = 1 - sum(sum((elbow_pred_hand-elbow_true).^2))/SS_total;
+            SS_total = square_sum(elbow_true-elbow_mean);
+            neur_decoder_vaf(repeatnum,foldnum,:) = 1 - square_sum(elbow_pred_neur-elbow_true)./SS_total;
+            hand_decoder_vaf(repeatnum,foldnum,:) = 1 - square_sum(elbow_pred_hand-elbow_true)./SS_total;
+
+            % reverse models -- get error on hand
+            hand_true = get_vars(td_test,{'markers',hand_idx;'marker_vel',hand_idx});
+            hand_mean = mean(hand_true);
+            hand_pred_neur = get_vars(td_test,check_signals(td_test,'linmodel_reverse_neur_decoder'));
+            hand_pred_hand = get_vars(td_test,check_signals(td_test,'linmodel_reverse_hand_decoder'));
+
+            SS_total = square_sum(hand_true-hand_mean);
+            reverse_neur_decoder_vaf(repeatnum,foldnum,:) = 1 - square_sum(hand_pred_neur-hand_true)./SS_total;
+            reverse_hand_decoder_vaf(repeatnum,foldnum,:) = 1 - square_sum(hand_pred_hand-hand_true)./SS_total;
+
+            % as control, get error on other hand marker from hand
+            other_hand_true = get_vars(td_test,{'markers',other_hand_idx;'marker_vel',other_hand_idx});
+            other_hand_mean = mean(other_hand_true);
+            other_hand_pred_neur = get_vars(td_test,check_signals(td_test,'linmodel_other_neur_decoder'));
+            other_hand_pred_hand = get_vars(td_test,check_signals(td_test,'linmodel_other_hand_decoder'));
+
+            % calculate fraction of variance explained
+            SS_total = square_sum(other_hand_true-other_hand_mean);
+            other_neur_decoder_vaf(repeatnum,foldnum,:) = 1 - square_sum(other_hand_pred_neur-other_hand_true)./SS_total;
+            other_hand_decoder_vaf(repeatnum,foldnum,:) = 1 - square_sum(other_hand_pred_hand-other_hand_true)./SS_total;
         end
     end
     
-    vaf_diff = neur_decoder_vaf(:)-hand_decoder_vaf(:);
+    neur_decoder_vaf = reshape(neur_decoder_vaf,num_repeats*num_folds,2);
+    hand_decoder_vaf = reshape(hand_decoder_vaf,num_repeats*num_folds,2);
+    reverse_neur_decoder_vaf = reshape(reverse_neur_decoder_vaf,num_repeats*num_folds,2);
+    reverse_hand_decoder_vaf = reshape(reverse_hand_decoder_vaf,num_repeats*num_folds,2);
+    other_neur_decoder_vaf = reshape(other_neur_decoder_vaf,num_repeats*num_folds,2);
+    other_hand_decoder_vaf = reshape(other_hand_decoder_vaf,num_repeats*num_folds,2);
+    
+    vaf_diff = neur_decoder_vaf-hand_decoder_vaf;
     mean_vaf = mean(vaf_diff);
-    correction = 1/100 + 1/9;
+    correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
     % upp = tinv(0.975,99);
-    low = tinv(0.01,99);
+    low = tinv(0.01,num_folds*num_repeats-1);
     % vafcihi = mean_vaf + upp * sqrt(correction*vardiff);
     vafcilo = mean_vaf + low * sqrt(correction*var(vaf_diff));
-    p_val = tcdf(-mean_vaf/sqrt(correction*var(vaf_diff)),99);
+    p_val = tcdf(-mean_vaf./sqrt(correction*var(vaf_diff)),num_folds*num_repeats-1);
 
     % plot vafs
     figure
-    bar([mean(mean(hand_decoder_vaf)) mean(mean(neur_decoder_vaf))],0.25,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
+    bar([1 3 2 4]*0.20,mean([hand_decoder_vaf neur_decoder_vaf]),0.20,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
     hold on
-    plot([hand_decoder_vaf(:) neur_decoder_vaf(:)]','-k','linewidth',2)
-    plot([hand_decoder_vaf(:) neur_decoder_vaf(:)]','.k','markersize',30)
-    set(gca,'box','off','tickdir','out','xtick',[1 2],...
-        'xticklabel',{'Hand-only decoder','Hand+Neuron decoder'},...
-        'xlim',[0 3])
-    ylabel 'Fraction VAF'
-    title 'Decoding model performance'
+    plot([1 2]*0.20,[hand_decoder_vaf(:,1) neur_decoder_vaf(:,1)]','-k','linewidth',1)
+    plot([3 4]*0.20,[hand_decoder_vaf(:,2) neur_decoder_vaf(:,2)]','-k','linewidth',1)
+    plot([1 3 2 4]*0.20, [hand_decoder_vaf neur_decoder_vaf]','.k','markersize',30)
+    % set(gca,'box','off','tickdir','out','xtick',1:4,...
+    %     'xticklabel',{'Hand-only pos','Hand+Neuron pos','Hand vel','Hand+Neuron vel'},...
+    %     'xlim',[0 5],'ylim',[0 1])
+    % ylabel 'Fraction VAF'
+    % xlabel 'Model'
+    % title 'Elbow decoding model performance'
+
+    % plot reverse model
+    figure
+    bar([1 3 2 4]*0.20+1,mean([reverse_hand_decoder_vaf reverse_neur_decoder_vaf]),0.20,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
+    hold on
+    plot([1 2]*0.20+1,[reverse_hand_decoder_vaf(:,1) reverse_neur_decoder_vaf(:,1)]','-k','linewidth',1)
+    plot([3 4]*0.20+1,[reverse_hand_decoder_vaf(:,2) reverse_neur_decoder_vaf(:,2)]','-k','linewidth',1)
+    plot([1 3 2 4]*0.20+1, [reverse_hand_decoder_vaf reverse_neur_decoder_vaf]','.k','markersize',30)
+    % set(gca,'box','off','tickdir','out','xtick',1:4,...
+    %     'xticklabel',{'Elbow-only pos','Elbow+Neuron pos','Elbow vel','Elbow+Neuron vel'},...
+    %     'xlim',[0 5],'ylim',[0 1])
+    % ylabel 'Fraction VAF'
+    % xlabel 'Model'
+    % title 'Decoding model performance'
+
+    % plot control
+    figure
+    bar([1 3 2 4]*0.20+2,mean([other_hand_decoder_vaf other_neur_decoder_vaf]),0.20,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
+    hold on
+    plot([1 2]*0.20+2,[other_hand_decoder_vaf(:,1) other_neur_decoder_vaf(:,1)]','-k','linewidth',1)
+    plot([3 4]*0.20+2,[other_hand_decoder_vaf(:,2) other_neur_decoder_vaf(:,2)]','-k','linewidth',1)
+    plot([1 3 2 4]*0.20+2, [other_hand_decoder_vaf other_neur_decoder_vaf]','.k','markersize',30)
+    % set(gca,'box','off','tickdir','out','xtick',1:4,...
+    %     'xticklabel',{'Hand-only pos','Hand+Neuron pos','Hand vel','Hand+Neuron vel'},...
+    %     'xlim',[0 5],'ylim',[0 1])
+    % ylabel 'Fraction VAF'
+    % xlabel 'Model'
+    % title 'Control decoding model performance'
+
+    % plot niceness
+    xtick = ones(3,1)*(1:4)*0.20 + (0:2)';
+    xticklabel = {'Hand-only pos','Hand+Neuron pos','Hand vel','Hand+Neuron vel',...
+        'Elbow-only pos','Elbow+Neuron pos','Elbow vel','Elbow+Neuron vel',...
+        'HandControl-only pos','HandControl+Neuron pos','HandControl vel','HandControl+Neuron vel'};
+    set(gca,'box','off','tickdir','out','xtick',xtick,...
+        'xticklabel',xticklabel,...
+        'xlim',[0 3],'ylim',[0 1])
 
     % plot example
     % for i = 1:length(td_test)
