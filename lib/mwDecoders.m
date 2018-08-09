@@ -118,6 +118,7 @@
 
     % do crossval
     repeat_tic = tic;
+    fprintf('Starting %dx%d-fold crossvalidation at time %f\n',num_repeats,num_folds,toc(repeat_tic));
     for repeatnum = 1:num_repeats
         fprintf('Starting cross-val repeat number %d at time %f\n',repeatnum,toc(repeat_tic))
         inds = crossvalind('kfold',length(td),num_folds);

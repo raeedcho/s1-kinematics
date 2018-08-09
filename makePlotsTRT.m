@@ -44,6 +44,126 @@
 
 %% Supplementary B - Figure showing why one monkey didn't have as large a change in tuning
 
+%% Load data
+    datadir = '/home/raeed/Projects/limblab/data-td/MultiWorkspace';
+    load(sprintf('%s/Han_20171101_TRT_TD.mat',datadir))
+
+    % prep trial data by getting only rewards and trimming to only movements
+    % first process marker data
+    td = trial_data;
+    [~,td] = getTDidx(td,'result','R');
+    td = smoothSignals(td,struct('signals','markers'));
+    td = getDifferential(td,struct('signal','markers','alias','marker_vel'));
+    % add firing rates rather than spike counts
+    td = addFiringRates(td,struct('array','S1'));
+
+    % for active movements
+    td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
+
+    % for bumps
+    % td = td(~isnan(cat(1,td.idx_bumpTime)));
+    % td = trimTD(td,{'idx_bumpTime',0},{'idx_bumpTime',15});
+
+    % bin data at 50ms
+    td = binTD(td,5);
+    
+%% Set up plotting variables
+    model_aliases = {'ext','ego','musc','markers'};
+    num_models = length(model_aliases)+1;
+    model_titles = cell(num_models-1,1);
+    model_colors = zeros(num_models-1,3);
+    for modelnum = 1:num_models-1
+        switch model_aliases{modelnum}
+        case 'musc'
+            model_colors(modelnum,:) = [0, 174, 239]/255;
+            model_titles{modelnum} = 'Muscle-based';
+        case 'ext'
+            model_colors(modelnum,:) = [247, 148, 30]/255;
+            model_titles{modelnum} = 'Hand-based';
+        case 'ego'
+            model_colors(modelnum,:) = [105, 189, 69]/255;
+            model_titles{modelnum} = 'Egocentric';
+        case 'cyl'
+            model_colors(modelnum,:) = [113, 191, 110]/255;
+            model_titles{modelnum} = 'Cylindrical ego';
+        case 'joint'
+            model_colors(modelnum,:) = [38, 34, 98]/255;
+            model_titles{modelnum} = 'Joint-based';
+        case 'markers'
+            model_colors(modelnum,:) = [193, 25, 47]/255;
+            model_titles{modelnum} = 'Hand/Elbow-based';
+        end
+    end
+
+    % colors for pm, dl conditions
+    cond_colors = [0.6,0.5,0.7;...
+                   1,0,0];
+
+%% Get encoding models
+    encoderResults = mwEncoders(td,struct('model_aliases',{model_aliases},'num_tuning_bins',16,'num_repeats',20,'num_folds',5));
+
+    % get names of tuned neurons
+    signalIDs = td(1).S1_unit_guide;
+    encoderResults.isTuned = encoderResults.pdTables{1,end}.velTuned & encoderResults.pdTables{2,end}.velTuned;
+    encoderResults.tunedNeurons = signalIDs(encoderResults.isTuned,:);
+
+%% Plot PD shifts
+    % get shifts from weights
+    shift_tables = cell(1,num_models);
+    mean_shifts = cell(1,num_models);
+    for modelnum = 1:num_models
+        % select tables for each space
+        [~,pm_tuningTable] = getNTidx(encoderResults.crossTuning,'spaceNum',1);
+        [~,dl_tuningTable] = getNTidx(encoderResults.crossTuning,'spaceNum',2);
+
+        % compose shift table for this model/bootstrap sample
+        key_cols = contains(pm_tuningTable.Properties.VariableDescriptions,'meta');
+        shift_tables{modelnum} = pm_tuningTable(:,key_cols);
+
+        % remove spaceNum from columns
+        shift_tables{modelnum}.spaceNum = [];
+
+        % get PDs from pm and dl
+        pm_PDs = pm_tuningTable.([encoderResults.params.model_names{modelnum} '_velPD']);
+        dl_PDs = dl_tuningTable.([encoderResults.params.model_names{modelnum} '_velPD']);
+        dPDs = minusPi2Pi(dl_PDs-pm_PDs);
+
+        tab_append = table(dPDs,'VariableNames',{'velPD'});
+        tab_append.Properties.VariableDescriptions = {'circular'};
+        shift_tables{modelnum} = [shift_tables{modelnum} tab_append];
+
+        mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
+    end
+
+    figure
+    for modelnum = 1:num_models-1
+        [~,real_shifts] = getNTidx(mean_shifts{end},'signalID',encoderResults.tunedNeurons);
+        [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
+
+        subplot(1,num_models-1,modelnum)
+        plot([-180 180],[0 0],'-k','linewidth',2)
+        hold on
+        plot([0 0],[-180 180],'-k','linewidth',2)
+        plot([-180 180],[-180 180],'--k','linewidth',2)
+        axis equal
+        set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
+        scatter(180/pi*real_shifts.velPD,180/pi*model_shifts.velPD,50,model_colors(modelnum,:),'filled')
+
+        % labels
+        xlabel 'Actual PD Shift'
+        ylabel 'Modeled PD Shift'
+        title(sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum}))
+    end
+
+%% Plot out tuning curves
+    % compare PM and DL tuning for each model
+    for modelnum = 1:num_models
+        figure
+        title(encoderResults.params.model_names{modelnum})
+        compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors))
+        % compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors,'maxFR',1))
+    end
+
 %% Make histogram plots of PD changes
     figure
     subplot(num_models,1,1)
@@ -61,12 +181,12 @@
 %% Calculate mean error on shifts
     err = zeros(100,num_models-1);
     for modelnum = 1:num_models-1
-        [~,real_shifts] = getNTidx(shift_tables{end},'signalID',tunedNeurons);
-        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',tunedNeurons);
+        [~,real_shifts] = getNTidx(shift_tables{end},'signalID',encoderResults.tunedNeurons);
+        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
         err_arr = model_shifts.velPD-real_shifts.velPD;
         for i = 1:100
-            err_idx = 1:length(tunedNeurons);
-            err_idx = err_idx + (i-1)*length(tunedNeurons);
+            err_idx = 1:length(encoderResults.tunedNeurons);
+            err_idx = err_idx + (i-1)*length(encoderResults.tunedNeurons);
             % use a 1-cos style error because of circular data
             % This value will range between 0 and 2
             err(i,modelnum) = mean(1-cos(err_arr(err_idx)));
@@ -88,11 +208,11 @@
     mudiff = mean(diffstat);
     vardiff = var(diffstat);
     correction = 1/100 + 1/4;
-    alphaup = 1-alpha;
+    % alphaup = 1-alpha;
     upp = tinv(0.975,99);
     low = tinv(0.025,99);
-    errCIhi = mudiff + upp * sqrt(correction*vardiff);
-    errCIlo = mudiff + low * sqrt(correction*vardiff);
+    errCIhi = mudiff + upp * sqrt(correction*vardiff)
+    errCIlo = mudiff + low * sqrt(correction*vardiff)
 
     diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(2)); % musc - ego
     mudiff = mean(diffstat);
@@ -100,7 +220,7 @@
     correction = 1/100 + 1/4;
     alphaup = 1-alpha;
     upp = tinv(alphaup,99);
-    errCIhigh_ego = mudiff + upp * sqrt(correction*vardiff);
+    errCIhigh_ego = mudiff + upp * sqrt(correction*vardiff)
 
     % plot errors
     figure
@@ -151,25 +271,25 @@
         y_model_alias = 'Marker';
     end
 
-    avgEval = neuronAverage(crossEval,contains(crossEval.Properties.VariableDescriptions,'meta'));
+    avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
     av_pR2_x = avgEval.(sprintf('glm_%s_model_eval',x_model));
     av_pR2_y = avgEval.(sprintf('glm_%s_model_eval',y_model));
 
     % get stats on pR2 diff between musc model and markers model
     alpha = 0.05;
-    diffstat = crossEval.(sprintf('glm_%s_model_eval',y_model))-crossEval.(sprintf('glm_%s_model_eval',x_model));
-    correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+    diffstat = encoderResults.crossEval.(sprintf('glm_%s_model_eval',y_model))-encoderResults.crossEval.(sprintf('glm_%s_model_eval',x_model));
+    correction = 1/(encoderResults.params.num_folds*encoderResults.params.num_repeats) + 1/(encoderResults.params.num_folds-1);
     alphaup = 1-alpha/2;
     alphalow = alpha/2;
 
     dpR2CI = zeros(height(avgEval),2);
     for i = 1:height(avgEval)
         sigID = avgEval.signalID(i,:);
-        idx = getNTidx(crossEval,'signalID',sigID);
+        idx = getNTidx(encoderResults.crossEval,'signalID',sigID);
         mudiff = mean(diffstat(idx));
         vardiff = var(diffstat(idx));
-        upp = tinv(alphaup,num_folds*num_repeats-1);
-        low = tinv(alphalow,num_folds*num_repeats-1);
+        upp = tinv(alphaup,encoderResults.params.num_folds*encoderResults.params.num_repeats-1);
+        low = tinv(alphalow,encoderResults.params.num_folds*encoderResults.params.num_repeats-1);
 
         dpR2CI(i,1) = mudiff + low * sqrt(correction*vardiff);
         dpR2CI(i,2) = mudiff + upp * sqrt(correction*vardiff);
@@ -211,8 +331,8 @@
     plot([0 0],[-1 1],'k-','linewidth',2)
     plot([-1 1],[0 0],'k-','linewidth',2)
     color = zeros(height(avgEval),3);
-    color(y_neurons,:) = repmat(model_colors(contains(model_names,y_model),:),sum(y_neurons),1);
-    color(x_neurons,:) = repmat(model_colors(contains(model_names,x_model),:),sum(x_neurons),1);
+    color(y_neurons,:) = repmat(model_colors(contains(model_aliases,y_model),:),sum(y_neurons),1);
+    color(x_neurons,:) = repmat(model_colors(contains(model_aliases,x_model),:),sum(x_neurons),1);
     scatter(av_pR2_x(:),av_pR2_y(:),50,color,'filled')
     set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
     axis square
@@ -223,9 +343,9 @@
     figure
     for i = 1:height(avgEval)
         if y_neurons(i)
-            color = model_colors(contains(model_names,y_model),:);
+            color = model_colors(contains(model_aliases,y_model),:);
         elseif x_neurons(i)
-            color = model_colors(contains(model_names,x_model),:);
+            color = model_colors(contains(model_aliases,x_model),:);
         else
             color = [0 0 0];
         end
@@ -275,12 +395,12 @@
     ylabel('Error of model')
 
 %% Tuning curve covariances
-    tuning_covar = zeros(2,num_models,height(tuning_curves{1,1}));
-    for neuron_idx = 1:height(tuning_curves{1,1})
+    tuning_covar = zeros(2,num_models,height(encoderResults.tuning_curves{1,1}));
+    for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
         for spacenum = 1:2
             tuning_curve_mat = zeros(8,num_models);
             for modelnum = 1:num_models
-                tuning_curve_mat(:,modelnum) = tuning_curves{spacenum,modelnum}(neuron_idx,:).velCurve';
+                tuning_curve_mat(:,modelnum) = encoderResults.tuning_curves{spacenum,modelnum}(neuron_idx,:).velCurve';
             end
             covar_mat = cov(tuning_curve_mat);
             true_tuning_idx = contains(model_names,'S1');
@@ -291,10 +411,10 @@
 %% Example predictions
     for neuron_idx = 23% 1:height(avgEval)
         h = figure;
-        temp_vel = cat(1,td_tuning{2}.vel);
-        temp_spikes = get_vars(td_tuning{2},{'S1_FR',neuron_idx});
-        temp_pred_ext = get_vars(td_tuning{2},{'glm_ext_model',neuron_idx});
-        temp_pred_musc = get_vars(td_tuning{2},{'glm_musc_model',neuron_idx});
+        temp_vel = cat(1,encoderResults.td_tuning{2}.vel);
+        temp_spikes = get_vars(encoderResults.td_tuning{2},{'S1_FR',neuron_idx});
+        temp_pred_ext = get_vars(encoderResults.td_tuning{2},{'glm_ext_model',neuron_idx});
+        temp_pred_musc = get_vars(encoderResults.td_tuning{2},{'glm_musc_model',neuron_idx});
 
         clf
         ax1 = subplot(2,1,1);
@@ -337,7 +457,7 @@
     % cloud_fig = figure;
     % surf_fig = figure;
     % neuron_idx = getNTidx(pdTables{1,4},'signalID',[95 2]);
-    for neuron_idx = 1:length(isTuned)
+    for neuron_idx = 1:length(encoderResults.isTuned)
         % close_fig = figure;
 
         % figure(cloud_fig)
@@ -346,7 +466,7 @@
 
         surf_fig = figure;
         clf
-        plotMWTuningSurfaces(td_tuning,pdTables,neuron_idx,model_aliases)
+        plotMWTuningSurfaces(encoderResults.td_tuning,pdTables,neuron_idx,model_aliases)
 
         waitfor(surf_fig)
     end
