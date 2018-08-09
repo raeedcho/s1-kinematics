@@ -202,6 +202,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     model_eval_metric = 'pr2';
     glm_params = {};
     model_names = {};
+    num_tuning_bins = 8;
     if nargin > 2
         assignParams(who,params);
     end % overwrite parameters
@@ -245,12 +246,12 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
             pdParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
                                     'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
                                     'bootForTuning',false,'num_boots',50,'verbose',false,'meta',struct('spaceNum',spacenum));
-            % temp_pdTable = getTDClassicalPDs(td_test{spacenum},pdParams);
-            temp_pdTable = getTDPDs(td_test{spacenum},pdParams);
+            temp_pdTable = getTDClassicalPDs(td_test{spacenum},pdParams);
+            % temp_pdTable = getTDPDs(td_test{spacenum},pdParams);
 
             tuningParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
                                     'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
-                                    'calc_CIs',false,'meta',struct('spaceNum',spacenum));
+                                    'calc_CIs',false,'num_bins',num_tuning_bins,'meta',struct('spaceNum',spacenum));
             temp_tuning_table = getTuningCurves(td_test{spacenum},tuningParams);
             temp_table = join(temp_pdTable,temp_tuning_table);
 
