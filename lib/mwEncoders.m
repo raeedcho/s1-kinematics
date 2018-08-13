@@ -105,7 +105,6 @@ function results = mwEncoders(td,params)
             %                         'out_signals',neural_signals);
         end
     end
-
     assignParams(who,params);
 
 %% Get comparison of actual tuning curves with various modeled tuning curves
@@ -175,12 +174,19 @@ function results = mwEncoders(td,params)
     % end
 
 %% create return struct
+    % for cross validation plots
     results.tuning_curves = tuning_curves;
     results.pdTables = pdTables;
     results.crossEval = crossEval;
     results.crossTuning = crossTuning;
 
+    % for showing predictive capability
     results.td_tuning = td_tuning;
+
+    % get names of tuned neurons
+    signalIDs = td(1).S1_unit_guide;
+    results.isTuned = pdTables{1,end}.velTuned & pdTables{2,end}.velTuned;
+    results.tunedNeurons = signalIDs(results.isTuned,:);
 
     % get parameters
     results.params.num_folds = num_folds;

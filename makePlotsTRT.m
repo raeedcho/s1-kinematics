@@ -44,29 +44,6 @@
 
 %% Supplementary B - Figure showing why one monkey didn't have as large a change in tuning
 
-%% Load data
-    datadir = '/home/raeed/Projects/limblab/data-td/MultiWorkspace';
-    load(sprintf('%s/Han_20171101_TRT_TD.mat',datadir))
-
-    % prep trial data by getting only rewards and trimming to only movements
-    % first process marker data
-    td = trial_data;
-    [~,td] = getTDidx(td,'result','R');
-    td = smoothSignals(td,struct('signals','markers'));
-    td = getDifferential(td,struct('signal','markers','alias','marker_vel'));
-    % add firing rates rather than spike counts
-    td = addFiringRates(td,struct('array','S1'));
-
-    % for active movements
-    td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
-
-    % for bumps
-    % td = td(~isnan(cat(1,td.idx_bumpTime)));
-    % td = trimTD(td,{'idx_bumpTime',0},{'idx_bumpTime',15});
-
-    % bin data at 50ms
-    td = binTD(td,5);
-    
 %% Set up plotting variables
     model_aliases = {'ext','ego','musc','markers'};
     num_models = length(model_aliases)+1;
@@ -97,15 +74,7 @@
 
     % colors for pm, dl conditions
     cond_colors = [0.6,0.5,0.7;...
-                   1,0,0];
-
-%% Get encoding models
-    encoderResults = mwEncoders(td,struct('model_aliases',{model_aliases},'num_tuning_bins',16,'num_repeats',20,'num_folds',5));
-
-    % get names of tuned neurons
-    signalIDs = td(1).S1_unit_guide;
-    encoderResults.isTuned = encoderResults.pdTables{1,end}.velTuned & encoderResults.pdTables{2,end}.velTuned;
-    encoderResults.tunedNeurons = signalIDs(encoderResults.isTuned,:);
+        1,0,0];
 
 %% Plot PD shifts
     % get shifts from weights
@@ -470,4 +439,24 @@
 
         waitfor(surf_fig)
     end
+
+%% Decoder crap
+    %% load data
+
+    %% make decoder performance scatter plots
+    barwidth = 0.4;
+    figure
+    bar([1 3 2 4]*0.20,mean([hand_decoder_vaf neur_decoder_vaf]),barwidth,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
+    hold on
+    plot([1 2]*0.20,[hand_decoder_vaf(:,1) neur_decoder_vaf(:,1)]','-k','linewidth',1)
+    plot([3 4]*0.20,[hand_decoder_vaf(:,2) neur_decoder_vaf(:,2)]','-k','linewidth',1)
+    plot([1 3 2 4]*0.20, [hand_decoder_vaf neur_decoder_vaf]','.k','markersize',30)
+    xtick = (1:4)*0.20;
+    xticklabel = {'Hand-only pos','Hand+Neuron pos','Hand vel','Hand+Neuron vel'};
+    set(gca,'box','off','tickdir','out','xtick',xtick,...
+        'xticklabel',xticklabel,...
+        'xlim',[0 3],'ylim',[0 1])
+    ylabel 'Fraction VAF'
+    xlabel 'Model'
+    title 'Decoding performance'
 
