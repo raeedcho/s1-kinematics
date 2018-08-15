@@ -75,3 +75,4 @@ function results = mwDecoders(td,params)
     %% Package results
     results.neur_decoder_vaf = neur_decoder_vaf;
     results.hand_decoder_vaf = hand_decoder_vaf;
+    results.td_test = td_test; % example for plotting predictions

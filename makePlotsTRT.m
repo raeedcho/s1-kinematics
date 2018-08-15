@@ -13,7 +13,7 @@
     % trim to just go from target start to end
     td_ex = trimTD([td_pm_ex td_dl_ex],{'idx_ctHoldTime',0},{'idx_endTime',0});
     % plot the example trials
-    figure
+    figure('defaultaxesfontsize',18)
     plotTRTTrials(td_ex);
     % plot neural firing?
     unit_idx = 1;
@@ -45,322 +45,163 @@
 %% Supplementary B - Figure showing why one monkey didn't have as large a change in tuning
 
 %% Set up plotting variables
+    datadir = '/home/raeed/Projects/limblab/data-td/MultiWorkspace/Results/Encoding';
+    filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
+    num_monks = length(filename);
+    err = cell(num_monks,1);
+
     model_aliases = {'ext','ego','musc','markers'};
     num_models = length(model_aliases)+1;
-    model_titles = cell(num_models-1,1);
-    model_colors = zeros(num_models-1,3);
-    for modelnum = 1:num_models-1
-        switch model_aliases{modelnum}
-        case 'musc'
-            model_colors(modelnum,:) = [0, 174, 239]/255;
-            model_titles{modelnum} = 'Muscle-based';
-        case 'ext'
-            model_colors(modelnum,:) = [247, 148, 30]/255;
-            model_titles{modelnum} = 'Hand-based';
-        case 'ego'
-            model_colors(modelnum,:) = [105, 189, 69]/255;
-            model_titles{modelnum} = 'Egocentric';
-        case 'cyl'
-            model_colors(modelnum,:) = [113, 191, 110]/255;
-            model_titles{modelnum} = 'Cylindrical ego';
-        case 'joint'
-            model_colors(modelnum,:) = [38, 34, 98]/255;
-            model_titles{modelnum} = 'Joint-based';
-        case 'markers'
-            model_colors(modelnum,:) = [193, 25, 47]/255;
-            model_titles{modelnum} = 'Hand/Elbow-based';
-        end
-    end
-
+    model_titles = getModelTitles(model_aliases);
+    model_colors = getModelColors(model_aliases);
     % colors for pm, dl conditions
     cond_colors = [0.6,0.5,0.7;...
         1,0,0];
 
-%% Plot PD shifts
-    % get shifts from weights
-    shift_tables = cell(1,num_models);
-    mean_shifts = cell(1,num_models);
-    for modelnum = 1:num_models
-        % select tables for each space
-        [~,pm_tuningTable] = getNTidx(encoderResults.crossTuning,'spaceNum',1);
-        [~,dl_tuningTable] = getNTidx(encoderResults.crossTuning,'spaceNum',2);
+%% Loop over all monkeys for encoder figures and errors
+    for monkeynum = 1:num_monks
+        clear encoderResults
 
-        % compose shift table for this model/bootstrap sample
-        key_cols = contains(pm_tuningTable.Properties.VariableDescriptions,'meta');
-        shift_tables{modelnum} = pm_tuningTable(:,key_cols);
+        % load data
+        load(fullfile(datadir,filename{monkeynum}))
+    
+        %% Plot PD shifts
+            % get shifts from weights
+            shift_tables = calculatePDShiftTables(encoderResults);
+        
+            mean_shifts = cell(num_models,1);
+            for modelnum = 1:num_models
+                mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
+            end
 
-        % remove spaceNum from columns
-        shift_tables{modelnum}.spaceNum = [];
+            figure('defaultaxesfontsize',18)
+            for modelnum = 1:num_models-1
+                [~,real_shifts] = getNTidx(mean_shifts{end},'signalID',encoderResults.tunedNeurons);
+                [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
+        
+                subplot(1,num_models-1,modelnum)
+                plot([-180 180],[0 0],'-k','linewidth',2)
+                hold on
+                plot([0 0],[-180 180],'-k','linewidth',2)
+                plot([-180 180],[-180 180],'--k','linewidth',2)
+                axis equal
+                set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
+                scatter(180/pi*real_shifts.velPD,180/pi*model_shifts.velPD,50,model_colors(modelnum,:),'filled')
+        
+                % labels
+                xlabel 'Actual PD Shift'
+                ylabel 'Modeled PD Shift'
+                title({sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum});filename{monkeynum}},'interpreter','none')
+            end
+        
+        %% Plot out tuning curves
+            % compare PM and DL tuning for each model
+            % for modelnum = 1:num_models
+            %     figure('defaultaxesfontsize',18)
+            %     title(encoderResults.params.model_names{modelnum})
+            %     compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors))
+            %     % compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors,'maxFR',1))
+            % end
+        
+        %% Make histogram plots of PD changes
+            figure('defaultaxesfontsize',18)
+            subplot(num_models,1,1)
+            h = histogram(gca,mean_shifts{end}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+            set(h,'edgecolor','k')
+            set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
+            for modelnum = 1:num_models-1
+                subplot(num_models,1,modelnum+1)
+                h = histogram(gca,mean_shifts{modelnum}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+                set(h,'edgecolor',model_colors(modelnum,:))
+                set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
+            end
+            xlabel 'Change in Preferred Direction'
+            title(filename(monkeynum),'interpreter','none')
+        
+        %% Calculate mean error on shifts
+            err{monkeynum} = calculateEncoderPDShiftErr(encoderResults);
 
-        % get PDs from pm and dl
-        pm_PDs = pm_tuningTable.([encoderResults.params.model_names{modelnum} '_velPD']);
-        dl_PDs = dl_tuningTable.([encoderResults.params.model_names{modelnum} '_velPD']);
-        dPDs = minusPi2Pi(dl_PDs-pm_PDs);
-
-        tab_append = table(dPDs,'VariableNames',{'velPD'});
-        tab_append.Properties.VariableDescriptions = {'circular'};
-        shift_tables{modelnum} = [shift_tables{modelnum} tab_append];
-
-        mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
+            % % plot errors
+            % figure('defaultaxesfontsize',18)
+            % for modelnum = 1:num_models-1
+            %     scatter(err{:,modelnum},repmat(modelnum/10,size(err,1),1),50,model_colors(modelnum,:),'filled')
+            %     hold on
+            %     plot(mean(err{:,modelnum}),modelnum/10,'k.','linewidth',3,'markersize',40)
+            % end
+            % set(gca,'tickdir','out','box','off','ytick',(1:(num_models-1))/10,'yticklabel',model_titles,'xtick',[0 1])
+            % axis equal
+            % axis ij
+            % xlim([0 1])
+            % ylim([0 num_models/10])
+            % xlabel('Cosine error of model')
+        
+        %% Plot pR2s against each other
+            % setup
+            figure('defaultaxesfontsize',18)
+            subplot(2,3,1)
+            plotEncoderPR2(encoderResults,'ext','ego')
+            subplot(2,3,2)
+            plotEncoderPR2(encoderResults,'ext','markers')
+            title(filename{monkeynum},'interpreter','none') % centered title
+            subplot(2,3,3)
+            plotEncoderPR2(encoderResults,'ego','markers')
+            subplot(2,3,4)
+            plotEncoderPR2(encoderResults,'musc','markers')
+            subplot(2,3,5)
+            plotEncoderPR2(encoderResults,'ext','musc')
+            subplot(2,3,6)
+            plotEncoderPR2(encoderResults,'ego','musc')
     end
+    
+%% Histogram of PD shift for all monkeys
+    figure('defaultaxesfontsize',18)
+    for monkeynum = 1:num_monks
+        % load data
+        load(fullfile(datadir,filename{monkeynum}))
 
-    figure
-    for modelnum = 1:num_models-1
-        [~,real_shifts] = getNTidx(mean_shifts{end},'signalID',encoderResults.tunedNeurons);
-        [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
+        shift_tables = calculatePDShiftTables(encoderResults);
+        mean_shifts = cell(num_models,1);
+        for modelnum = 1:num_models
+            mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
+        end
 
-        subplot(1,num_models-1,modelnum)
-        plot([-180 180],[0 0],'-k','linewidth',2)
-        hold on
-        plot([0 0],[-180 180],'-k','linewidth',2)
-        plot([-180 180],[-180 180],'--k','linewidth',2)
-        axis equal
-        set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
-        scatter(180/pi*real_shifts.velPD,180/pi*model_shifts.velPD,50,model_colors(modelnum,:),'filled')
-
-        % labels
-        xlabel 'Actual PD Shift'
-        ylabel 'Modeled PD Shift'
-        title(sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum}))
-    end
-
-%% Plot out tuning curves
-    % compare PM and DL tuning for each model
-    for modelnum = 1:num_models
-        figure
-        title(encoderResults.params.model_names{modelnum})
-        compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors))
-        % compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors,'maxFR',1))
-    end
-
-%% Make histogram plots of PD changes
-    figure
-    subplot(num_models,1,1)
-    h = histogram(gca,mean_shifts{end}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
-    set(h,'edgecolor','k')
-    set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
-    for modelnum = 1:num_models-1
-        subplot(num_models,1,modelnum+1)
-        h = histogram(gca,mean_shifts{modelnum}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
-        set(h,'edgecolor',model_colors(modelnum,:))
+        subplot(num_monks,1,monkeynum)
+        h = histogram(gca,mean_shifts{end}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+        set(h,'edgecolor','k')
         set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
+        title(filename(monkeynum),'interpreter','none')
     end
     xlabel 'Change in Preferred Direction'
 
-%% Calculate mean error on shifts
-    err = zeros(100,num_models-1);
-    for modelnum = 1:num_models-1
-        [~,real_shifts] = getNTidx(shift_tables{end},'signalID',encoderResults.tunedNeurons);
-        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
-        err_arr = model_shifts.velPD-real_shifts.velPD;
-        for i = 1:100
-            err_idx = 1:length(encoderResults.tunedNeurons);
-            err_idx = err_idx + (i-1)*length(encoderResults.tunedNeurons);
-            % use a 1-cos style error because of circular data
-            % This value will range between 0 and 2
-            err(i,modelnum) = mean(1-cos(err_arr(err_idx)));
-        end
-    end
-
-    % plot histograms
-    % figure
-    % for modelnum = 1:num_models-1
-    %     h = histogram(gca,err(:,modelnum),'DisplayStyle','bar');
-    %     set(h,'edgecolor',model_colors(modelnum,:),'facecolor',model_colors(modelnum,:))
-    %     hold on
-    % end
-
-    % compute statistics
-    models_to_compare = [find(contains(model_aliases,'musc')) find(contains(model_aliases,'marker'))];
-    alpha = 0.05/2; % bonferroni correction for multiple comparisons...?
-    diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(2)); % musc - ext
-    mudiff = mean(diffstat);
-    vardiff = var(diffstat);
+%% Plot error on all monkeys
+    num_monks = 3;
     correction = 1/100 + 1/4;
-    % alphaup = 1-alpha;
-    upp = tinv(0.975,99);
-    low = tinv(0.025,99);
-    errCIhi = mudiff + upp * sqrt(correction*vardiff)
-    errCIlo = mudiff + low * sqrt(correction*vardiff)
-
-    diffstat = err(:,models_to_compare(1))-err(:,models_to_compare(2)); % musc - ego
-    mudiff = mean(diffstat);
-    vardiff = var(diffstat);
-    correction = 1/100 + 1/4;
-    alphaup = 1-alpha;
-    upp = tinv(alphaup,99);
-    errCIhigh_ego = mudiff + upp * sqrt(correction*vardiff)
-
-    % plot errors
-    figure
-    for modelnum = 1:num_models-1
-        scatter(err(:,modelnum),repmat(modelnum/10,size(err,1),1),50,model_colors(modelnum,:),'filled')
-        hold on
-        plot(mean(err(:,modelnum)),modelnum/10,'k.','linewidth',3,'markersize',40)
-    end
-    set(gca,'tickdir','out','box','off','ytick',(1:(num_models-1))/10,'yticklabel',model_titles,'xtick',[0 1])
-    axis equal
-    axis ij
-    xlim([0 1])
-    ylim([0 num_models/10])
-    xlabel('Cosine error of model')
-
-%% Plot pR2s against each other
-    % setup
-    x_model = 'ext';
-    y_model = 'markers';
-
-    % aliases
-    switch(x_model)
-    case 'ext'
-        x_model_alias = 'Hand';
-    case 'ego'
-        x_model_alias = 'Egocentric';
-    case 'musc'
-        x_model_alias = 'Muscle';
-    case 'cyl'
-        x_model_alias = 'Cylindrical Hand';
-    case 'joint'
-        x_model_alias = 'Joint';
-    case 'markers'
-        x_model_alias = 'Marker';
-    end
-    switch(y_model)
-    case 'ext'
-        y_model_alias = 'Hand';
-    case 'ego'
-        y_model_alias = 'Egocentric';
-    case 'musc'
-        y_model_alias = 'Muscle';
-    case 'cyl'
-        y_model_alias = 'Cylindrical Hand';
-    case 'joint'
-        y_model_alias = 'Joint';
-    case 'markers'
-        y_model_alias = 'Marker';
-    end
-
-    avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
-    av_pR2_x = avgEval.(sprintf('glm_%s_model_eval',x_model));
-    av_pR2_y = avgEval.(sprintf('glm_%s_model_eval',y_model));
-
-    % get stats on pR2 diff between musc model and markers model
-    alpha = 0.05;
-    diffstat = encoderResults.crossEval.(sprintf('glm_%s_model_eval',y_model))-encoderResults.crossEval.(sprintf('glm_%s_model_eval',x_model));
-    correction = 1/(encoderResults.params.num_folds*encoderResults.params.num_repeats) + 1/(encoderResults.params.num_folds-1);
-    alphaup = 1-alpha/2;
-    alphalow = alpha/2;
-
-    dpR2CI = zeros(height(avgEval),2);
-    for i = 1:height(avgEval)
-        sigID = avgEval.signalID(i,:);
-        idx = getNTidx(encoderResults.crossEval,'signalID',sigID);
-        mudiff = mean(diffstat(idx));
-        vardiff = var(diffstat(idx));
-        upp = tinv(alphaup,encoderResults.params.num_folds*encoderResults.params.num_repeats-1);
-        low = tinv(alphalow,encoderResults.params.num_folds*encoderResults.params.num_repeats-1);
-
-        dpR2CI(i,1) = mudiff + low * sqrt(correction*vardiff);
-        dpR2CI(i,2) = mudiff + upp * sqrt(correction*vardiff);
-    end
-
-    % classify neurons
-    y_neurons = dpR2CI(:,1)>0;
-    x_neurons = dpR2CI(:,2)<0;
-
-    % make plot of pR2 of muscle against markers
-    % figure
-    % plot([-1 1],[-1 1],'k--','linewidth',2)
-    % hold on
-    % plot([0 0],[-1 1],'k-','linewidth',2)
-    % plot([-1 1],[0 0],'k-','linewidth',2)
-    % for i = 1:height(avgEval)
-    %     sigID = avgEval.signalID(i,:);
-    %     idx = getNTidx(crossEval,'signalID',sigID);
-    %     if y_neurons(i)
-    %         color = model_colors(contains(model_names,y_model),:);
-    %     elseif x_neurons(i)
-    %         color = model_colors(contains(model_names,x_model),:);
-    %     else
-    %         color = [0 0 0];
-    %     end
-    %     scatter(crossEval.(sprintf('glm_%s_model_eval',x_model))(idx),crossEval.(sprintf('glm_%s_model_eval',y_model))(idx),25,color,'filled')
-    % end
-    % clear i idx color sigID;
-    % scatter(av_pR2_x(:),av_pR2_y(:),50,'r','filled')
-    % set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    % axis square
-    % xlabel(sprintf('%s-based pR2',x_model_alias))
-    % ylabel(sprintf('%s-based pR2',y_model_alias))
-
-    % Scatterplot of pR2 plotted against each other
-    figure
-    plot([-1 1],[-1 1],'k--','linewidth',2)
-    hold on
-    plot([0 0],[-1 1],'k-','linewidth',2)
-    plot([-1 1],[0 0],'k-','linewidth',2)
-    color = zeros(height(avgEval),3);
-    color(y_neurons,:) = repmat(model_colors(contains(model_aliases,y_model),:),sum(y_neurons),1);
-    color(x_neurons,:) = repmat(model_colors(contains(model_aliases,x_model),:),sum(x_neurons),1);
-    scatter(av_pR2_x(:),av_pR2_y(:),50,color,'filled')
-    set(gca,'box','off','tickdir','out','xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-    axis square
-    xlabel(sprintf('%s-based pR2',x_model_alias))
-    ylabel(sprintf('%s-based pR2',y_model_alias))
+    models_to_plot = {'ext','ego','musc','markers'};
+    % x coordinate of individual monkey bars
+    monk_x = (2:3:((num_monks-1)*3+2))/10;
+    % template for within monkey bars separation
+    template_x = linspace(-0.5,0.5,length(models_to_plot))/10;
+    model_spacing = mode(diff(template_x));
 
     % make plot
-    figure
-    for i = 1:height(avgEval)
-        if y_neurons(i)
-            color = model_colors(contains(model_aliases,y_model),:);
-        elseif x_neurons(i)
-            color = model_colors(contains(model_aliases,x_model),:);
-        else
-            color = [0 0 0];
+    figure('defaultaxesfontsize',18)
+    for monkeynum = 1:num_monks
+        model_idx = find(contains(err{monkeynum}.Properties.VariableNames,models_to_plot));
+        mean_err = mean(err{monkeynum}{:,model_idx});
+        var_err = var(err{monkeynum}{:,model_idx});
+        std_err_err = sqrt(correction*var_err);
+
+        for modelnum = 1:length(models_to_plot)
+            xval = monk_x(monkeynum) + template_x(modelnum);
+            bar(xval,mean_err(modelnum),model_spacing,'facecolor',model_colors(model_idx(modelnum),:),'edgecolor','none')
+            hold on
+            plot([xval xval],[mean_err(modelnum)-std_err_err(modelnum) mean_err(modelnum)+std_err_err(modelnum)],'k','linewidth',3)
         end
-        plot(dpR2CI(i,:),[i i],'-','color',color,'linewidth',2);
-        hold on
-        plot(dpR2CI(i,:),[i i],'.','color',color,'markersize',30);
     end
-    plot([0 0],[0 1+height(avgEval)],'k-','linewidth',2);
-    axis ij
-    axis([-0.15 0.15 -inf inf])
-    set(gca,'box','off','tickdir','out','ylim',[0 1+height(avgEval)],'ytick',[1 height(avgEval)])
-
-%% Plot error on all monkeys (requires already saved errors)
-    % get mean and standard error of errors
-    err = [han_err chips_err lando_err];
-    mean_err = mean(err);
-    var_err = var(err);
-    correction = 1/100 + 1/4;
-    std_err_err = sqrt(correction*var_err);
-
-    num_monks = 1;
-    % num_models = 3;
-    num_cols = num_monks*(num_models-1); % this should be the number columns in err now
-    model_colors_rep = repmat(model_colors,num_monks,1);
-    % model_x = [1.5 2 2.5 4.5 5 5.5 7.5 8 8.5]/10;
-    monk_x = (2:3:((num_monks-1)*3+2))/10;
-    template_x = linspace(-0.5,0.5,num_models-1)/10;
-    model_spacing = mode(diff(template_x));
-    model_x = [];
-    for i = 1:length(monk_x)
-        model_x = [model_x template_x+monk_x(i)];
-    end
-    figure
-    for colnum = 1:num_cols
-        % scatter(repmat(colnum/10,size(err,1),1),err(:,colnum),50,model_colors_rep(colnum,:),'filled')
-        % hold on
-        % plot(colnum/10,mean(err(:,colnum)),'.','color',model_colors_rep(colnum,:),'linewidth',3,'markersize',40)
-        bar(model_x(colnum),mean(err(:,colnum)),model_spacing,'facecolor',model_colors_rep(colnum,:))
-        hold on
-        % errorbar(colnum/10,mean_err(:,colnum),std_err_err(:,colnum),'color',model_colors_rep(colnum,:),'linewidth',3)
-    end
-    errorbar(model_x,mean_err,std_err_err,'k.','linewidth',3)
-    set(gca,'tickdir','out','box','off','xtick',monk_x,'xticklabel',{'Monkey H','Monkey C','Monkey L'},'ytick',[0 1])
-    axis equal
+    set(gca,'tickdir','out','box','off','xtick',monk_x,'xticklabel',filename,'ytick',[0 1],'ticklabelinterpreter','none')
+    % axis equal
     ylim([0 1])
-    xlim([0 1])
+    % xlim([0 1])
     ylabel('Error of model')
 
 %% Tuning curve covariances
@@ -379,7 +220,7 @@
 
 %% Example predictions
     for neuron_idx = 23% 1:height(avgEval)
-        h = figure;
+        h = figure('defaultaxesfontsize',18);
         temp_vel = cat(1,encoderResults.td_tuning{2}.vel);
         temp_spikes = get_vars(encoderResults.td_tuning{2},{'S1_FR',neuron_idx});
         temp_pred_ext = get_vars(encoderResults.td_tuning{2},{'glm_ext_model',neuron_idx});
@@ -407,7 +248,7 @@
 
 %% Plot handle positions
     if verbose
-        figure
+        figure('defaultaxesfontsize',18)
         pos_dl = cat(1,results.td_test{2}.pos);
         plot(pos_dl(:,1),pos_dl(:,2),'r')
         hold on
@@ -423,17 +264,17 @@
     % tuningHull = getTuningHull(results.tuningTable);
     % loop over each unit in one workspace
     % n_rows = ceil(sqrt(height(signalIDs)+1));
-    % cloud_fig = figure;
-    % surf_fig = figure;
+    % cloud_fig = figure('defaultaxesfontsize',18);
+    % surf_fig = figure('defaultaxesfontsize',18);
     % neuron_idx = getNTidx(pdTables{1,4},'signalID',[95 2]);
     for neuron_idx = 1:length(encoderResults.isTuned)
-        % close_fig = figure;
+        % close_fig = figure('defaultaxesfontsize',18);
 
         % figure(cloud_fig)
         % clf
         % plotMWTuningCloud(tuningHull,neuron_idx)
 
-        surf_fig = figure;
+        surf_fig = figure('defaultaxesfontsize',18);
         clf
         plotMWTuningSurfaces(encoderResults.td_tuning,pdTables,neuron_idx,model_aliases)
 
@@ -441,22 +282,50 @@
     end
 
 %% Decoder crap
-    %% load data
-
-    %% make decoder performance scatter plots
+    datadir = '/home/raeed/Projects/limblab/data-td/FullWS/Results/Decoding';
+    filename = {'Han_20160325_RWhold_decodingResults_run20180813.mat','Chips_20151211_RW_decodingResults_run20180813.mat'};
+    num_monks = length(filename);
     barwidth = 0.4;
-    figure
-    bar([1 3 2 4]*0.20,mean([hand_decoder_vaf neur_decoder_vaf]),barwidth,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
-    hold on
-    plot([1 2]*0.20,[hand_decoder_vaf(:,1) neur_decoder_vaf(:,1)]','-k','linewidth',1)
-    plot([3 4]*0.20,[hand_decoder_vaf(:,2) neur_decoder_vaf(:,2)]','-k','linewidth',1)
-    plot([1 3 2 4]*0.20, [hand_decoder_vaf neur_decoder_vaf]','.k','markersize',30)
-    xtick = (1:4)*0.20;
-    xticklabel = {'Hand-only pos','Hand+Neuron pos','Hand vel','Hand+Neuron vel'};
+    markerstyle = '^o';
+    barfig = figure('defaultaxesfontsize',18);
+    scatfig = figure('defaultaxesfontsize',18);
+    for monkeynum = 1:num_monks
+        %% load data
+        load(fullfile(datadir,filename{monkeynum}))
+
+        %% make decoder performance scatter plots
+        x_offset = monkeynum-1;
+        % first monkey
+        figure(barfig)
+        bar([1 3 2 4]*0.20+x_offset,mean([decoderResults.hand_decoder_vaf decoderResults.neur_decoder_vaf]),barwidth,'facecolor',[0.5 0.5 0.5],'edgecolor','none')
+        hold on
+        plot([1 2]*0.20+x_offset,[decoderResults.hand_decoder_vaf(:,1) decoderResults.neur_decoder_vaf(:,1)]','-k','linewidth',1)
+        plot([3 4]*0.20+x_offset,[decoderResults.hand_decoder_vaf(:,2) decoderResults.neur_decoder_vaf(:,2)]','-k','linewidth',1)
+        plot([1 3 2 4]*0.20+x_offset, [decoderResults.hand_decoder_vaf decoderResults.neur_decoder_vaf]','.k','markersize',30)
+
+        figure(scatfig)
+        subplot(1,2,1)
+        scatter(decoderResults.hand_decoder_vaf(:,1),decoderResults.neur_decoder_vaf(:,1),markerstyle(monkeynum),'filled')
+        hold on
+        plot([0 1],[0 1],'--k','linewidth',2)
+
+        subplot(1,2,2)
+        scatter(decoderResults.hand_decoder_vaf(:,2),decoderResults.neur_decoder_vaf(:,2),markerstyle(monkeynum),'filled')
+        hold on
+        plot([0 1],[0 1],'--k','linewidth',2)
+    end
+    figure(barfig)
+    xtick = [(1:4)*0.20 1+(1:4)*0.20];
+    xticklabel = repmat({'Hand-only pos','Hand+Neuron pos','Hand vel','Hand+Neuron vel'},1,2);
     set(gca,'box','off','tickdir','out','xtick',xtick,...
         'xticklabel',xticklabel,...
-        'xlim',[0 3],'ylim',[0 1])
+        'xlim',[0 num_monks],'ylim',[0 1])
     ylabel 'Fraction VAF'
     xlabel 'Model'
-    title 'Decoding performance'
+    title([{'Decoding performance'};filename'],'interpreter','none')
 
+    figure(scatfig)
+    subplot(1,2,1)
+    axis equal
+    subplot(1,2,2)
+    axis equal
