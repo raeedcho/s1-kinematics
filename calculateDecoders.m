@@ -1,9 +1,9 @@
 datadir = '/home/raeed/Projects/limblab/data-td/FullWS';
-fileprefix = {'Han_20160325_RWhold'};
+fileprefix = {'Chips_20151211_RW'};
 savesuffix = '_decodingResults_run20180813.mat';
 
 for filenum = 1:length(fileprefix)
-    clear encoderResults
+    clear decoderResults
 
     %% Load data
     load(fullfile(datadir,[fileprefix{filenum} '_TD.mat']))
@@ -12,6 +12,12 @@ for filenum = 1:length(fileprefix)
     % first process marker data
     td = trial_data;
     [~,td] = getTDidx(td,'result','R');
+    % remove trials with no go cue
+    if any(isnan([td.idx_targetStartTime]))
+        warning('Some trials have no go cue time, deleting trials...')
+        td(isnan([td.idx_targetStartTime])) = [];
+    end
+
     td = smoothSignals(td,struct('signals','markers'));
     td = getDifferential(td,struct('signal','markers','alias','marker_vel'));
 
