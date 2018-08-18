@@ -49,6 +49,8 @@
     filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     num_monks = length(filename);
     err = cell(num_monks,1);
+    hyp = cell(num_monks,1);
+    p_val = cell(num_monks,1);
 
     model_aliases = {'ext','ego','musc','markers'};
     num_models = length(model_aliases)+1;
@@ -134,6 +136,15 @@
             % xlim([0 1])
             % ylim([0 num_models/10])
             % xlabel('Cosine error of model')
+
+            modelcompare = {'ext','ego';...
+                'ext','musc';...
+                'ext','markers';...
+                'ego','musc';...
+                'ego','markers';
+                'musc','markers'};
+            tails = {'both';'right';'right';'right';'right';'right'};
+            [hyp{monkeynum},p_val{monkeynum}] = stattestPDShiftErr(err{monkeynum},modelcompare,tails,encoderResults.params.num_repeats,encoderResults.params.num_folds);
         
         %% Plot pR2s against each other
             % setup
