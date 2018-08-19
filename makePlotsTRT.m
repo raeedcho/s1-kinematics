@@ -216,81 +216,22 @@
     % xlim([0 1])
     ylabel('Error of model')
 
-%% Tuning curve covariances
-    tuning_covar = zeros(2,num_models,height(encoderResults.tuning_curves{1,1}));
-    for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
-        for spacenum = 1:2
-            tuning_curve_mat = zeros(8,num_models);
+%% Get example tuning curves for all models
+    for monkeynum = 1%:num_monks
+        clear encoderResults
+
+        % load data
+        load(fullfile(datadir,filename{monkeynum}))
+
+        %% Plot out tuning curves
+            % compare PM and DL tuning for each model
             for modelnum = 1:num_models
-                tuning_curve_mat(:,modelnum) = encoderResults.tuning_curves{spacenum,modelnum}(neuron_idx,:).velCurve';
+                figure('defaultaxesfontsize',18)
+                % figure
+                compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors))
+                % compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors,'maxFR',1))
+                title(encoderResults.params.model_names{modelnum},'interpreter','none')
             end
-            covar_mat = cov(tuning_curve_mat);
-            true_tuning_idx = contains(model_names,'S1');
-            tuning_covar(spacenum,:,neuron_idx) = covar_mat(:,true_tuning_idx)/covar_mat(true_tuning_idx,true_tuning_idx);
-        end
-    end
-
-%% Example predictions
-    for neuron_idx = 23% 1:height(avgEval)
-        h = figure('defaultaxesfontsize',18);
-        temp_vel = cat(1,encoderResults.td_tuning{2}.vel);
-        temp_spikes = get_vars(encoderResults.td_tuning{2},{'S1_FR',neuron_idx});
-        temp_pred_ext = get_vars(encoderResults.td_tuning{2},{'glm_ext_model',neuron_idx});
-        temp_pred_musc = get_vars(encoderResults.td_tuning{2},{'glm_musc_model',neuron_idx});
-
-        clf
-        ax1 = subplot(2,1,1);
-        plot(temp_vel(:,1),'b','linewidth',2)
-        hold on
-        plot(temp_vel(:,2),'g','linewidth',2)
-        set(gca,'box','off','tickdir','out')
-
-        ax2 = subplot(2,1,2);
-        plot(temp_spikes,'k','linewidth',2)
-        hold on
-        plot(temp_pred_ext,'color',model_colors(contains(model_names,'ext'),:),'linewidth',2)
-        plot(temp_pred_musc,'color',model_colors(contains(model_names,'musc'),:),'linewidth',2)
-        title(sprintf('Hand-based pR^2: %f, Musc-based pR^2: %f',av_pR2_ext(neuron_idx),av_pR2_musc(neuron_idx)))
-        set(gca,'box','off','tickdir','out')
-
-        linkaxes([ax1 ax2],'x')
-        waitfor(h)
-    end
-    clearvars neuron_idx temp_* ax1 ax2
-
-%% Plot handle positions
-    if verbose
-        figure('defaultaxesfontsize',18)
-        pos_dl = cat(1,results.td_test{2}.pos);
-        plot(pos_dl(:,1),pos_dl(:,2),'r')
-        hold on
-        pos_pm = cat(1,results.td_test{1}.pos);
-        plot(pos_pm(:,1),pos_pm(:,2),'b')
-        axis equal
-
-        % clean up
-        clearvars pos_*
-    end
-
-%% Plot tuning weight clouds
-    % tuningHull = getTuningHull(results.tuningTable);
-    % loop over each unit in one workspace
-    % n_rows = ceil(sqrt(height(signalIDs)+1));
-    % cloud_fig = figure('defaultaxesfontsize',18);
-    % surf_fig = figure('defaultaxesfontsize',18);
-    % neuron_idx = getNTidx(pdTables{1,4},'signalID',[95 2]);
-    for neuron_idx = 1:length(encoderResults.isTuned)
-        % close_fig = figure('defaultaxesfontsize',18);
-
-        % figure(cloud_fig)
-        % clf
-        % plotMWTuningCloud(tuningHull,neuron_idx)
-
-        surf_fig = figure('defaultaxesfontsize',18);
-        clf
-        plotMWTuningSurfaces(encoderResults.td_tuning,pdTables,neuron_idx,model_aliases)
-
-        waitfor(surf_fig)
     end
 
 %% Decoder crap
@@ -341,3 +282,81 @@
     axis equal
     subplot(1,2,2)
     axis equal
+
+%% Extra stuff/in progress...
+    %% Tuning curve covariances
+        tuning_covar = zeros(2,num_models,height(encoderResults.tuning_curves{1,1}));
+        for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
+            for spacenum = 1:2
+                tuning_curve_mat = zeros(8,num_models);
+                for modelnum = 1:num_models
+                    tuning_curve_mat(:,modelnum) = encoderResults.tuning_curves{spacenum,modelnum}(neuron_idx,:).velCurve';
+                end
+                covar_mat = cov(tuning_curve_mat);
+                true_tuning_idx = contains(model_names,'S1');
+                tuning_covar(spacenum,:,neuron_idx) = covar_mat(:,true_tuning_idx)/covar_mat(true_tuning_idx,true_tuning_idx);
+            end
+        end
+    
+    %% Example predictions
+        for neuron_idx = 23% 1:height(avgEval)
+            h = figure('defaultaxesfontsize',18);
+            temp_vel = cat(1,encoderResults.td_tuning{2}.vel);
+            temp_spikes = get_vars(encoderResults.td_tuning{2},{'S1_FR',neuron_idx});
+            temp_pred_ext = get_vars(encoderResults.td_tuning{2},{'glm_ext_model',neuron_idx});
+            temp_pred_musc = get_vars(encoderResults.td_tuning{2},{'glm_musc_model',neuron_idx});
+    
+            clf
+            ax1 = subplot(2,1,1);
+            plot(temp_vel(:,1),'b','linewidth',2)
+            hold on
+            plot(temp_vel(:,2),'g','linewidth',2)
+            set(gca,'box','off','tickdir','out')
+    
+            ax2 = subplot(2,1,2);
+            plot(temp_spikes,'k','linewidth',2)
+            hold on
+            plot(temp_pred_ext,'color',model_colors(contains(model_names,'ext'),:),'linewidth',2)
+            plot(temp_pred_musc,'color',model_colors(contains(model_names,'musc'),:),'linewidth',2)
+            title(sprintf('Hand-based pR^2: %f, Musc-based pR^2: %f',av_pR2_ext(neuron_idx),av_pR2_musc(neuron_idx)))
+            set(gca,'box','off','tickdir','out')
+    
+            linkaxes([ax1 ax2],'x')
+            waitfor(h)
+        end
+        clearvars neuron_idx temp_* ax1 ax2
+    
+    %% Plot handle positions
+        if verbose
+            figure('defaultaxesfontsize',18)
+            pos_dl = cat(1,results.td_test{2}.pos);
+            plot(pos_dl(:,1),pos_dl(:,2),'r')
+            hold on
+            pos_pm = cat(1,results.td_test{1}.pos);
+            plot(pos_pm(:,1),pos_pm(:,2),'b')
+            axis equal
+    
+            % clean up
+            clearvars pos_*
+        end
+    
+    %% Plot tuning weight clouds
+        % tuningHull = getTuningHull(results.tuningTable);
+        % loop over each unit in one workspace
+        % n_rows = ceil(sqrt(height(signalIDs)+1));
+        % cloud_fig = figure('defaultaxesfontsize',18);
+        % surf_fig = figure('defaultaxesfontsize',18);
+        % neuron_idx = getNTidx(pdTables{1,4},'signalID',[95 2]);
+        for neuron_idx = 1:length(encoderResults.isTuned)
+            % close_fig = figure('defaultaxesfontsize',18);
+    
+            % figure(cloud_fig)
+            % clf
+            % plotMWTuningCloud(tuningHull,neuron_idx)
+    
+            surf_fig = figure('defaultaxesfontsize',18);
+            clf
+            plotMWTuningSurfaces(encoderResults.td_tuning,pdTables,neuron_idx,model_aliases)
+    
+            waitfor(surf_fig)
+        end
