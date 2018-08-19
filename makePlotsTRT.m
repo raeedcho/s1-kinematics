@@ -209,9 +209,10 @@
             plot([xval xval],[mean_err(modelnum)-std_err_err(modelnum) mean_err(modelnum)+std_err_err(modelnum)],'k','linewidth',3)
         end
     end
-    set(gca,'tickdir','out','box','off','xtick',monk_x,'xticklabel',filename,'ytick',[0 1],'ticklabelinterpreter','none')
+    set(gca,'tickdir','out','box','off','xtick',monk_x,...
+        'xticklabel',filename,'ytick',[0 1],'ticklabelinterpreter','none')
     % axis equal
-    ylim([0 1])
+    ylim([0 0.7])
     % xlim([0 1])
     ylabel('Error of model')
 
