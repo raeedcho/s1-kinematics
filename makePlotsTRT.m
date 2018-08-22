@@ -299,29 +299,38 @@
         end
     
     %% Example predictions
-        for neuron_idx = 23% 1:height(avgEval)
+        td_tuning = encoderResults.td_tuning{2};
+        td_tuning = smoothSignals(td_tuning,struct('signals','S1_FR','kernel_SD',0.1));
+        trial_to_plot = randperm(length(td_tuning),5);
+        num_neurons = length(td_tuning(1).S1_unit_guide);
+        for neuron_idx = 23
             h = figure('defaultaxesfontsize',18);
-            temp_vel = cat(1,encoderResults.td_tuning{2}.vel);
-            temp_spikes = get_vars(encoderResults.td_tuning{2},{'S1_FR',neuron_idx});
-            temp_pred_ext = get_vars(encoderResults.td_tuning{2},{'glm_ext_model',neuron_idx});
-            temp_pred_musc = get_vars(encoderResults.td_tuning{2},{'glm_musc_model',neuron_idx});
-    
+            trial_to_plot = randperm(length(td_tuning),5);
+            temp_vel = get_vars(td_tuning(trial_to_plot),{'vel',1:2});
+            temp_spikes = get_vars(td_tuning(trial_to_plot),{'S1_FR',neuron_idx});
+            temp_pred_ext = get_vars(td_tuning(trial_to_plot),{'glm_ext_model',neuron_idx});
+            temp_pred_ego = get_vars(td_tuning(trial_to_plot),{'glm_ego_model',neuron_idx});
+            temp_pred_musc = get_vars(td_tuning(trial_to_plot),{'glm_musc_model',neuron_idx});
+            temp_pred_markers = get_vars(td_tuning(trial_to_plot),{'glm_markers_model',neuron_idx});
+
             clf
-            ax1 = subplot(2,1,1);
-            plot(temp_vel(:,1),'b','linewidth',2)
-            hold on
-            plot(temp_vel(:,2),'g','linewidth',2)
-            set(gca,'box','off','tickdir','out')
-    
-            ax2 = subplot(2,1,2);
+%             ax1 = subplot(2,1,1);
+%             plot(temp_vel(:,1),'b','linewidth',2)
+%             hold on
+%             plot(temp_vel(:,2),'g','linewidth',2)
+%             set(gca,'box','off','tickdir','out')
+%     
+%             ax2 = subplot(2,1,2);
             plot(temp_spikes,'k','linewidth',2)
             hold on
-            plot(temp_pred_ext,'color',model_colors(contains(model_names,'ext'),:),'linewidth',2)
-            plot(temp_pred_musc,'color',model_colors(contains(model_names,'musc'),:),'linewidth',2)
-            title(sprintf('Hand-based pR^2: %f, Musc-based pR^2: %f',av_pR2_ext(neuron_idx),av_pR2_musc(neuron_idx)))
+            plot(temp_pred_ext,'color',model_colors(contains(model_aliases,'ext'),:),'linewidth',2)
+            plot(temp_pred_ego,'color',model_colors(contains(model_aliases,'ego'),:),'linewidth',2)
+            plot(temp_pred_musc,'color',model_colors(contains(model_aliases,'musc'),:),'linewidth',2)
+%             plot(temp_pred_markers,'color',model_colors(contains(model_aliases,'markers'),:),'linewidth',2)
+%             title(sprintf('Hand-based pR^2: %f, Musc-based pR^2: %f',av_pR2_ext(neuron_idx),av_pR2_musc(neuron_idx)))
             set(gca,'box','off','tickdir','out')
     
-            linkaxes([ax1 ax2],'x')
+%             linkaxes([ax1 ax2],'x')
             waitfor(h)
         end
         clearvars neuron_idx temp_* ax1 ax2
