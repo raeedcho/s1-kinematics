@@ -162,6 +162,41 @@
             plotEncoderPR2(encoderResults,'ext','musc')
             subplot(2,3,6)
             plotEncoderPR2(encoderResults,'ego','musc')
+
+        %% Tuning curve covariances
+            true_tuning_idx = contains(encoderResults.params.model_names,'S1');
+            % models_to_plot = {'ext','ego','musc','markers'};
+            models_to_plot = {'ext','musc'};
+            tuning_covar = zeros(height(encoderResults.tuning_curves{1,1}),length(models_to_plot));
+
+            % start with just plotting out scatter plot of predicted tuning curves
+            % figure('defaultaxesfontsize',18)
+            % plot([0 0],[0 60],'-k','linewidth',3)
+            % hold on
+            % plot([0 60],[0 0],'-k','linewidth',3)
+            % plot([0 60],[0 60],'--k','linewidth',2)
+            % set(gca,'box','off','tickdir','out')
+            % axis equal
+            for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
+                num_bins = encoderResults.params.num_tuning_bins;
+                tuning_curve_mat = zeros(num_bins*2,length(models_to_plot)+1);
+                for spacenum = 1:2
+                    tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),end) = encoderResults.tuning_curves{spacenum,true_tuning_idx}(neuron_idx,:).velCurve';
+                    for modelnum = 1:length(models_to_plot)
+                        tuning_idx = contains(encoderResults.params.model_names,models_to_plot{modelnum});
+                        tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),modelnum) = encoderResults.tuning_curves{spacenum,tuning_idx}(neuron_idx,:).velCurve';
+                        % scatter(true_curve,tuning_curve_mat(:,modelnum),[],getModelColors(models_to_plot{modelnum}),'filled')
+                    end
+                end
+                covar_mat = nancov(tuning_curve_mat);
+                tuning_covar(neuron_idx,:) = covar_mat(end,1:end-1)/covar_mat(end,end);
+                % tuning_covar(neuron_idx,:) = covar_mat(end,1:end-1);
+            end
+            % quick plot
+            figure('defaultaxesfontsize',18)
+            plot(tuning_covar','-ok','linewidth',2)
+            set(gca,'box','off','tickdir','out','xlim',[0 size(tuning_covar,2)+1])
+
     end
     
 %% Histogram of PD shift for all monkeys
@@ -327,20 +362,6 @@
     axis equal
 
 %% Extra stuff/in progress...
-    %% Tuning curve covariances
-        tuning_covar = zeros(2,num_models,height(encoderResults.tuning_curves{1,1}));
-        for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
-            for spacenum = 1:2
-                tuning_curve_mat = zeros(8,num_models);
-                for modelnum = 1:num_models
-                    tuning_curve_mat(:,modelnum) = encoderResults.tuning_curves{spacenum,modelnum}(neuron_idx,:).velCurve';
-                end
-                covar_mat = cov(tuning_curve_mat);
-                true_tuning_idx = contains(model_names,'S1');
-                tuning_covar(spacenum,:,neuron_idx) = covar_mat(:,true_tuning_idx)/covar_mat(true_tuning_idx,true_tuning_idx);
-            end
-        end
-    
     %% Example predictions
         td_tuning = encoderResults.td_tuning{2};
         td_tuning = smoothSignals(td_tuning,struct('signals','S1_FR','kernel_SD',0.1));
@@ -357,23 +378,22 @@
             temp_pred_markers = get_vars(td_tuning(trial_to_plot),{'glm_markers_model',neuron_idx});
 
             clf
-%             ax1 = subplot(2,1,1);
-%             plot(temp_vel(:,1),'b','linewidth',2)
-%             hold on
-%             plot(temp_vel(:,2),'g','linewidth',2)
-%             set(gca,'box','off','tickdir','out')
-%     
-%             ax2 = subplot(2,1,2);
+            % ax1 = subplot(2,1,1);
+            % plot(temp_vel(:,1),'b','linewidth',2)
+            % hold on
+            % plot(temp_vel(:,2),'g','linewidth',2)
+            % set(gca,'box','off','tickdir','out')
+            % 
+            % ax2 = subplot(2,1,2);
             plot(temp_spikes,'k','linewidth',2)
             hold on
             plot(temp_pred_ext,'color',model_colors(contains(model_aliases,'ext'),:),'linewidth',2)
             plot(temp_pred_ego,'color',model_colors(contains(model_aliases,'ego'),:),'linewidth',2)
             plot(temp_pred_musc,'color',model_colors(contains(model_aliases,'musc'),:),'linewidth',2)
-%             plot(temp_pred_markers,'color',model_colors(contains(model_aliases,'markers'),:),'linewidth',2)
-%             title(sprintf('Hand-based pR^2: %f, Musc-based pR^2: %f',av_pR2_ext(neuron_idx),av_pR2_musc(neuron_idx)))
+            % plot(temp_pred_markers,'color',model_colors(contains(model_aliases,'markers'),:),'linewidth',2)
+            % title(sprintf('Hand-based pR^2: %f, Musc-based pR^2: %f',av_pR2_ext(neuron_idx),av_pR2_musc(neuron_idx)))
             set(gca,'box','off','tickdir','out')
-    
-%             linkaxes([ax1 ax2],'x')
+            % linkaxes([ax1 ax2],'x')
             waitfor(h)
         end
         clearvars neuron_idx temp_* ax1 ax2
