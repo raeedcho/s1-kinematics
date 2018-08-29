@@ -216,6 +216,49 @@
     % xlim([0 1])
     ylabel('Error of model')
 
+%% Plot pR2 of all monkeys
+    num_monks = 3;
+    correction = 1/100 + 1/4;
+    models_to_plot = {'ego','ext','musc','markers'};
+    % x coordinate of individual monkey bars
+    monk_x = (2:3:((num_monks-1)*3+2))/10;
+    % template for within monkey bars separation
+    template_x = linspace(-0.5,0.5,length(models_to_plot))/10;
+    model_spacing = mode(diff(template_x));
+
+    % make plot
+    figure('defaultaxesfontsize',18)
+    for monkeynum = 1:num_monks
+        % load data
+        load(fullfile(datadir,filename{monkeynum}))
+
+        avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
+
+        % model_idx = find(contains(err{monkeynum}.Properties.VariableNames,models_to_plot));
+        % mean_err = mean(err{monkeynum}{:,model_idx});
+        % var_err = var(err{monkeynum}{:,model_idx});
+        % std_err_err = sqrt(correction*var_err);
+
+        avg_pR2 = zeros(height(avgEval),length(models_to_plot));
+        for modelnum = 1:length(models_to_plot)
+            xval = monk_x(monkeynum) + template_x(modelnum);
+            mean_pR2 = mean(avgEval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})));
+            avg_pR2(:,modelnum) = avgEval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum}));
+            bar(xval,mean_pR2,model_spacing,'facecolor',getModelColors(models_to_plot{modelnum}),'edgecolor','none')
+            hold on
+            % plot([xval xval],[mean_err(modelnum)-std_err_err(modelnum) mean_err(modelnum)+std_err_err(modelnum)],'k','linewidth',3)
+        end
+        xval = repmat(monk_x(monkeynum)+template_x,length(avg_pR2),1);
+        scatter(xval(:),avg_pR2(:),[],'k','filled')
+        plot(xval',avg_pR2','-k','linewidth',1)
+    end
+    set(gca,'tickdir','out','box','off','xtick',monk_x,...
+        'xticklabel',filename,'ytick',[0 0.25 0.5],'ticklabelinterpreter','none')
+    % axis equal
+    ylim([0 0.6])
+    % xlim([0 1])
+    ylabel('Model pseudo-R^2')
+
 %% Get example tuning curves for all models
     for monkeynum = 1%:num_monks
         clear encoderResults
