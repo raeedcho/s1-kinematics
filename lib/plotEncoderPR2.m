@@ -6,7 +6,11 @@ function plotEncoderPR2(encoderResults,x_model,y_model)
     switch(x_model)
     case 'ext'
         x_model_alias = 'Hand';
+    case 'opensim_ext'
+        x_model_alias = 'Hand';
     case 'ego'
+        x_model_alias = 'Egocentric';
+    case 'opensim_ego'
         x_model_alias = 'Egocentric';
     case 'musc'
         x_model_alias = 'Muscle';
@@ -16,11 +20,17 @@ function plotEncoderPR2(encoderResults,x_model,y_model)
         x_model_alias = 'Joint';
     case 'markers'
         x_model_alias = 'Marker';
+    case 'opensim_markers'
+        x_model_alias = 'OpenSim Marker';
     end
     switch(y_model)
     case 'ext'
         y_model_alias = 'Hand';
+    case 'opensim_ext'
+        y_model_alias = 'Hand';
     case 'ego'
+        y_model_alias = 'Egocentric';
+    case 'opensim_ego'
         y_model_alias = 'Egocentric';
     case 'musc'
         y_model_alias = 'Muscle';
@@ -30,6 +40,8 @@ function plotEncoderPR2(encoderResults,x_model,y_model)
         y_model_alias = 'Joint';
     case 'markers'
         y_model_alias = 'Marker';
+    case 'opensim_markers'
+        y_model_alias = 'OpenSim Marker';
     end
     
     avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));

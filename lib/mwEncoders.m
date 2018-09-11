@@ -19,14 +19,25 @@ function results = mwEncoders(td,params)
     num_folds = 5; % 5 is default number of folds, no need to pass in
     num_repeats = 20; % 20 is default number of repeats, no need to pass in
     num_tuning_bins = 16;
+    num_musc_pcs = 5;
     model_type = 'glm';
     model_aliases = {'ext','ego','musc','markers'};
-    neural_signals = 'S1_FR';
+    arrayname = 'S1';
+    assignParams(who,params);
+    neural_signals = [arrayname '_FR'];
+    unit_guide = td(1).([arrayname '_unit_guide']);
+
+    if any(strcmpi(model_aliases,'ego')) && any(strcmpi(model_aliases,'opensim_ego'))
+        warning('Code not set up to handle two versions of ego')
+    end
+    if any(strcmpi(model_aliases,'cyl')) && any(strcmpi(model_aliases,'opensim_cyl'))
+        warning('Code not set up to handle two versions of cyl')
+    end
+
     model_names = [strcat(model_type,'_',model_aliases,'_model') {neural_signals}];
     num_models = length(model_names);
     
     % set up glm parameters
-    num_musc_pcs = 5;
     glm_params = cell(num_models-1,1);
     for modelnum = 1:num_models-1
         switch model_aliases{modelnum}
@@ -53,38 +64,53 @@ function results = mwEncoders(td,params)
                 td(i).opensim_muscVel_pca = td_temp(i).opensim_pca;
             end
             glm_params{modelnum} = struct('model_type',model_type,...
-                                    'model_name','musc_model',...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
                                     'out_signals',neural_signals);
         case 'ext'
             marker_hand_idx = 1:3;
             glm_params{modelnum} = struct('model_type',model_type,...
-                                    'model_name','ext_model',...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'markers',marker_hand_idx;'marker_vel',marker_hand_idx}},...
                                     'out_signals',neural_signals);
-            % opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
-            % glm_params{modelnum} = struct('model_type',model_type,...
-            %                         'model_name','ext_model',...
-            %                         'in_signals',{{'opensim',opensim_hand_idx}},...
-            %                         'out_signals',neural_signals);
+        case 'opensim_ext'
+            opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
+                                    'in_signals',{{'opensim',opensim_hand_idx}},...
+                                    'out_signals',neural_signals);
         case 'ego'
             % add in spherical coordinates
             td = addSphereHand2TD(td);
             glm_params{modelnum} = struct('model_type',model_type,...
-                                    'model_name','ego_model',...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
+                                    'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
+                                    'out_signals',neural_signals);
+        case 'opensim_ego'
+            % add in spherical coordinates
+            td = addSphereHand2TD(td,'opensim');
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
                                     'out_signals',neural_signals);
         case 'cyl'
             % add in cylindrical coordinates
             td = addCylHand2TD(td);
             glm_params{modelnum} = struct('model_type',model_type,...
-                                    'model_name','cyl_model',...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
+                                    'in_signals',{{'cyl_hand_pos';'cyl_hand_vel'}},...
+                                    'out_signals',neural_signals);
+        case 'opensim_cyl'
+            % add in cylindrical coordinates
+            td = addCylHand2TD(td,'opensim');
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'cyl_hand_pos';'cyl_hand_vel'}},...
                                     'out_signals',neural_signals);
         case 'joint'
             opensim_joint_idx = find(contains(td(1).opensim_names,'_ang') | contains(td(1).opensim_names,'_vel'));
             glm_params{modelnum} = struct('model_type',model_type,...
-                                    'model_name','joint_model',...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'opensim',opensim_joint_idx}},...
                                     'out_signals',neural_signals);
         case 'markers'
@@ -92,20 +118,35 @@ function results = mwEncoders(td,params)
             marker_hand_idx = 1:3;
             marker_elbow_idx = 28:30;
             glm_params{modelnum} = struct('model_type',model_type,...
-                                    'model_name','markers_model',...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'markers',[marker_hand_idx marker_elbow_idx];'marker_vel',[marker_hand_idx marker_elbow_idx]}},...
                                     'out_signals',neural_signals);
-
+        case 'markers_pca'
             % Get PCA for marker space
-            % td = dimReduce(td,struct('signals','markers'));
-            % td = dimReduce(td,struct('signals','marker_vel'));
-            % glm_params{modelnum} = struct('model_type',model_type,...
-            %                         'model_name','markers_model',...
-            %                         'in_signals',{{'markers_pca',1:num_musc_pcs;'marker_vel_pca',1:num_musc_pcs}},...
-            %                         'out_signals',neural_signals);
+            td = dimReduce(td,struct('signals','markers'));
+            td = dimReduce(td,struct('signals','marker_vel'));
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
+                                    'in_signals',{{'markers_pca',1:num_musc_pcs;'marker_vel_pca',1:num_musc_pcs}},...
+                                    'out_signals',neural_signals);
+        case 'opensim_markers'
+            opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
+            opensim_elbow_idx = find(contains(td(1).opensim_names,'_elbowPos') | contains(td(1).opensim_names,'_elbowVel'));
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
+                                    'in_signals',{{'opensim',[opensim_hand_idx opensim_elbow_idx]}},...
+                                    'out_signals',neural_signals);
+        case 'ego_markers'
+            % indices for cartesian hand coordinates
+            marker_hand_idx = 1:3;
+            marker_elbow_idx = 28:30;
+            td = addSphereHand2TD(td);
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
+                                    'in_signals',{{'markers',[marker_hand_idx marker_elbow_idx];'marker_vel',[marker_hand_idx marker_elbow_idx]}},...
+                                    'out_signals',neural_signals);
         end
     end
-    assignParams(who,params);
 
 %% Get comparison of actual tuning curves with various modeled tuning curves
     % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
@@ -143,11 +184,11 @@ function results = mwEncoders(td,params)
     for modelnum = 1:num_models
         for spacenum = 1:2
             % First PDs
-            pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,'do_plot',false,'meta',struct('spaceNum',spacenum));
+            pd_params = struct('out_signals',model_names{modelnum},'out_signal_names',unit_guide,'do_plot',false,'meta',struct('spaceNum',spacenum));
             pdTables{spacenum,modelnum} = getTDClassicalPDs(td_tuning{spacenum},pd_params);
             % pdTables{spacenum,modelnum} = getTDPDs(td_tuning{spacenum},pd_params);
 
-            tuning_params = struct('out_signals',model_names{modelnum},'out_signal_names',td(1).S1_unit_guide,...
+            tuning_params = struct('out_signals',model_names{modelnum},'out_signal_names',unit_guide,...
                 'num_bins',num_tuning_bins,'meta',struct('spaceNum',spacenum));
             tuning_curves{spacenum,modelnum} = getTuningCurves(td_tuning{spacenum},tuning_params);
         end
@@ -155,23 +196,8 @@ function results = mwEncoders(td,params)
 
 %% Cross-validate models of neural data
     % Get crossval info
-    crossval_params = struct('model_names',{model_names},'glm_params',{glm_params},'num_folds',num_folds,'num_repeats',num_repeats);
+    crossval_params = struct('model_names',{model_names},'glm_params',{glm_params},'num_folds',num_folds,'num_repeats',num_repeats,'unit_guide',unit_guide);
     [crossEval,crossTuning] = analyzeTRT(td,crossval_params);
-    
-%% Make iris and dna plots
-    % f1 = figure;
-    % f2 = figure;
-    % for modelnum = 1:num_models
-    %     figure(f1)
-    %     subplot(2,ceil(num_models/2),modelnum)
-    %     irisPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
-    %     title(model_names{modelnum})
-
-    %     figure(f2)
-    %     subplot(2,ceil(num_models/2),modelnum)
-    %     dnaPlot(pdTables{1,modelnum}(isTuned,:),pdTables{2,modelnum}(isTuned,:));
-    %     title(model_names{modelnum})
-    % end
 
 %% create return struct
     % for cross validation plots
@@ -184,7 +210,7 @@ function results = mwEncoders(td,params)
     results.td_tuning = td_tuning;
 
     % get names of tuned neurons
-    signalIDs = td(1).S1_unit_guide;
+    signalIDs = unit_guide;
     results.isTuned = pdTables{1,end}.velTuned & pdTables{2,end}.velTuned;
     results.tunedNeurons = signalIDs(results.isTuned,:);
 

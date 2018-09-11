@@ -1,4 +1,4 @@
-function model_titles = getModelColors(model_alias)
+function model_titles = getModelTitles(model_alias)
 % get model titles, given a list of aliases
     if ~iscell(model_alias)
         model_alias = {model_alias};
@@ -18,6 +18,10 @@ function model_titles = getModelColors(model_alias)
             model_titles{modelnum} = 'Joint-based';
         case 'markers'
             model_titles{modelnum} = 'Hand/Elbow-based';
+        case 'opensim_markers'
+            model_titles{modelnum} = 'OpenSim Hand/Elbow-based';
+        case 'ego_markers'
+            model_titles{modelnum} = 'Spherical Hand/Elbow-based';
         end
     end
 

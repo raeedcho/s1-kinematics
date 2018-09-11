@@ -10,14 +10,24 @@ function model_colors = getModelColors(model_alias)
             model_colors(modelnum,:) = [0, 174, 239]/255;
         case 'ext'
             model_colors(modelnum,:) = [247, 148, 30]/255;
+        case 'opensim_ext'
+            model_colors(modelnum,:) = [247, 148, 30]/255;
         case 'ego'
             model_colors(modelnum,:) = [105, 189, 69]/255;
+        case 'opensim_ego'
+            model_colors(modelnum,:) = [105, 189, 69]/255;
         case 'cyl'
+            model_colors(modelnum,:) = [113, 191, 110]/255;
+        case 'opensim_cyl'
             model_colors(modelnum,:) = [113, 191, 110]/255;
         case 'joint'
             model_colors(modelnum,:) = [38, 34, 98]/255;
         case 'markers'
             model_colors(modelnum,:) = [193, 25, 47]/255;
+        case 'opensim_markers'
+            model_colors(modelnum,:) = [179, 44, 224]/255;
+        case 'ego_markers'
+            model_colors(modelnum,:) = [119, 255, 189]/255;
         end
     end
 
