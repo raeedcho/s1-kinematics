@@ -9,8 +9,8 @@
 % INPUTS:
 %   trial_data : the struct
 %   params     : parameter struct
-%       .neural_signals  : which signals to calculate PDs for
-%                           default: 'S1_FR'
+%       .arrayname  : which signals to calculate PDs for
+%                           default: 'S1'
 %       .model_type     :   type of model to fit
 %                           default; 'glm'
 %       .glm_distribution : distribution to use for GLM
@@ -203,6 +203,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     glm_params = {};
     model_names = {};
     num_tuning_bins = 8;
+    unit_guide = [];
     if nargin > 2
         assignParams(who,params);
     end % overwrite parameters
@@ -227,7 +228,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     end
 
     % Evaluate model fits and add to foldEval table
-    foldEval = makeNeuronTableStarter(td_train,struct('out_signal_names',td_train(1).S1_unit_guide));
+    foldEval = makeNeuronTableStarter(td_train,struct('out_signal_names',unit_guide));
     model_eval = cell(1,length(model_names)-1);
     eval_params = glm_info;
     for modelnum = 1:length(model_names)-1
@@ -244,13 +245,13 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
         for modelnum = 1:length(model_names)
             % get tuning weights for each model
             pdParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
-                                    'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
+                                    'out_signal_names',unit_guide,...
                                     'bootForTuning',false,'num_boots',50,'verbose',false,'meta',struct('spaceNum',spacenum));
             temp_pdTable = getTDClassicalPDs(td_test{spacenum},pdParams);
             % temp_pdTable = getTDPDs(td_test{spacenum},pdParams);
 
             tuningParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
-                                    'out_signal_names',td_test{spacenum}(1).S1_unit_guide,...
+                                    'out_signal_names',unit_guide,...
                                     'calc_CIs',false,'num_bins',num_tuning_bins,'meta',struct('spaceNum',spacenum));
             temp_tuning_table = getTuningCurves(td_test{spacenum},tuningParams);
             temp_table = join(temp_pdTable,temp_tuning_table);
