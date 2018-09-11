@@ -30,29 +30,19 @@
 
     % 2c - Example neural predictions for each model
 
-%% Figure 3 - Comparison of modeled tuning curves
-    % 3a - a few example flat tuning curves (models on top of each other) DL under PM
-
-    % 3b - DNA plot for each model/real tuning for each monkey
-
-%% Figure 4 - Summaries
-    % 3c - Summary over neurons: PD shift plots for each model and each monkey
-    % 3d - Summary over monkeys/sessions: Bar chart of variance explained for each model by 1:1 line
-
-%%%%%%%%%%%%%%%%% Supplementary Figures %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Supplementary A - pR2s against each other for muscle vs endpoint
-
-%% Supplementary B - Figure showing why one monkey didn't have as large a change in tuning
-
 %% Set up plotting variables
     datadir = '/home/raeed/Projects/limblab/data-td/MultiWorkspace/Results/Encoding';
     filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
+    % filename = {'Han_20171101_TRT_encodingResults_markersVopensim_run20180904.mat','Chips_20170915_TRT_encodingResults_markersVopensim_run20180904.mat','Lando_20170802_RWTW_encodingResults_markersVopensim_run20180904.mat'};
+    % filename = {'Butter_20180522_TRT_encodingResults_run20180906.mat'};
     num_monks = length(filename);
     err = cell(num_monks,1);
     hyp = cell(num_monks,1);
     p_val = cell(num_monks,1);
 
     model_aliases = {'ext','ego','musc','markers'};
+    % model_aliases = {'joint','musc','markers','opensim_markers'};
+    % model_aliases = {'opensim_ext','opensim_ego','musc','opensim_markers'};
     num_models = length(model_aliases)+1;
     model_titles = getModelTitles(model_aliases);
     model_colors = getModelColors(model_aliases);
@@ -95,15 +85,6 @@
                 ylabel 'Modeled PD Shift'
                 title({sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum});filename{monkeynum}},'interpreter','none')
             end
-        
-        %% Plot out tuning curves
-            % compare PM and DL tuning for each model
-            % for modelnum = 1:num_models
-            %     figure('defaultaxesfontsize',18)
-            %     title(encoderResults.params.model_names{modelnum})
-            %     compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors))
-            %     % compareTuning(tuning_curves(:,modelnum),pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors,'maxFR',1))
-            % end
         
         %% Make histogram plots of PD changes
             figure('defaultaxesfontsize',18)
@@ -148,25 +129,19 @@
         
         %% Plot pR2s against each other
             % setup
+            modelcompare = nchoosek(model_aliases,2);
             figure('defaultaxesfontsize',18)
-            subplot(2,3,1)
-            plotEncoderPR2(encoderResults,'ext','ego')
+            for i = 1:6
+                subplot(2,3,i)
+                plotEncoderPR2(encoderResults,modelcompare{i,1},modelcompare{i,2})
+            end
             subplot(2,3,2)
-            plotEncoderPR2(encoderResults,'ext','markers')
             title(filename{monkeynum},'interpreter','none') % centered title
-            subplot(2,3,3)
-            plotEncoderPR2(encoderResults,'ego','markers')
-            subplot(2,3,4)
-            plotEncoderPR2(encoderResults,'musc','markers')
-            subplot(2,3,5)
-            plotEncoderPR2(encoderResults,'ext','musc')
-            subplot(2,3,6)
-            plotEncoderPR2(encoderResults,'ego','musc')
 
         %% Tuning curve covariances
             true_tuning_idx = contains(encoderResults.params.model_names,'S1');
             % models_to_plot = {'ext','ego','musc','markers'};
-            models_to_plot = {'ext','musc'};
+            models_to_plot = {'ego','ext','markers'};
             tuning_covar = zeros(height(encoderResults.tuning_curves{1,1}),length(models_to_plot));
 
             % start with just plotting out scatter plot of predicted tuning curves
@@ -196,7 +171,6 @@
             figure('defaultaxesfontsize',18)
             plot(tuning_covar','-ok','linewidth',2)
             set(gca,'box','off','tickdir','out','xlim',[0 size(tuning_covar,2)+1])
-
     end
     
 %% Histogram of PD shift for all monkeys
@@ -222,7 +196,8 @@
 %% Plot error on all monkeys
     num_monks = 3;
     correction = 1/100 + 1/4;
-    models_to_plot = {'ext','ego','musc','markers'};
+    % models_to_plot = {'ext','ego','musc','markers'};
+    models_to_plot = model_aliases;
     % x coordinate of individual monkey bars
     monk_x = (2:3:((num_monks-1)*3+2))/10;
     % template for within monkey bars separation
@@ -243,6 +218,9 @@
             hold on
             plot([xval xval],[mean_err(modelnum)-std_err_err(modelnum) mean_err(modelnum)+std_err_err(modelnum)],'k','linewidth',3)
         end
+        % xval = repmat(monk_x(monkeynum)+template_x,length(err{monkeynum}{:,model_idx}),1);
+        % scatter(xval(:),err{monkeynum}{:,model_idx}(:),[],'k','filled')
+        % plot(xval',err{monkeynum}{:,model_idx}','-k','linewidth',1)
     end
     set(gca,'tickdir','out','box','off','xtick',monk_x,...
         'xticklabel',filename,'ytick',[0 1],'ticklabelinterpreter','none')
@@ -254,7 +232,8 @@
 %% Plot pR2 of all monkeys
     num_monks = 3;
     correction = 1/100 + 1/4;
-    models_to_plot = {'ego','ext','musc','markers'};
+    % models_to_plot = {'ego','ext','musc','markers'};
+    models_to_plot = model_aliases;
     % x coordinate of individual monkey bars
     monk_x = (2:3:((num_monks-1)*3+2))/10;
     % template for within monkey bars separation
