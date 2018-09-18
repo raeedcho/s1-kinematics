@@ -6,8 +6,6 @@ function model_colors = getModelColors(model_alias)
     model_colors = zeros(length(model_alias),3);
     for modelnum = 1:length(model_alias)
         switch model_alias{modelnum}
-        case 'musc'
-            model_colors(modelnum,:) = [0, 174, 239]/255;
         case 'ext'
             model_colors(modelnum,:) = [247, 148, 30]/255;
         case 'opensim_ext'
@@ -22,11 +20,13 @@ function model_colors = getModelColors(model_alias)
             model_colors(modelnum,:) = [113, 191, 110]/255;
         case 'joint'
             model_colors(modelnum,:) = [38, 34, 98]/255;
-        case 'markers'
+        case 'musc'
+            model_colors(modelnum,:) = [0, 174, 239]/255;
+        case 'handelbow'
             model_colors(modelnum,:) = [193, 25, 47]/255;
-        case 'opensim_markers'
+        case 'opensim_handelbow'
             model_colors(modelnum,:) = [179, 44, 224]/255;
-        case 'ego_markers'
+        case 'ego_handelbow'
             model_colors(modelnum,:) = [119, 255, 189]/255;
         end
     end

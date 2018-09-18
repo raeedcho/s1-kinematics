@@ -1,8 +1,8 @@
 datadir = '/home/raeed/Projects/limblab/data-td/MultiWorkspace';
-fileprefix = {'Butter_20180522_TRT'};
-savesuffix = '_encodingResults_markersVopensim_run20180904.mat';
+fileprefix = {'Han_20171101_TRT','Chips_20170915_TRT','Lando_20170802_RWTW'};
+savesuffix = '_encodingResults_allModels_run20180912.mat';
 
-model_aliases = {'ext','ego','joint','musc','markers','opensim_markers','ego_markers'};
+model_aliases = {'ext','opensim_ext','ego','opensim_ego','joint','musc','handelbow','opensim_handelbow','ego_handelbow'};
 arrayname = 'S1';
 
 for filenum = 1:length(fileprefix)

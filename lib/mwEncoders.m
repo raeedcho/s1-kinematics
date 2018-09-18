@@ -21,18 +21,11 @@ function results = mwEncoders(td,params)
     num_tuning_bins = 16;
     num_musc_pcs = 5;
     model_type = 'glm';
-    model_aliases = {'ext','ego','musc','markers'};
+    model_aliases = {'ext','ego','musc','handelbow'};
     arrayname = 'S1';
     assignParams(who,params);
     neural_signals = [arrayname '_FR'];
     unit_guide = td(1).([arrayname '_unit_guide']);
-
-    if any(strcmpi(model_aliases,'ego')) && any(strcmpi(model_aliases,'opensim_ego'))
-        warning('Code not set up to handle two versions of ego')
-    end
-    if any(strcmpi(model_aliases,'cyl')) && any(strcmpi(model_aliases,'opensim_cyl'))
-        warning('Code not set up to handle two versions of cyl')
-    end
 
     model_names = [strcat(model_type,'_',model_aliases,'_model') {neural_signals}];
     num_models = length(model_names);
@@ -68,7 +61,9 @@ function results = mwEncoders(td,params)
                                     'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
                                     'out_signals',neural_signals);
         case 'ext'
-            marker_hand_idx = 1:3;
+            markername = 'Marker_1';
+            [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+            assert(all(point_exists),'Hand marker does not exist?')
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'markers',marker_hand_idx;'marker_vel',marker_hand_idx}},...
@@ -81,31 +76,31 @@ function results = mwEncoders(td,params)
                                     'out_signals',neural_signals);
         case 'ego'
             % add in spherical coordinates
-            td = addSphereHand2TD(td);
+            td = addCoordPoint2TD(td,struct('method','markers','coord','sph','point','hand'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
+                                    'in_signals',{{'markers_sph_hand_pos';'markers_sph_hand_vel'}},...
                                     'out_signals',neural_signals);
         case 'opensim_ego'
             % add in spherical coordinates
-            td = addSphereHand2TD(td,'opensim');
+            td = addCoordPoint2TD(td,struct('method','opensim','coord','sph','point','hand'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'sphere_hand_pos';'sphere_hand_vel'}},...
+                                    'in_signals',{{'opensim_sph_hand_pos';'opensim_sph_hand_vel'}},...
                                     'out_signals',neural_signals);
         case 'cyl'
             % add in cylindrical coordinates
-            td = addCylHand2TD(td);
+            td = addCoordPoint2TD(td,struct('method','markers','coord','cyl','point','hand'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'cyl_hand_pos';'cyl_hand_vel'}},...
+                                    'in_signals',{{'markers_cyl_hand_pos';'markers_cyl_hand_vel'}},...
                                     'out_signals',neural_signals);
         case 'opensim_cyl'
             % add in cylindrical coordinates
-            td = addCylHand2TD(td,'opensim');
+            td = addCoordPoint2TD(td,struct('method','opensim','coord','cyl','point','hand'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'cyl_hand_pos';'cyl_hand_vel'}},...
+                                    'in_signals',{{'opensim_cyl_hand_pos';'opensim_cyl_hand_vel'}},...
                                     'out_signals',neural_signals);
         case 'joint'
             opensim_joint_idx = find(contains(td(1).opensim_names,'_ang') | contains(td(1).opensim_names,'_vel'));
@@ -113,10 +108,16 @@ function results = mwEncoders(td,params)
                                     'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'opensim',opensim_joint_idx}},...
                                     'out_signals',neural_signals);
-        case 'markers'
+        case 'handelbow'
             % indices for cartesian hand coordinates
-            marker_hand_idx = 1:3;
-            marker_elbow_idx = 28:30;
+            markername = 'Marker_1';
+            [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+            assert(all(point_exists),'Hand marker does not exist?')
+
+            markername = 'Pronation_Pt1';
+            [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+            assert(all(point_exists),'Elbow marker does not exist?')
+
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'markers',[marker_hand_idx marker_elbow_idx];'marker_vel',[marker_hand_idx marker_elbow_idx]}},...
@@ -129,22 +130,23 @@ function results = mwEncoders(td,params)
                                     'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'markers_pca',1:num_musc_pcs;'marker_vel_pca',1:num_musc_pcs}},...
                                     'out_signals',neural_signals);
-        case 'opensim_markers'
+        case 'opensim_handelbow'
             opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
             opensim_elbow_idx = find(contains(td(1).opensim_names,'_elbowPos') | contains(td(1).opensim_names,'_elbowVel'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'opensim',[opensim_hand_idx opensim_elbow_idx]}},...
                                     'out_signals',neural_signals);
-        case 'ego_markers'
-            % indices for cartesian hand coordinates
-            marker_hand_idx = 1:3;
-            marker_elbow_idx = 28:30;
-            td = addSphereHand2TD(td);
+        case 'ego_handelbow'
+            % transform into new coord system
+            td = addCoordPoint2TD(td,struct('method','markers','coord','sph','point','hand'));
+            td = addCoordPoint2TD(td,struct('method','markers','coord','sph','point','elbow'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'markers',[marker_hand_idx marker_elbow_idx];'marker_vel',[marker_hand_idx marker_elbow_idx]}},...
+                                    'in_signals',{{'markers_sph_hand_pos';'markers_sph_hand_vel';'markers_sph_elbow_pos';'markers_sph_elbow_vel'}},...
                                     'out_signals',neural_signals);
+        otherwise
+            error('Unrecognized model_alias')
         end
     end
 

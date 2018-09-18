@@ -5,43 +5,43 @@ function plotEncoderPR2(encoderResults,x_model,y_model)
     % aliases
     switch(x_model)
     case 'ext'
-        x_model_alias = 'Hand';
+        x_model_alias = 'Extrinsic';
     case 'opensim_ext'
-        x_model_alias = 'Hand';
+        x_model_alias = 'OpenSim Extrinsic';
     case 'ego'
         x_model_alias = 'Egocentric';
     case 'opensim_ego'
-        x_model_alias = 'Egocentric';
+        x_model_alias = 'OpenSim Egocentric';
     case 'musc'
         x_model_alias = 'Muscle';
     case 'cyl'
         x_model_alias = 'Cylindrical Hand';
     case 'joint'
         x_model_alias = 'Joint';
-    case 'markers'
-        x_model_alias = 'Marker';
-    case 'opensim_markers'
-        x_model_alias = 'OpenSim Marker';
+    case 'handelbow'
+        x_model_alias = 'Hand/Elbow';
+    case 'opensim_handelbow'
+        x_model_alias = 'OpenSim Hand/Elbow';
     end
     switch(y_model)
     case 'ext'
-        y_model_alias = 'Hand';
+        y_model_alias = 'Extrinsic';
     case 'opensim_ext'
-        y_model_alias = 'Hand';
+        y_model_alias = 'OpenSim Extrinsic';
     case 'ego'
         y_model_alias = 'Egocentric';
     case 'opensim_ego'
-        y_model_alias = 'Egocentric';
+        y_model_alias = 'OpenSim Egocentric';
     case 'musc'
         y_model_alias = 'Muscle';
     case 'cyl'
         y_model_alias = 'Cylindrical Hand';
     case 'joint'
         y_model_alias = 'Joint';
-    case 'markers'
-        y_model_alias = 'Marker';
-    case 'opensim_markers'
-        y_model_alias = 'OpenSim Marker';
+    case 'handelbow'
+        y_model_alias = 'Hand/Elbow';
+    case 'opensim_handelbow'
+        y_model_alias = 'OpenSim Hand/Elbow';
     end
     
     avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
