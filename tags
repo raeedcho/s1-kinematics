@@ -1,0 +1,199 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+addCoordPoint2TD	lib/TrialData/Tools/addCoordPoint2TD.m	/^function trial_data = addCoordPoint2TD(trial_data,params)$/;"	f
+addCorrelatedNoise	lib/TrialData/Tools/addCorrelatedNoise.m	/^function [td] = addCorrelatedNoise(trial_data,params)$/;"	f
+addFiringRates	lib/TrialData/Tools/addFiringRates.m	/^function td = addFiringRates(trial_data,params)$/;"	f
+addProcessedSignal	lib/TrialData/Tools/addProcessedSignal.m	/^function trial_data = addProcessedSignal(trial_data,params)$/;"	f
+analyzeFold	lib/analyzeTRT.m	/^function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)$/;"	f
+analyzeTRT	lib/analyzeTRT.m	/^function [crossEval, crossTuning] = analyzeTRT(trial_data,params)$/;"	f
+angleDiff	lib/TrialData/util/angleDiff.m	/^function adiff = angleDiff(angle1,angle2,useRad,preserveSign)$/;"	f
+appendTDs	lib/TrialData/Tools/appendTDs.m	/^function combined = appendTDs(varargin)$/;"	f
+assignParams	lib/TrialData/util/assignParams.m	/^function assignParams(opts,params)$/;"	f
+binTD	lib/TrialData/Tools/binTD.m	/^function trial_data = binTD(trial_data,num_bins)$/;"	f
+bin_angles	lib/TrialData/util/bin_angles.m	/^function theta = bin_angles(theta,angle_bin_size)$/;"	f
+bin_events	lib/TrialData/DataProcessing/convertDataToTD.m	/^function binned_events = bin_events(data,t_bin)$/;"	f
+bin_events	lib/TrialData/DataProcessing/parseFileByTrial.m	/^function out = bin_events(trials,event_list,t_bin)$/;"	f
+bin_spikes	lib/TrialData/DataProcessing/convertDataToTD.m	/^function binned_spikes = bin_spikes(units,unit_idx,t_bin)$/;"	f
+bin_spikes	lib/TrialData/DataProcessing/parseFileByTrial.m	/^function [binned_spikes,sg] = bin_spikes(units,unit_idx,t_bin)$/;"	f
+brighten	lib/matlab-linspecer/linspecer.m	/^function varIn = brighten(varIn,varargin) % increase the brightness$/;"	f
+calculateEncoderPDShiftErr	lib/calculateEncoderPDShiftErr.m	/^function err = calculateEncoderPDShiftErr(encoderResults)$/;"	f
+calculatePDShiftTables	lib/calculatePDShiftTables.m	/^function shift_tables = calculatePDShiftTables(encoderResults,model_names)$/;"	f
+cart2pol_wrap	lib/TrialData/Tools/addCoordPoint2TD.m	/^function cyl = cart2pol_wrap(cart)$/;"	f
+cart2sph_wrap	lib/TrialData/Tools/addCoordPoint2TD.m	/^function sph = cart2sph_wrap(cart)$/;"	f
+catTDs	lib/TrialData/Tools/catTDs.m	/^function master_td = catTDs(varargin)$/;"	f
+checkAssumption	lib/circ-toolbox/CircStat/circ_wwtest.m	/^function checkAssumption(rw,n)$/;"	f
+checkUnitGuides	lib/TrialData/util/checkUnitGuides.m	/^function [badUnits, varargout] = checkUnitGuides(varargin)$/;"	f
+check_signals	lib/TrialData/util/subfcn/check_signals.m	/^function signals = check_signals(trial_data,signals)$/;"	f
+circ_ang2rad	lib/circ-toolbox/CircStat/circ_ang2rad.m	/^function alpha = circ_ang2rad(alpha)$/;"	f
+circ_axial	lib/circ-toolbox/CircStat/circ_axial.m	/^function alpha = circ_axial(alpha, p)$/;"	f
+circ_axialmean	lib/circ-toolbox/CircStat/circ_axialmean.m	/^function [r mu] = circ_axialmean(alphas, m, dim)$/;"	f
+circ_clust	lib/circ-toolbox/CircStat/circ_clust.m	/^function [cid, alpha, mu] = circ_clust(alpha, numclust, disp)$/;"	f
+circ_cmtest	lib/circ-toolbox/CircStat/circ_cmtest.m	/^function [pval med P] = circ_cmtest(varargin)$/;"	f
+circ_confmean	lib/circ-toolbox/CircStat/circ_confmean.m	/^function t = circ_confmean(alpha, xi, w, d, dim)$/;"	f
+circ_corrcc	lib/circ-toolbox/CircStat/circ_corrcc.m	/^function [rho pval] = circ_corrcc(alpha1, alpha2)$/;"	f
+circ_corrcl	lib/circ-toolbox/CircStat/circ_corrcl.m	/^function [rho pval] = circ_corrcl(alpha, x)$/;"	f
+circ_dist	lib/circ-toolbox/CircStat/circ_dist.m	/^function r =  circ_dist(x,y)$/;"	f
+circ_dist2	lib/circ-toolbox/CircStat/circ_dist2.m	/^function r =  circ_dist2(x,y)$/;"	f
+circ_hktest	lib/circ-toolbox/CircStat/circ_hktest.m	/^function [pval table] = circ_hktest(alpha, idp, idq, inter, fn)$/;"	f
+circ_iqr	lib/circ-toolbox/CircKSDensity/circ_iqr.m	/^function p = circ_iqr(alpha)$/;"	f
+circ_kappa	lib/circ-toolbox/CircStat/circ_kappa.m	/^function kappa = circ_kappa(alpha,w)$/;"	f
+circ_ksdensity	lib/circ-toolbox/CircKSDensity/circ_ksdensity.m	/^function [pdf, sigma] = circ_ksdensity(T, ti, method, sigma)$/;"	f
+circ_ktest	lib/circ-toolbox/CircStat/circ_ktest.m	/^function [pval, f] = circ_ktest(alpha1, alpha2)$/;"	f
+circ_kuipertest	lib/circ-toolbox/CircStat/circ_kuipertest.m	/^function [pval, k, K] = circ_kuipertest(alpha1, alpha2, res, vis_on)$/;"	f
+circ_kurtosis	lib/circ-toolbox/CircStat/circ_kurtosis.m	/^function [k k0] = circ_kurtosis(alpha, w, dim)$/;"	f
+circ_mean	lib/circ-toolbox/CircStat/circ_mean.m	/^function [mu ul ll] = circ_mean(alpha, w, dim)$/;"	f
+circ_median	lib/circ-toolbox/CircStat/circ_median.m	/^function med = circ_median(alpha,dim)$/;"	f
+circ_medtest	lib/circ-toolbox/CircStat/circ_medtest.m	/^function pval = circ_medtest(alpha,md)$/;"	f
+circ_moment	lib/circ-toolbox/CircStat/circ_moment.m	/^function [mp  rho_p mu_p] = circ_moment(alpha, w, p, cent, dim)$/;"	f
+circ_mtest	lib/circ-toolbox/CircStat/circ_mtest.m	/^function [h mu ul ll] = circ_mtest(alpha, dir, xi, w, d)$/;"	f
+circ_otest	lib/circ-toolbox/CircStat/circ_otest.m	/^function [pval m] = circ_otest(alpha, sz, w)$/;"	f
+circ_plot	lib/circ-toolbox/CircStat/circ_plot.m	/^function a = circ_plot(alpha, format, formats, varargin)$/;"	f
+circ_r	lib/circ-toolbox/CircStat/circ_r.m	/^function r = circ_r(alpha, w, d, dim)$/;"	f
+circ_rad2ang	lib/circ-toolbox/CircStat/circ_rad2ang.m	/^function alpha = circ_rad2ang(alpha)$/;"	f
+circ_raotest	lib/circ-toolbox/CircStat/circ_raotest.m	/^function [p U UC] = circ_raotest(alpha)$/;"	f
+circ_rtest	lib/circ-toolbox/CircStat/circ_rtest.m	/^function [pval z] = circ_rtest(alpha, w, d)$/;"	f
+circ_samplecdf	lib/circ-toolbox/CircStat/circ_samplecdf.m	/^function [phis, cdf, phiplot, cdfplot] = circ_samplecdf(thetas, resolution)$/;"	f
+circ_skewness	lib/circ-toolbox/CircStat/circ_skewness.m	/^function [b b0] = circ_skewness(alpha, w, dim)$/;"	f
+circ_stats	lib/circ-toolbox/CircStat/circ_stats.m	/^function stats = circ_stats(alpha, w, d)$/;"	f
+circ_std	lib/circ-toolbox/CircStat/circ_std.m	/^function [s s0] = circ_std(alpha, w, d, dim)$/;"	f
+circ_symtest	lib/circ-toolbox/CircStat/circ_symtest.m	/^function pval = circ_symtest(alpha)$/;"	f
+circ_var	lib/circ-toolbox/CircStat/circ_var.m	/^function [S s] = circ_var(alpha, w, d, dim)$/;"	f
+circ_vmpar	lib/circ-toolbox/CircStat/circ_vmpar.m	/^function [thetahat kappa] = circ_vmpar(alpha,w,d)$/;"	f
+circ_vmpdf	lib/circ-toolbox/CircStat/circ_vmpdf.m	/^function [p alpha] = circ_vmpdf(alpha, thetahat, kappa)$/;"	f
+circ_vmrnd	lib/circ-toolbox/CircStat/circ_vmrnd.m	/^function alpha = circ_vmrnd(theta, kappa, n)$/;"	f
+circ_vtest	lib/circ-toolbox/CircStat/circ_vtest.m	/^function [pval v] = circ_vtest(alpha, dir, w, d)$/;"	f
+circ_wwtest	lib/circ-toolbox/CircStat/circ_wwtest.m	/^function [pval table] = circ_wwtest(varargin)$/;"	f
+circular_mean	lib/TrialData/util/circular_mean.m	/^function [mu, ul, ll] = circular_mean(alpha, w, dim)$/;"	f
+cluster_rho	lib/TrialData/Analysis/pairwiseCorr.m	/^function sort_idx = cluster_rho(rho)$/;"	f
+cmap2linspecer	lib/matlab-linspecer/linspecer.m	/^function vOut = cmap2linspecer(vIn) % changes the format from a double array to a cell array with the right format$/;"	f
+colorBrew2mat	lib/matlab-linspecer/linspecer.m	/^function varIn = colorBrew2mat(varIn)$/;"	f
+colorm	lib/matlab-linspecer/linspecer.m	/^function cmap = colorm(varargin)$/;"	f
+comparePDClouds	lib/NeuronTable/comparePDClouds.m	/^function comparePDClouds(pdTable1,pdTable2,params,varargin)$/;"	f
+comparePDs	lib/NeuronTable/comparePDs.m	/^function comparePDs(pdTable1,pdTable2,params,varargin)$/;"	f
+compareTuning	lib/NeuronTable/compareTuning.m	/^function compareTuning(curves,pds,params)$/;"	f
+compute_pseudo_R2	lib/TrialData/util/compute_pseudo_R2.m	/^function R2 = compute_pseudo_R2(Y, Yhat, Ymean, distr, Yhat_null)$/;"	f
+compute_r2	lib/TrialData/util/compute_r2.m	/^function r2 = compute_r2(sig1,sig2,which_method)$/;"	f
+compute_rel_pseudo_R2	lib/TrialData/util/compute_rel_pseudo_R2.m	/^function R2 = compute_rel_pseudo_R2(Y, Yhat1, Yhat2)$/;"	f
+compute_vaf	lib/TrialData/util/compute_vaf.m	/^function VAF = compute_vaf(Y,Yhat,Yhat2)$/;"	f
+convBasisFunc	lib/TrialData/Tools/convBasisFunc.m	/^function trial_data = convBasisFunc(trial_data,params)$/;"	f
+convertDataToTD	lib/TrialData/DataProcessing/convertDataToTD.m	/^function [trial_data,td_params,error_flag] = convertDataToTD(varargin)$/;"	f
+coord_test	lib/TrialData/Tools/Tests/coord_test.m	/^function pass = coord_test(trial_data)$/;"	f
+decimate_signals	lib/TrialData/DataProcessing/parseFileByTrial.m	/^function out = decimate_signals(data,var_list,bin_size)$/;"	f
+dim	lib/matlab-linspecer/linspecer.m	/^function varIn = dim(varIn,f)$/;"	f
+dimReduce	lib/TrialData/Tools/dimReduce.m	/^function [trial_data,info_out] = dimReduce(trial_data, params)$/;"	f
+dnaPlot	lib/dnaPlot.m	/^function dnaPlot( PM_pdData, DL_pdData)$/;"	f
+do_the_loading	lib/TrialData/DataProcessing/loadTDfiles.m	/^function [trial_data,extra_outs] = do_the_loading(filename,func_calls)$/;"	f
+dpca	lib/TrialData/util/dpca/dpca.m	/^function [W, V, whichMarg] = dpca(Xfull, numComps, varargin)$/;"	f
+dpca_explainedVariance	lib/TrialData/util/dpca/dpca_explainedVariance.m	/^function explVar = dpca_explainedVariance(Xfull, W, V, varargin)$/;"	f
+dpca_marginalize	lib/TrialData/util/dpca/dpca_marginalize.m	/^function [YY, margNums] = dpca_marginalize(X, varargin)$/;"	f
+dpca_plot	lib/TrialData/util/dpca/dpca_plot.m	/^function dpca_plot(Xfull, W, V, plotFunction, varargin)$/;"	f
+dpca_plot_default	lib/TrialData/util/dpca/dpca_plot_td.m	/^function dpca_plot_default(data, time, yspan, explVar, compNum, events, signif, marg)$/;"	f
+dupeAndShift	lib/TrialData/Tools/dupeAndShift.m	/^function trial_data = dupeAndShift(trial_data,varargin)$/;"	f
+estimateDimensionality	lib/TrialData/Analysis/estimateDimensionality.m	/^function [dims,noise_eigen_prctile] = estimateDimensionality(trial_data,params)$/;"	f
+evalModel	lib/TrialData/Analysis/evalModel.m	/^function metric = evalModel(trial_data,params)$/;"	f
+extract_ns5_spikes	lib/TrialData/util/subfcn/extract_ns5_spikes.m	/^function out = extract_ns5_spikes(file_data,params)$/;"	f
+fastfa	lib/TrialData/util/gpfa/fastfa.m	/^function [estParams, LL] = fastfa(X, zDim, varargin)$/;"	f
+formatSubplot	lib/circ-toolbox/CircStat/examples/formatSubplot.m	/^function formatSubplot(handle,varargin)$/;"	f
+getCommonUnits	lib/TrialData/Tools/getCommonUnits.m	/^function trial_data = getCommonUnits(trial_data)$/;"	f
+getCurvesFromCrossval	lib/getCurvesFromCrossval.m	/^function curveTable = getCurvesFromCrossval(crossvalTable)$/;"	f
+getDPCA	lib/TrialData/Analysis/getDPCA.m	/^function [trial_data, dPCA_info] = getDPCA(trial_data,varargin)$/;"	f
+getDifferential	lib/TrialData/Tools/getDifferential.m	/^function trial_data = getDifferential(trial_data,params)$/;"	f
+getGitInfo	lib/TrialData/util/getGitInfo.m	/^function gitInfo=getGitInfo()$/;"	f
+getLearningMetrics	lib/TrialData/Analysis/getLearningMetrics.m	/^function metric = getLearningMetrics(trial_data,params)$/;"	f
+getModel	lib/TrialData/Analysis/getModel.m	/^function [trial_data,model_info] = getModel(trial_data,params)$/;"	f
+getModelColors	lib/getModelColors.m	/^function model_colors = getModelColors(model_alias)$/;"	f
+getModelTitles	lib/getModelTitles.m	/^function model_titles = getModelTitles(model_alias)$/;"	f
+getMoveOnsetAndPeak	lib/TrialData/Tools/getMoveOnsetAndPeak.m	/^function trial_data = getMoveOnsetAndPeak(trial_data,params)$/;"	f
+getNTidx	lib/NeuronTable/getNTidx.m	/^function [return_idx, neuronTable] = getNTidx(neuronTable,varargin)$/;"	f
+getNeuronTuning	lib/TrialData/Analysis/getNeuronTuning.m	/^function [tcs,fr,covar] = getNeuronTuning(trial_data,which_method,params)$/;"	f
+getNoiseCovar	lib/TrialData/Tools/getNoiseCovar.m	/^function [noise_covar,td] = getNoiseCovar(trial_data,params)$/;"	f
+getPCA	lib/TrialData/Analysis/getPCA.m	/^function [trial_data,pca_info] = getPCA(trial_data, params)$/;"	f
+getPDsFromWeights	lib/NeuronTable/getPDsFromWeights.m	/^function pdTable = getPDsFromWeights(weightTable)$/;"	f
+getPotentSpace	lib/TrialData/Analysis/getPotentSpace.m	/^function [trial_data,pca_info] = getPotentSpace(trial_data,params)$/;"	f
+getRWMovements	lib/TrialData/Tools/getRWMovements.m	/^function rw_td = getRWMovements(trial_data,params)$/;"	f
+getRWTargetDirection	lib/TrialData/Tools/getRWTargetDirection.m	/^function [ trial_data ] = getRWTargetDirection(trial_data, params  )$/;"	f
+getSeq_td	lib/TrialData/util/gpfa/getSeq_td.m	/^function seq = getSeq_td(dat, binWidth, varargin)$/;"	f
+getSig	lib/TrialData/Tools/getSig.m	/^function out = getSig(trial_data,signals)$/;"	f
+getSpeed	lib/TrialData/Tools/getSpeed.m	/^function trial_data = getSpeed(trial_data,params)$/;"	f
+getTDClassicalPDs	lib/NeuronTable/getTDClassicalPDs.m	/^function pdTable = getTDClassicalPDs(trial_data,params)$/;"	f
+getTDModelWeights	lib/NeuronTable/getTDModelWeights.m	/^function weightTable = getTDModelWeights(trial_data,params)$/;"	f
+getTDPDs	lib/NeuronTable/getTDPDs.m	/^function pdTable = getTDPDs(trial_data,params)$/;"	f
+getTDfields	lib/TrialData/Tools/getTDfields.m	/^function fn = getTDfields(trial_data,which_type,cont_var_ref)$/;"	f
+getTDidx	lib/TrialData/Tools/getTDidx.m	/^function [return_idx, trial_data] = getTDidx(trial_data,varargin)$/;"	f
+getTargetDirection	lib/TrialData/Tools/getTargetDirection.m	/^function trial_data = getTargetDirection(trial_data, params)$/;"	f
+getTuningCurves	lib/NeuronTable/getTuningCurves.m	/^function [curves] = getTuningCurves(trial_data,params)$/;"	f
+getTuningHull	lib/NeuronTable/getTuningHull.m	/^function tuningHulls = getTuningHull(tuningTable,params)$/;"	f
+getVal	lib/circ-toolbox/CircStat/circ_raotest.m	/^function [p UC] = getVal(N, U)$/;"	f
+get_alpha_potent	lib/get_alpha_potent.m	/^function [alpha_potent,alpha_null,del_Jinv] = get_alpha_potent(trial_data)$/;"	f
+get_master_dist	lib/TrialData/Tools/removeBadNeurons.m	/^function prctile_dist = get_master_dist()$/;"	f
+get_metric	lib/TrialData/Analysis/evalModel.m	/^function metric = get_metric(varargin)$/;"	f
+get_vars	lib/TrialData/util/subfcn/get_vars.m	/^function x = get_vars(trial_data, signals)$/;"	f
+gpfaEngine_td	lib/TrialData/util/gpfa/gpfaEngine_td.m	/^function result = gpfaEngine_td(seqTrain, seqTest, fname, varargin)$/;"	f
+initSignalStruct	lib/TrialData/DataProcessing/initSignalStruct.m	/^function signal_info = initSignalStruct(varargin)$/;"	f
+interpomap	lib/matlab-linspecer/linspecer.m	/^function cmap = interpomap(n,cmapp)$/;"	f
+irisPlot	lib/NeuronTable/irisPlot.m	/^function [tunedNeurons] = irisPlot( PM_pdData, DL_pdData)$/;"	f
+kuiperlookup	lib/circ-toolbox/CircStat/circ_kuipertest.m	/^function [p K] = kuiperlookup(n, k)$/;"	f
+linspecer	lib/matlab-linspecer/linspecer.m	/^function lineStyles=linspecer(N,varargin)$/;"	f
+loadTDfiles	lib/TrialData/DataProcessing/loadTDfiles.m	/^function [master_td, params] = loadTDfiles(filenames,varargin)$/;"	f
+loop_me_twice	lib/TrialData/Analysis/getDPCA.m	/^function valCat = loop_me_twice(dim,valCat,val,valIdx,depthCount,varargin)$/;"	f
+loops_all_the_way_down	lib/TrialData/Analysis/getDPCA.m	/^function val = loops_all_the_way_down(val,varargin)$/;"	f
+loops_for_fr	lib/TrialData/Analysis/getDPCA.m	/^function [val,valIdx] = loops_for_fr(depthCount,valIdx,val,trial_data,signals,max_trial_num,varargin)$/;"	f
+makeBasis_PostSpike	lib/TrialData/util/makeBasis_PostSpike.m	/^function [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht0)$/;"	f
+makeNeuronTableStarter	lib/NeuronTable/makeNeuronTableStarter.m	/^function neuronTable = makeNeuronTableStarter(trial_data,params)$/;"	f
+minusPi2Pi	lib/TrialData/util/minusPi2Pi.m	/^function out = minusPi2Pi(in)$/;"	f
+moving_average	lib/TrialData/util/moving_average.m	/^function data_mvavg = moving_average(data,bins)$/;"	f
+mwDecoders	lib/mwDecoders.m	/^function results = mwDecoders(td,params)$/;"	f
+mwEncoders	lib/mwEncoders.m	/^function results = mwEncoders(td,params)$/;"	f
+nanmmean	lib/TrialData/util/dpca/dpca_marginalize.m	/^function Y = nanmmean(X, dimlist)$/;"	f
+neuralTraj_td	lib/TrialData/util/gpfa/neuralTraj_td.m	/^function result = neuralTraj_td(runIdx, dat, directory, varargin)$/;"	f
+neuronAverage	lib/NeuronTable/neuronAverage.m	/^function [avgTable,cond_idx] = neuronAverage(neuronTable, keycols)$/;"	f
+openNEV_td	lib/TrialData/util/openNEV_td.m	/^function varargout = openNEV_td(varargin)$/;"	f
+openNSx_td	lib/TrialData/util/openNSx_td.m	/^function varargout = openNSx_td(varargin)$/;"	f
+orthogonalize	lib/TrialData/util/orthogonalize.m	/^function [Xorth, Lorth, TT] = orthogonalize(X, L)$/;"	f
+pairwiseCorr	lib/TrialData/Analysis/pairwiseCorr.m	/^function [rho,sort_idx] = pairwiseCorr(trial_data,params)$/;"	f
+parseFileByTrial	lib/TrialData/DataProcessing/parseFileByTrial.m	/^function [trial_data,td_params] = parseFileByTrial(data,params)$/;"	f
+parseFileByTrial_cds	lib/TrialData/DataProcessing/parseFileByTrial.m	/^function [trial_data,td_params] = parseFileByTrial_cds(cds,params)$/;"	f
+parseVarArgs	lib/circ-toolbox/CircStat/examples/parseVarArgs.m	/^function params = parseVarArgs(params,varargin)$/;"	f
+plot3D_td	lib/TrialData/util/gpfa/plot3D_td.m	/^function plot3D_td(seq, xspec, varargin)$/;"	f
+plotColor	lib/circ-toolbox/CircStat/circ_clust.m	/^function plotColor(x, y, c, varargin)$/;"	f
+plotEncoderPR2	lib/plotEncoderPR2.m	/^function plotEncoderPR2(encoderResults,x_model,y_model)$/;"	f
+plotFlatTuning	lib/NeuronTable/plotFlatTuning.m	/^function plotFlatTuning(pdData,curve,maxRadius,color,linspec, move_corrIn)$/;"	f
+plotMWTuningCloud	lib/plotMWTuningCloud.m	/^function plotMWTuningCloud(tuningHull,neuron_idx)$/;"	f
+plotMWTuningSurfaces	lib/plotMWTuningSurfaces.m	/^function plotMWTuningSurfaces(td_test,pdTables,neuron_idx,model_aliases)$/;"	f
+plotTRTTrials	lib/plotTRTTrials.m	/^function plotTRTTrials(trial_data,params)$/;"	f
+plotTuning	lib/NeuronTable/plotTuning.m	/^function plotTuning(pdData,curve,maxRadius,color,linspec, move_corrIn)$/;"	f
+plotWeightClouds	lib/NeuronTable/plotWeightClouds.m	/^function plotWeightClouds(tuningTable,params,varargin)$/;"	f
+postprocess	lib/TrialData/util/gpfa/postprocess.m	/^function [estParams, seqTrain, seqTest] = postprocess(ws, varargin)$/;"	f
+processInput	lib/circ-toolbox/CircStat/circ_cmtest.m	/^function [alpha, idx] = processInput(varargin)$/;"	f
+processInput	lib/circ-toolbox/CircStat/circ_wwtest.m	/^function [alpha, idx, w] = processInput(varargin)$/;"	f
+processNEV	lib/TrialData/DataProcessing/processNEV.m	/^function out = processNEV(filename,signal_info)$/;"	f
+processNSx	lib/TrialData/DataProcessing/processNSx.m	/^function out = processNSx(filename,signal_info)$/;"	f
+process_emg	lib/TrialData/DataProcessing/convertDataToTD.m	/^function binned_emg = process_emg(data,params)$/;"	f
+removeBadNeurons	lib/TrialData/Tools/removeBadNeurons.m	/^function [trial_data,bad_units] = removeBadNeurons(trial_data,params)$/;"	f
+removeBadTrials	lib/TrialData/Tools/removeBadTrials.m	/^function [trial_data,bad_trials] = removeBadTrials(trial_data,params)$/;"	f
+remove_spike_artifacts	lib/TrialData/util/remove_spike_artifacts.m	/^function unit_structure = remove_spike_artifacts(varargin)$/;"	f
+reorderTDfields	lib/TrialData/Tools/reorderTDfields.m	/^function trial_data = reorderTDfields(trial_data)$/;"	f
+resample_signals	lib/TrialData/DataProcessing/parseFileByTrial.m	/^function out = resample_signals(data,var_list,bin_size,start_time,end_time)$/;"	f
+runGPFA	lib/TrialData/Analysis/runGPFA.m	/^function [trial_data, gpfa_out] = runGPFA(trial_data, params)$/;"	f
+run_func	lib/TrialData/DataProcessing/loadTDfiles.m	/^function [trial_data,out_params] = run_func(trial_data,funcCall)$/;"	f
+smoothSignals	lib/TrialData/Tools/smoothSignals.m	/^function trial_data = smoothSignals(trial_data,params)$/;"	f
+smooth_data	lib/TrialData/util/smooth_data.m	/^function data_smooth = smooth_data(data,dt,kernel_SD)$/;"	f
+softNormalize	lib/TrialData/Tools/softNormalize.m	/^function trial_data = softNormalize(trial_data,params)$/;"	f
+splitTD	lib/TrialData/Tools/splitTD.m	/^function td_s = splitTD(trial_data,params)$/;"	f
+sqrtTransform	lib/TrialData/Tools/sqrtTransform.m	/^function trial_data = sqrtTransform(trial_data,signals)$/;"	f
+stattestPDShiftErr	lib/stattestPDShiftErr.m	/^function [h,p] = stattestPDShiftErr(err,modelcompare,tails,num_repeats,num_folds)$/;"	f
+stretchSignals	lib/TrialData/Tools/stretchSignals.m	/^function trial_data = stretchSignals(trial_data,params)$/;"	f
+stripSpikeSorting	lib/TrialData/Tools/stripSpikeSorting.m	/^function trial_data = stripSpikeSorting(trial_data)$/;"	f
+subsets	lib/TrialData/util/dpca/dpca_marginalize.m	/^function S = subsets(X)$/;"	f
+subtractConditionMean	lib/TrialData/Tools/subtractConditionMean.m	/^function trial_data = subtractConditionMean(trial_data,params)$/;"	f
+trialAverage	lib/TrialData/Tools/trialAverage.m	/^function [avg_data,cond_idx] = trialAverage(trial_data, conditions, params)$/;"	f
+trimTD	lib/TrialData/Tools/trimTD.m	/^function trial_data = trimTD(trial_data,varargin)$/;"	f
+trim_time	lib/TrialData/DataProcessing/convertDataToTD.m	/^function trial_data = trim_time(trial_data)$/;"	f
+twoStageEngine_td	lib/TrialData/util/gpfa/twoStageEngine_td.m	/^function result = twoStageEngine_td(seqTrain, seqTest, fname, varargin)$/;"	f
+visData	lib/TrialData/Plotting/visData.m	/^function [ ] = visData( trial_data, params )$/;"	f
+whiteFade	lib/matlab-linspecer/linspecer.m	/^function cmap = whiteFade(varargin)$/;"	f
+zscoreSignals	lib/TrialData/Tools/zscoreSignals.m	/^function trial_data = zscoreSignals(trial_data,params)$/;"	f
