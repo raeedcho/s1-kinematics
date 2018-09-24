@@ -31,7 +31,7 @@
     % 2c - Example neural predictions for each model
 
 %% Set up plotting variables
-    datadir = '/home/raeed/Projects/limblab/data-td/MultiWorkspace/Results/Encoding';
+    datadir = '/home/raeed/Wiki/Projects/limblab/multiworkspace/data/Results/Encoding';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     filename = {'Han_20171101_TRT_encodingResults_allModels_run20180912.mat','Chips_20170915_TRT_encodingResults_allModels_run20180912.mat','Lando_20170802_RWTW_encodingResults_allModels_run20180912.mat'};
     % filename = {'Han_20171101_TRT_encodingResults_markersVopensim_run20180904.mat','Chips_20170915_TRT_encodingResults_markersVopensim_run20180904.mat','Lando_20170802_RWTW_encodingResults_markersVopensim_run20180904.mat'};
