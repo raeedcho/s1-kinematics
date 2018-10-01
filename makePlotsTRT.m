@@ -33,15 +33,16 @@
 %% Set up plotting variables
     datadir = '/home/raeed/Wiki/Projects/limblab/multiworkspace/data/Results/Encoding';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
-    filename = {'Han_20171101_TRT_encodingResults_allModels_run20180912.mat','Chips_20170915_TRT_encodingResults_allModels_run20180912.mat','Lando_20170802_RWTW_encodingResults_allModels_run20180912.mat'};
+    % filename = {'Han_20171101_TRT_encodingResults_allModels_run20180912.mat','Chips_20170915_TRT_encodingResults_allModels_run20180912.mat','Lando_20170802_RWTW_encodingResults_allModels_run20180912.mat'};
     % filename = {'Han_20171101_TRT_encodingResults_markersVopensim_run20180904.mat','Chips_20170915_TRT_encodingResults_markersVopensim_run20180904.mat','Lando_20170802_RWTW_encodingResults_markersVopensim_run20180904.mat'};
+    filename = {'Han_20171101_TRT_encodingResults_9MuscPCs_run20180924.mat','Chips_20170915_TRT_encodingResults_9MuscPCs_run20180924.mat','Lando_20170802_RWTW_encodingResults_9MuscPCs_run20180924.mat'};
     % filename = {'Butter_20180522_TRT_encodingResults_run20180906.mat'};
     num_monks = length(filename);
     err = cell(num_monks,1);
     hyp = cell(num_monks,1);
     p_val = cell(num_monks,1);
 
-    model_aliases = {'ext','opensim_ext','ego','opensim_ego','joint','musc','handelbow','opensim_handelbow','ego_handelbow'};
+    model_aliases = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
     % model_aliases = {'joint','musc','markers','opensim_markers'};
     % model_aliases = {'opensim_ext','opensim_ego','musc','opensim_markers'};
     num_models = length(model_aliases)+1;
@@ -197,7 +198,7 @@
 %% Plot error on all monkeys
     num_monks = 3;
     correction = 1/100 + 1/4;
-    models_to_plot = {'ext','ego','joint','musc','handelbow','opensim_handelbow','ego_handelbow'};
+    models_to_plot = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
     % models_to_plot = model_aliases;
     % x coordinate of individual monkey bars
     monk_x = (2:3:((num_monks-1)*3+2))/10;
