@@ -33,35 +33,43 @@
 %% Set up plotting variables
     datadir = '/home/raeed/Wiki/Projects/limblab/multiworkspace/data/Results/Encoding';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
-    % filename = {'Han_20171101_TRT_encodingResults_allModels_run20180912.mat','Chips_20170915_TRT_encodingResults_allModels_run20180912.mat','Lando_20170802_RWTW_encodingResults_allModels_run20180912.mat'};
+    filename = {'Han_20171101_TRT_encodingResults_allModels_run20180912.mat','Chips_20170915_TRT_encodingResults_allModels_run20180912.mat','Lando_20170802_RWTW_encodingResults_allModels_run20180912.mat'};
     % filename = {'Han_20171101_TRT_encodingResults_markersVopensim_run20180904.mat','Chips_20170915_TRT_encodingResults_markersVopensim_run20180904.mat','Lando_20170802_RWTW_encodingResults_markersVopensim_run20180904.mat'};
-    filename = {'Han_20171101_TRT_encodingResults_9MuscPCs_run20180924.mat','Chips_20170915_TRT_encodingResults_9MuscPCs_run20180924.mat','Lando_20170802_RWTW_encodingResults_9MuscPCs_run20180924.mat'};
+    % filename = {'Han_20171101_TRT_encodingResults_9MuscPCs_run20180924.mat','Chips_20170915_TRT_encodingResults_9MuscPCs_run20180924.mat','Lando_20170802_RWTW_encodingResults_9MuscPCs_run20180924.mat'};
+    % filename = {'Butter_TRT_20180522_GoodMotionTracking_encodingResults_5MuscPCs_run20181019.mat'};
     % filename = {'Butter_20180522_TRT_encodingResults_run20180906.mat'};
     num_monks = length(filename);
     err = cell(num_monks,1);
     hyp = cell(num_monks,1);
     p_val = cell(num_monks,1);
 
-    model_aliases = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
-    % model_aliases = {'joint','musc','markers','opensim_markers'};
-    % model_aliases = {'opensim_ext','opensim_ego','musc','opensim_markers'};
-    num_models = length(model_aliases)+1;
-    model_titles = getModelTitles(model_aliases);
-    model_colors = getModelColors(model_aliases);
     % colors for pm, dl conditions
     cond_colors = [0.6,0.5,0.7;...
         1,0,0];
 
-%% Loop over all monkeys for encoder figures and errors
-    for monkeynum = 1:num_monks
-        clear encoderResults
+    monkey_colors = [186, 20, 130;...
+        32, 140, 142;...
+        21, 119, 132]/255;
 
-        % load data
-        load(fullfile(datadir,filename{monkeynum}))
+%% Loop over all monkeys for encoder figures and errors
+    model_aliases = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
+    % model_aliases = {'joint','musc','markers','opensim_markers'};
+    % model_aliases = {'opensim_ext','opensim_ego','musc','opensim_markers'};
+    % model_aliases = {'musc','handelbow'};
+    % model_aliases = {'musc','opensim_markers'};
+    num_models = length(model_aliases)+1;
+    model_titles = getModelTitles(model_aliases);
+    model_colors = getModelColors(model_aliases);
+
+    for monkeynum = 1:num_monks
+
+        %% load data
+            clear encoderResults
+            load(fullfile(datadir,filename{monkeynum}))
     
         %% Plot PD shifts
             % get shifts from weights
-            shift_tables = calculatePDShiftTables(encoderResults);
+            shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',model_aliases,'_model') {'CN_FR'}]);
         
             mean_shifts = cell(num_models,1);
             for modelnum = 1:num_models
@@ -70,8 +78,8 @@
 
             figure('defaultaxesfontsize',18)
             for modelnum = 1:num_models-1
-                [~,real_shifts] = getNTidx(mean_shifts{end},'signalID',encoderResults.tunedNeurons);
-                [~,model_shifts] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
+                [~,real_shifts] = getNTidx(shift_tables{end},'signalID',encoderResults.tunedNeurons);
+                [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
         
                 subplot(1,num_models-1,modelnum)
                 plot([-180 180],[0 0],'-k','linewidth',2)
@@ -194,6 +202,64 @@
         title(filename(monkeynum),'interpreter','none')
     end
     xlabel 'Change in Preferred Direction'
+
+%% PD shifts over all monkeys
+    model_aliases = {'ext','ego','handelbow','musc'};
+    num_models = length(model_aliases)+1;
+    model_titles = getModelTitles(model_aliases);
+    model_colors = getModelColors(model_aliases);
+    monkey_shifts = cell(num_monks,num_models);
+    num_monks = 2;
+    for monkeynum = 1:num_monks
+        % load data
+        load(fullfile(datadir,filename{monkeynum}))
+
+        shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',model_aliases,'_model') 'S1_FR']);
+        mean_shifts = cell(num_models,1);
+        for modelnum = 1:num_models
+            mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
+            [~,monkey_shifts{monkeynum,modelnum}] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
+        end
+    end
+
+    allMonkeyShifts_real = vertcat(monkey_shifts{:,end});
+
+    hists = figure('defaultaxesfontsize',18);
+    subplot(1,num_models,1)
+    h = histogram(gca,allMonkeyShifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+    set(h,'edgecolor','k')
+    set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 30],'ytick',[0 15 30],'view',[-90 90])
+
+    scatters = figure('defaultaxesfontsize',18);
+    for modelnum = 1:num_models-1
+        allMonkeyShifts_model = vertcat(monkey_shifts{:,modelnum});
+
+        figure(scatters)
+        subplot(1,num_models-1,modelnum)
+        % hsh = scatterhist(180/pi*allMonkeyShifts_model.velPD,180/pi*allMonkeyShifts_real.velPD,...
+        %     'markersize',50,'group',allMonkeyShifts_real.monkey,'location','NorthWest',...
+        %     'direction','out','plotgroup','off','color',monkey_colors,'marker','...',...
+        %     'nbins',[15 15],'style','stairs');
+        % hsh(3).Children.EdgeColor = [0 0 0];
+        % hsh(2).Children.EdgeColor = model_colors(modelnum,:);
+        scatter(180/pi*allMonkeyShifts_model.velPD,180/pi*allMonkeyShifts_real.velPD,50,model_colors(modelnum,:),'filled')
+        hold on
+        plot([-180 180],[0 0],'-k','linewidth',2)
+        plot([0 0],[-180 180],'-k','linewidth',2)
+        plot([-180 180],[-180 180],'--k','linewidth',2)
+        axis equal
+        set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
+        % labels
+        xlabel 'Modeled PD Shift'
+        ylabel 'Actual PD Shift'
+        title(sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum}),'interpreter','none')
+
+        figure(hists)
+        subplot(1,num_models,modelnum+1)
+        h = histogram(gca,allMonkeyShifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+        set(h,'edgecolor',model_colors(modelnum,:))
+        set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 30],'ytick',[0 15 30],'view',[-90 90])
+    end
 
 %% Plot error on all monkeys
     num_monks = 3;
