@@ -52,7 +52,6 @@
         21, 119, 132]/255;
 
 %% Loop over all monkeys for encoder figures and errors
-    model_aliases = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
     models_to_plot = {'ext','ego','handelbow','musc'};
     % model_aliases = {'joint','musc','markers','opensim_markers'};
     % model_aliases = {'opensim_ext','opensim_ego','musc','opensim_markers'};
@@ -150,35 +149,35 @@
         %% Tuning curve covariances
             true_tuning_idx = contains(encoderResults.params.model_names,'S1');
             % models_to_plot = {'ext','ego','musc','markers'};
-            tuning_covar = zeros(height(encoderResults.tuning_curves{1,1}),length(models_to_plot));
+            tuning_corr = zeros(height(encoderResults.tuning_curves{1,1}),length(models_to_plot));
 
             % start with just plotting out scatter plot of predicted tuning curves
-            % figure('defaultaxesfontsize',18)
-            % plot([0 0],[0 60],'-k','linewidth',3)
-            % hold on
-            % plot([0 60],[0 0],'-k','linewidth',3)
-            % plot([0 60],[0 60],'--k','linewidth',2)
-            % set(gca,'box','off','tickdir','out')
-            % axis equal
+            figure('defaultaxesfontsize',18)
+            plot([0 0],[0 60],'-k','linewidth',3)
+            hold on
+            plot([0 60],[0 0],'-k','linewidth',3)
+            plot([0 60],[0 60],'--k','linewidth',2)
+            set(gca,'box','off','tickdir','out')
+            axis equal
             for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
                 num_bins = encoderResults.params.num_tuning_bins;
                 tuning_curve_mat = zeros(num_bins*2,length(models_to_plot)+1);
                 for spacenum = 1:2
                     tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),end) = encoderResults.tuning_curves{spacenum,true_tuning_idx}(neuron_idx,:).velCurve';
                     for modelnum = 1:length(models_to_plot)
-                        tuning_idx = contains(encoderResults.params.model_names,models_to_plot{modelnum});
+                        tuning_idx = strcmp(encoderResults.params.model_aliases,models_to_plot{modelnum});
                         tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),modelnum) = encoderResults.tuning_curves{spacenum,tuning_idx}(neuron_idx,:).velCurve';
-                        % scatter(true_curve,tuning_curve_mat(:,modelnum),[],getModelColors(models_to_plot{modelnum}),'filled')
+                        scatter(tuning_curve_mat(:,end),tuning_curve_mat(:,modelnum),[],getModelColors(models_to_plot{modelnum}),'filled')
                     end
                 end
                 covar_mat = nancov(tuning_curve_mat);
-                tuning_covar(neuron_idx,:) = covar_mat(end,1:end-1)/covar_mat(end,end);
-                % tuning_covar(neuron_idx,:) = covar_mat(end,1:end-1);
+                tuning_corr(neuron_idx,:) = covar_mat(end,1:end-1)/covar_mat(end,end);
+                % tuning_corr(neuron_idx,:) = covar_mat(end,1:end-1);
             end
             % quick plot
             figure('defaultaxesfontsize',18)
-            plot(tuning_covar','-ok','linewidth',2)
-            set(gca,'box','off','tickdir','out','xlim',[0 size(tuning_covar,2)+1])
+            plot(tuning_corr','-ok','linewidth',2)
+            set(gca,'box','off','tickdir','out','xlim',[0 size(tuning_corr,2)+1])
     end
     
 %% Histogram of PD shift for all monkeys
@@ -339,6 +338,95 @@
     ylim([0 0.6])
     % xlim([0 1])
     ylabel('Model pseudo-R^2')
+
+%% Tuning curve shape comparison
+    num_monks = 3;
+    correction = 1/100 + 1/4;
+    models_to_plot = {'ego','ext','musc','handelbow'};
+    % x coordinate of individual monkey bars
+    monk_x = (2:3:((num_monks-1)*3+2))/10;
+    % template for within monkey bars separation
+    template_x = linspace(-0.5,0.5,length(models_to_plot))/10;
+    model_spacing = mode(diff(template_x));
+
+    num_boots = 1;
+
+
+    % find correlations between modeled tuning curves and true tuning curve
+    figure('defaultaxesfontsize',18)
+    for monkeynum = 1:num_monks
+        % load data
+        load(fullfile(datadir,filename{monkeynum}))
+
+        % setup...
+        num_bins = encoderResults.params.num_tuning_bins;
+        num_neurons = height(encoderResults.tuning_curves{1,1});
+
+        true_tuning_idx = contains(encoderResults.params.model_names,'S1');
+        % models_to_plot = {'ext','ego','musc','markers'};
+        tuning_corr = zeros(height(encoderResults.tuning_curves{1,1}),length(models_to_plot));
+
+        % arrange tuning curves for each neuron
+        for neuron_idx = 1:num_neurons
+            tuning_curve_mat = zeros(num_bins*2,length(models_to_plot)+1);
+            for spacenum = 1:2
+                tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),end) = encoderResults.tuning_curves{spacenum,true_tuning_idx}(neuron_idx,:).velCurve';
+                for modelnum = 1:length(models_to_plot)
+                    tuning_idx = strcmp(encoderResults.params.model_aliases,models_to_plot{modelnum});
+                    tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),modelnum) = encoderResults.tuning_curves{spacenum,tuning_idx}(neuron_idx,:).velCurve';
+                end
+            end
+            covar_mat = nancov(tuning_curve_mat);
+            tuning_corr(neuron_idx,:) = covar_mat(end,1:end-1)./sqrt(diag(covar_mat(1:end-1,1:end-1))'*covar_mat(end,end));
+            % tuning_corr(neuron_idx,:) = covar_mat(end,1:end-1);
+        end
+
+        % bootstrap correlation values for actual tuning curves
+        boot_tuning_corr = zeros(num_neurons,num_boots);
+        boot_tic = tic;
+        for bootnum = 1:num_boots
+            [~,boot_idx1] = datasample(encoderResults.td_tuning{1},length(encoderResults.td_tuning{1}));
+            [~,boot_idx2] = datasample(encoderResults.td_tuning{1},length(encoderResults.td_tuning{1}));
+
+            % arrange tuning curves for each neuron
+            for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
+                % split into two estimates of tuning curve for each workspace
+                % then concatenate tuning curves of two workspaces for two overall tuning curve
+                temp_curves = zeros(num_bins*2,2);
+                for spacenum = 1:2
+                    tuning_params = struct('out_signals',{{'S1_FR',neuron_idx}},'out_signal_names',1,...
+                        'num_bins',num_bins,'meta',struct('spaceNum',spacenum));
+                    temp_table1 = getTuningCurves(encoderResults.td_tuning{spacenum}(boot_idx1),tuning_params);
+                    temp_table2 = getTuningCurves(encoderResults.td_tuning{spacenum}(boot_idx2),tuning_params);
+                    temp_curves(num_bins*(spacenum-1)+(1:num_bins),1) = temp_table1.velCurve';
+                    temp_curves(num_bins*(spacenum-1)+(1:num_bins),2) = temp_table2.velCurve';
+                end
+
+                temp_covar = nancov(temp_curves);
+                boot_tuning_corr(neuron_idx,bootnum) = temp_covar(1,2)/sqrt(prod(nanvar(temp_curves)));
+            end
+            % tuning_corr(neuron_idx,:) = covar_mat(end,1:end-1);
+            fprintf('Bootstrap %d done at time %f\n',bootnum,toc(boot_tic))
+        end
+
+        % make the plot
+        mean_corr = mean(tuning_corr);
+        for modelnum = 1:length(models_to_plot)
+            xval = monk_x(monkeynum) + template_x(modelnum);
+            bar(xval,mean_corr(modelnum),model_spacing,'facecolor',getModelColors(models_to_plot{modelnum}),'edgecolor','none')
+            hold on
+            % plot([xval xval],[mean_err(modelnum)-std_err_err(modelnum) mean_err(modelnum)+std_err_err(modelnum)],'k','linewidth',3)
+        end
+        xval = repmat(monk_x(monkeynum)+template_x,length(tuning_corr),1);
+        scatter(xval(:),tuning_corr(:),[],'k','filled')
+        plot(xval',tuning_corr','-k','linewidth',1)
+    end
+    set(gca,'tickdir','out','box','off','xtick',monk_x,...
+        'xticklabel',filename,'ticklabelinterpreter','none')
+    % axis equal
+    % ylim([0 0.6])
+    % xlim([0 1])
+    ylabel('Modeled tuning curve correlations')
 
 %% Get example tuning curves for all models
     for monkeynum = 1%:num_monks
