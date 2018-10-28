@@ -1,8 +1,15 @@
-function err = calculateEncoderPDShiftErr(encoderResults)
+function err = calculateEncoderPDShiftErr(encoderResults,params)
 % Calculates error in predicting preferred direction shifts for given models
     model_aliases = encoderResults.params.model_aliases;
+    neural_signal = 'S1_FR';
+
+    if nargin>1
+        assert(isstruct(params),'params should be a struct!')
+        assignParams(who,params);
+    end
+
     err_arr = zeros(100,length(model_aliases));
-    shift_tables = calculatePDShiftTables(encoderResults);
+    shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',model_aliases,'_model') neural_signal]);
     for modelnum = 1:length(model_aliases)
         [~,real_shifts] = getNTidx(shift_tables{end},'signalID',encoderResults.tunedNeurons);
         [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
