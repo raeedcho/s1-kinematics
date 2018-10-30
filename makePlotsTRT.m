@@ -451,13 +451,16 @@
     end
 
 %% Decoder stuff
-    datadir = '/home/raeed/Projects/limblab/data-td/FullWS/Results/Decoding';
-    filename = {'Han_20160325_RWhold_decodingResults_run20180813.mat','Chips_20151211_RW_decodingResults_run20180813.mat'};
+    % datadir = '/home/raeed/data/limblab/data-td/FullWS/Results/Decoding';
+    % filename = {'Han_20160325_RWhold_decodingResults_run20180813.mat','Chips_20151211_RW_decodingResults_run20181029.mat'};
+    datadir = '/home/raeed/data/limblab/data-td/ActPas/Results/Decoding';
+    filename = {'Han_20170203_COactpas_decodingResults_run20181029.mat','Chips_20170913_COactpas_decodingResults_run20181029.mat'};
     num_monks = length(filename);
     barwidth = 0.4;
-    markerstyle = '^o';
+    markerstyle = 'oo';
     barfig = figure('defaultaxesfontsize',18);
     scatfig = figure('defaultaxesfontsize',18);
+    monk_colors = linspecer(2);
     for monkeynum = 1:num_monks
         %% load data
         load(fullfile(datadir,filename{monkeynum}))
@@ -473,16 +476,30 @@
         plot([1 3 2 4]*0.20+x_offset, [decoderResults.hand_decoder_vaf decoderResults.neur_decoder_vaf]','.k','markersize',30)
 
         figure(scatfig)
-        subplot(1,2,1)
-        scatter(decoderResults.hand_decoder_vaf(:,1),decoderResults.neur_decoder_vaf(:,1),markerstyle(monkeynum),'filled')
+        % subplot(1,2,1)
+        scatter(...
+            decoderResults.hand_decoder_vaf(:,1),...
+            decoderResults.neur_decoder_vaf(:,1),...
+            75,...
+            monk_colors(monkeynum,:),...
+            markerstyle(monkeynum),...
+            'filled')
         hold on
         plot([0 1],[0 1],'--k','linewidth',2)
 
-        subplot(1,2,2)
-        scatter(decoderResults.hand_decoder_vaf(:,2),decoderResults.neur_decoder_vaf(:,2),markerstyle(monkeynum),'filled')
+        % subplot(1,2,2)
+        scatter(...
+            decoderResults.hand_decoder_vaf(:,2),...
+            decoderResults.neur_decoder_vaf(:,2),...
+            75,...
+            monk_colors(monkeynum,:),...
+            markerstyle(monkeynum),...
+            'linewidth',2)
         hold on
         plot([0 1],[0 1],'--k','linewidth',2)
     end
+
+    % make pretty
     figure(barfig)
     xtick = [(1:4)*0.20 1+(1:4)*0.20];
     xticklabel = repmat({'Hand-only pos','Hand+Neuron pos','Hand vel','Hand+Neuron vel'},1,2);
@@ -494,10 +511,11 @@
     title([{'Decoding performance'};filename'],'interpreter','none')
 
     figure(scatfig)
-    subplot(1,2,1)
+    % subplot(1,2,1)
+    % axis equal
+    % subplot(1,2,2)
     axis equal
-    subplot(1,2,2)
-    axis equal
+    set(gca,'box', 'off', 'tickdir', 'out', 'xtick',[0 1],'ytick',[0 1])
 
 %% Extra stuff/in progress...
     %% Plot handle positions
