@@ -1,13 +1,13 @@
 %% Setup
     % Load data
-    datadir = '/home/raeed/Projects/limblab/data-td/MultiWorkspace';
-    load(sprintf('%s/Han_20171101_TD.mat',datadir))
+    datadir = '/home/raeed/data/limblab/data-td/MultiWorkspace';
+    load(sprintf('%s/Han_20171101_TRT_TD.mat',datadir))
 
     % prep trial data by getting only rewards and trimming to only movements
     % first process marker data
     td = trial_data;
     td = smoothSignals(td,struct('signals','markers'));
-    td = getDifferential(td,struct('signal','markers','alias','marker_vel'));
+    td = getDifferential(td,struct('signals','markers','alias','marker_vel'));
 
     % get only rewards
     [~,td] = getTDidx(td,'result','R');
