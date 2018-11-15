@@ -234,7 +234,6 @@ end
 
 function [predVAF,td_test] = evalFold(td_train,td_test,model_params)
 % evaluates predictive capability of model given model params
-
     [~,model_info] = getModel(td_train,model_params);
     
     % predict firing rates for td_test
