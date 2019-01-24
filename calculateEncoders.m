@@ -1,39 +1,92 @@
-datadir = '/home/raeed/Wiki/Projects/limblab/multiworkspace/data';
-fileprefix = {'Han_20171101_TRT','Chips_20170915_TRT','Lando_20170802_RWTW'};
-savesuffix = '_encodingResults_9MuscPCs_run20180924.mat';
+datadir = '/home/raeed/data/td-library';
+fileprefix = {'Chips_20170907_TRT'};
+savedir = '/home/raeed/data/project-data/limblab/s1-kinematics/Results/Encoding';
+savesuffix = '_encodingResults_allModels_run20190124.mat';
 
 model_aliases = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
 arrayname = 'S1';
-num_musc_pcs = 9;
+num_musc_pcs = 5;
+required_signals = {...
+    'pos',...
+	'vel',...
+	'markers',...
+	'joint_ang',...
+	'joint_vel',...
+	'muscle_len',...
+	'muscle_vel',...
+	'opensim_hand_pos',...
+	'opensim_hand_vel',...
+	'opensim_elbow_pos',...
+	'opensim_elbow_vel',...
+    };
 
 for filenum = 1:length(fileprefix)
     clear encoderResults
 
     %% Load data
-    load(fullfile(datadir,[fileprefix{filenum} '_TD.mat']))
+    td = load(fullfile(datadir,[fileprefix{filenum} '_TD.mat']));
 
-    % prep trial data by getting only rewards and trimming to only movements
+    % rename trial_data for ease
+    td = td.trial_data;
+
+    % to save memory, get rid of some continuous signals we don't need
+    cont_fields = getTDfields(td,'cont');
+    unused_fields = cont_fields(~ismember(cont_fields,required_signals));
+    td = rmfield(td,unused_fields);
+
     % first process marker data
-    td = trial_data;
-    [~,td] = getTDidx(td,'result','R');
+    % find times when markers are NaN and replace with zeros temporarily
+    markernans = isnan(td.markers);
+    td.markers(markernans) = 0;
     td = smoothSignals(td,struct('signals','markers'));
+    td.markers(markernans) = NaN;
+
+    % get marker velocity
     td = getDifferential(td,struct('signals','markers','alias','marker_vel'));
     % add firing rates rather than spike counts
     td = addFiringRates(td,struct('array',arrayname));
 
+    % prep trial data by getting only rewards and trimming to only movements
+    % split into trials
+    td = splitTD(...
+        td,...
+        struct(...
+            'split_idx_name','idx_startTime',...
+            'linked_fields',{{...
+                'trialID',...
+                'result',...
+                'spaceNum',...
+                'bumpDir',...
+                }},...
+            'start_name','idx_startTime',...
+            'end_name','idx_endTime'));
+    [~,td] = getTDidx(td,'result','R');
+
     % for active movements
+    % remove trials without a target start (for whatever reason)
+    td(isnan(cat(1,td.idx_targetStartTime))) = [];
     td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
+
+    % remove trials where markers aren't present
+    bad_trial_ctr = 0;
+    for trialnum = 1:length(td)
+        if any(isnan(td(trialnum).markers))
+            bad_trial_ctr = bad_trial_ctr+1;
+            td(trialnum) = [];
+        end
+    end
+    fprintf('Removed %d trials because of missing markers\n',bad_trial_ctr)
 
     % for bumps
     % td = td(~isnan(cat(1,td.idx_bumpTime)));
     % td = trimTD(td,{'idx_bumpTime',0},{'idx_bumpTime',15});
 
     % bin data at 50ms
-    td = binTD(td,5);
+    td = binTD(td,50);
 
     %% Get encoding models
     encoderResults = mwEncoders(td,struct('model_aliases',{model_aliases},'arrayname',arrayname,'num_tuning_bins',16,'num_repeats',20,'num_folds',5));
 
     %% save
-    save(fullfile(datadir,'Results','Encoding',[fileprefix{filenum} savesuffix]),'encoderResults')
+    save(fullfile(savedir,[fileprefix{filenum} savesuffix]),'encoderResults')
 end
