@@ -96,7 +96,7 @@ for filenum = 1:length(fileprefix)
     % remove trials where markers aren't present
     bad_trial_ctr = 0;
     for trialnum = 1:length(td)
-        if any(isnan(td(trialnum).markers))
+        if any(any(isnan(td(trialnum).markers)))
             bad_trial_ctr = bad_trial_ctr+1;
             td(trialnum) = [];
         end
