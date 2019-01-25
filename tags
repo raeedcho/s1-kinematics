@@ -159,6 +159,7 @@ R2	lib/circ-toolbox/CircStat/circ_ktest.m	/^R2 = n2*circ_r(alpha2);$/;"	v
 R_alpha	lib/circ-toolbox/CircStat/examples/example1.m	/^R_alpha = circ_r(alpha_rad);$/;"	v
 R_beta	lib/circ-toolbox/CircStat/examples/example1.m	/^R_beta = circ_r(beta_rad);$/;"	v
 ReadData	lib/TrialData/util/openNSx_td.m	/^        ReadData = inputArgument;$/;"	v
+Readme	lib/loadTDfromCDS/README.md	/^# Readme$/;"	c
 Report	lib/TrialData/util/openNSx_td.m	/^        Report = inputArgument;$/;"	v
 Requirements	lib/NeuronTable/README.md	/^# Requirements$/;"	c
 S	lib/TrialData/td_limblab/td_dpca/dpca_explainedVariance.m	/^    S = size(Xfull,2);$/;"	v
@@ -1673,7 +1674,6 @@ ll	lib/circ-toolbox/CircStat/circ_mean.m	/^  ll = mu - t;$/;"	v
 ll	lib/circ-toolbox/CircStat/circ_mtest.m	/^ll = mu - t;$/;"	v
 lm_bl	lib/TrialData/td_limblab/getLearningMetrics.m	/^                lm_bl = fitlm(sincos,temp_err);$/;"	v
 loadTDfiles	lib/TrialData/DataProcessing/loadTDfiles.m	/^function [master_td, params] = loadTDfiles(filenames,varargin)$/;"	f
-loadTDfromCDS	lib/loadTDfromCDS/README.md	/^# loadTDfromCDS$/;"	c
 loadTDfromCDS	lib/loadTDfromCDS/loadTDfromCDS.m	/^function trial_data = loadTDfromCDS(filename,params)$/;"	f
 load_params	calculateEncoders.m	/^load_params = struct(...$/;"	v
 loop_me_twice	lib/TrialData/Analysis/runDPCA.m	/^function valCat = loop_me_twice(dim,valCat,val,valIdx,depthCount,varargin)$/;"	f
