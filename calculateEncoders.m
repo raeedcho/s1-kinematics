@@ -1,6 +1,13 @@
-datadir = '/home/raeed/data/td-library';
+%% Set up meta info
+if ispc
+    homefolder = 'C:\Users\rhc307';
+else
+    homefolder = '/home/raeed';
+end
+
+datadir = fullfile(homefolder,'data','td-library');
 fileprefix = {'Chips_20170907_TRT'};
-savedir = '/home/raeed/data/project-data/limblab/s1-kinematics/Results/Encoding';
+savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Encoding');
 savesuffix = '_encodingResults_allModels_run20190124.mat';
 
 model_aliases = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
@@ -20,6 +27,7 @@ required_signals = {...
 	'opensim_elbow_vel',...
     };
 
+%% Loop through files
 for filenum = 1:length(fileprefix)
     clear encoderResults
 
@@ -36,14 +44,31 @@ for filenum = 1:length(fileprefix)
 
     % first process marker data
     % find times when markers are NaN and replace with zeros temporarily
-    markernans = isnan(td.markers);
-    td.markers(markernans) = 0;
-    td = smoothSignals(td,struct('signals','markers'));
-    td.markers(markernans) = NaN;
+    for trialnum = 1:length(td)
+        markernans = isnan(td(trialnum).markers);
+        td(trialnum).markers(markernans) = 0;
+        td(trialnum) = smoothSignals(td(trialnum),struct('signals','markers'));
+        td(trialnum).markers(markernans) = NaN;
+        clear markernans
+    end
 
     % get marker velocity
     td = getDifferential(td,struct('signals','markers','alias','marker_vel'));
-    % add firing rates rather than spike counts
+    
+    % remove unsorted neurons
+    unit_ids = td(1).S1_unit_guide;
+    unsorted_units = (unit_ids(:,2)==0);
+    new_unit_guide = unit_ids(~unsorted_units);
+    
+    for trialnum = 1:length(td)
+        td(trialnum).(sprintf('%s_unit_guide',arrayname)) = new_unit_guide;
+        
+        spikes = td(trialnum).(sprintf('%s_spikes',arrayname));
+        spikes(:,unsorted_units) = [];
+        td(trialnum).(sprintf('%s_spikes',arrayname)) = spikes;
+    end
+    
+    % add firing rates in addition to spike counts
     td = addFiringRates(td,struct('array',arrayname));
 
     % prep trial data by getting only rewards and trimming to only movements
@@ -61,6 +86,7 @@ for filenum = 1:length(fileprefix)
             'start_name','idx_startTime',...
             'end_name','idx_endTime'));
     [~,td] = getTDidx(td,'result','R');
+    td = reorderTDfields(td);
 
     % for active movements
     % remove trials without a target start (for whatever reason)
