@@ -10,3 +10,6 @@
 [submodule "lib/matlab-linspecer"]
 	path = lib/matlab-linspecer
 	url = https://github.com/raeedcho/matlab-linspecer.git
+[submodule "lib/loadTDfromCDS"]
+	path = lib/loadTDfromCDS
+	url = https://github.com/raeedcho/loadTDfromCDS.git
