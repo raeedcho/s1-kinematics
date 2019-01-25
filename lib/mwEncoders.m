@@ -35,30 +35,22 @@ function results = mwEncoders(td,params)
     for modelnum = 1:num_models-1
         switch model_aliases{modelnum}
         case 'musc'
-            %% Do PCA on muscle space
+            % Do PCA on muscle space
             % do PCA on muscles, training on only the training set
             % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
             % PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
             %                     'do_plot',true);
-            PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len'))}}, 'do_plot',false);
-            [td_temp,~] = dimReduce(td,PCAparams);
-            % temporary hack to allow us to do PCA on velocity too
-            for i=1:length(td)
-                td(i).opensim_len_pca = td_temp(i).opensim_pca;
-            end
+            PCAparams = struct('signals','muscle_len', 'do_plot',false);
+            [td,~] = dimReduce(td,PCAparams);
             % get velocity PCA
             % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
             % PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
             %                     'do_plot',true);
-            PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel'))}}, 'do_plot',false);
-            [td_temp,~] = dimReduce(td,PCAparams_vel);
-            % temporary hack to allow us to save into something useful
-            for i=1:length(td)
-                td(i).opensim_muscVel_pca = td_temp(i).opensim_pca;
-            end
+            PCAparams_vel = struct('signals','muscle_vel', 'do_plot',false);
+            [td,~] = dimReduce(td,PCAparams_vel);
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'opensim_len_pca',1:num_musc_pcs;'opensim_muscVel_pca',1:num_musc_pcs}},...
+                                    'in_signals',{{'muscle_len_pca',1:num_musc_pcs;'muscle_vel_pca',1:num_musc_pcs}},...
                                     'out_signals',neural_signals);
         case 'ext'
             markername = 'Marker_1';
@@ -69,10 +61,9 @@ function results = mwEncoders(td,params)
                                     'in_signals',{{'markers',marker_hand_idx;'marker_vel',marker_hand_idx}},...
                                     'out_signals',neural_signals);
         case 'opensim_ext'
-            opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'opensim',opensim_hand_idx}},...
+                                    'in_signals','opensim_hand_pos',...
                                     'out_signals',neural_signals);
         case 'ego'
             % add in spherical coordinates
@@ -83,6 +74,7 @@ function results = mwEncoders(td,params)
                                     'out_signals',neural_signals);
         case 'opensim_ego'
             % add in spherical coordinates
+            error('Opensim_ego model not compatible with new trial_data structure yet')
             td = addCoordPoint2TD(td,struct('method','opensim','coord','sph','point','hand'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
@@ -97,16 +89,16 @@ function results = mwEncoders(td,params)
                                     'out_signals',neural_signals);
         case 'opensim_cyl'
             % add in cylindrical coordinates
+            error('Opensim_cyl model not compatible with new trial_data structure yet')
             td = addCoordPoint2TD(td,struct('method','opensim','coord','cyl','point','hand'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'opensim_cyl_hand_pos';'opensim_cyl_hand_vel'}},...
                                     'out_signals',neural_signals);
         case 'joint'
-            opensim_joint_idx = find(contains(td(1).opensim_names,'_ang') | contains(td(1).opensim_names,'_vel'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'opensim',opensim_joint_idx}},...
+                                    'in_signals',{{'joint_ang';'joint_vel'}},...
                                     'out_signals',neural_signals);
         case 'handelbow'
             % indices for cartesian hand coordinates
@@ -131,11 +123,9 @@ function results = mwEncoders(td,params)
                                     'in_signals',{{'markers_pca',1:num_musc_pcs;'marker_vel_pca',1:num_musc_pcs}},...
                                     'out_signals',neural_signals);
         case 'opensim_handelbow'
-            opensim_hand_idx = find(contains(td(1).opensim_names,'_handPos') | contains(td(1).opensim_names,'_handVel'));
-            opensim_elbow_idx = find(contains(td(1).opensim_names,'_elbowPos') | contains(td(1).opensim_names,'_elbowVel'));
             glm_params{modelnum} = struct('model_type',model_type,...
                                     'model_name',[model_aliases{modelnum} '_model'],...
-                                    'in_signals',{{'opensim',[opensim_hand_idx opensim_elbow_idx]}},...
+                                    'in_signals',{{'opensim_hand_pos';'opensim_hand_vel';'opensim_elbow_pos';'opensim_elbow_vel'}},...
                                     'out_signals',neural_signals);
         case 'ego_handelbow'
             % transform into new coord system
