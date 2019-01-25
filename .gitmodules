@@ -13,3 +13,6 @@
 [submodule "lib/loadTDfromCDS"]
 	path = lib/loadTDfromCDS
 	url = https://github.com/raeedcho/loadTDfromCDS.git
+[submodule "lib/ClassyDataAnalysis"]
+	path = lib/ClassyDataAnalysis
+	url = https://github.com/limblab/ClassyDataAnalysis.git
