@@ -58,7 +58,7 @@ for filenum = 1:length(fileprefix)
     % remove unsorted neurons
     unit_ids = td(1).S1_unit_guide;
     unsorted_units = (unit_ids(:,2)==0);
-    new_unit_guide = unit_ids(~unsorted_units);
+    new_unit_guide = unit_ids(~unsorted_units,:);
     
     for trialnum = 1:length(td)
         td(trialnum).(sprintf('%s_unit_guide',arrayname)) = new_unit_guide;
