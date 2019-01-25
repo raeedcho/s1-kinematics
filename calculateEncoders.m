@@ -104,14 +104,14 @@ for filenum = 1:length(fileprefix)
     td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
 
     % remove trials where markers aren't present
-    bad_trial_ctr = 0;
+    bad_trial = false(length(td),1);
     for trialnum = 1:length(td)
         if any(any(isnan(td(trialnum).markers)))
-            bad_trial_ctr = bad_trial_ctr+1;
-            td(trialnum) = [];
+            bad_trial(trialnum) = true;
         end
     end
-    fprintf('Removed %d trials because of missing markers\n',bad_trial_ctr)
+    td(bad_trial) = [];
+    fprintf('Removed %d trials because of missing markers\n',sum(bad_trial))
 
     % for bumps
     % td = td(~isnan(cat(1,td.idx_bumpTime)));
