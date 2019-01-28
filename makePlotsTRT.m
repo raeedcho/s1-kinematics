@@ -23,40 +23,31 @@
     % Switch to classical PDs?
     % 1c - example directional rasters and tuning curves?
 
-%% Figure 2 - Analysis block diagrams
-    % 2a - Block diagram of three different models
-
-    % 2b - Breaking up the data into training and testing sets
-
-    % 2c - Example neural predictions for each model
-
 %% Set up plotting variables
-    datadir = '/home/raeed/Wiki/Projects/limblab/multiworkspace/data/Results/Encoding';
+    datadir = '/home/raeed/data/project-data/limblab/s1-kinematics/Results/Encoding';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
-    filename = {'Han_20171101_TRT_encodingResults_allModels_run20180912.mat','Chips_20170915_TRT_encodingResults_allModels_run20180912.mat','Lando_20170802_RWTW_encodingResults_allModels_run20180912.mat'};
-    % filename = {'Han_20171101_TRT_encodingResults_markersVopensim_run20180904.mat','Chips_20170915_TRT_encodingResults_markersVopensim_run20180904.mat','Lando_20170802_RWTW_encodingResults_markersVopensim_run20180904.mat'};
-    % filename = {'Han_20171101_TRT_encodingResults_9MuscPCs_run20180924.mat','Chips_20170915_TRT_encodingResults_9MuscPCs_run20180924.mat','Lando_20170802_RWTW_encodingResults_9MuscPCs_run20180924.mat'};
-    % filename = {'Butter_TRT_20180522_GoodMotionTracking_encodingResults_5MuscPCs_run20181019.mat'};
-    % filename = {'Butter_20180522_TRT_encodingResults_run20180906.mat'};
+    files = dir(fullfile(datadir,'*encodingResults_allModels_run20190127.mat'));
+    filename = horzcat({files.name});
+
+    monkey_names = {'Chips','Han','Lando'};
+
     num_monks = length(filename);
     err = cell(num_monks,1);
     hyp = cell(num_monks,1);
     p_val = cell(num_monks,1);
 
     % colors for pm, dl conditions
-    cond_colors = [0.6,0.5,0.7;...
-        1,0,0];
+    cond_colors = [...
+        231,138,195;...
+        166,216,84]/255;
 
-    monkey_colors = [186, 20, 130;...
-        32, 140, 142;...
-        21, 119, 132]/255;
+    session_colors = [...
+        102,194,165;...
+        252,141,98;...
+        141,160,203]/255;
 
 %% Loop over all monkeys for encoder figures and errors
     models_to_plot = {'ext','ego','handelbow','musc'};
-    % model_aliases = {'joint','musc','markers','opensim_markers'};
-    % model_aliases = {'opensim_ext','opensim_ego','musc','opensim_markers'};
-    % model_aliases = {'musc','handelbow'};
-    % model_aliases = {'musc','opensim_markers'};
     % num_model_plots = length(models_to_plot);
     % model_titles = getModelTitles(models_to_plot);
     % model_colors = getModelColors(models_to_plot);
@@ -181,6 +172,8 @@
     end
     
 %% Histogram of PD shift for all monkeys
+    models_to_plot = {'ext','ego','handelbow','musc'};
+    num_models = length(models_to_plot);
     figure('defaultaxesfontsize',18)
     for monkeynum = 1:num_monks
         % load data
@@ -192,7 +185,8 @@
             mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
         end
 
-        subplot(num_monks,1,monkeynum)
+        % subplot(num_monks,1,monkeynum)
+        figure
         h = histogram(gca,mean_shifts{end}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
         set(h,'edgecolor','k')
         set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
@@ -201,45 +195,81 @@
     xlabel 'Change in Preferred Direction'
 
 %% PD shifts over all monkeys
-    models_to_plot = {'ext','ego','handelbow','musc'};
+    models_to_plot = {'ext','ego','musc','handelbow'};
     num_model_plots = length(models_to_plot);
     model_titles = getModelTitles(models_to_plot);
     model_colors = getModelColors(models_to_plot);
-    monkey_shifts = cell(num_monks,num_model_plots);
-    num_monks = 2;
-    for monkeynum = 1:num_monks
+    file_shifts = cell(length(filename),num_model_plots); % shift tables for each model in each file
+    for filenum = 1:length(filename)
         % load data
-        load(fullfile(datadir,filename{monkeynum}))
+        load(fullfile(datadir,filename{filenum}))
 
         shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',models_to_plot,'_model') 'S1_FR']);
         mean_shifts = cell(num_model_plots,1);
         for modelnum = 1:num_model_plots+1
             mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
-            [~,monkey_shifts{monkeynum,modelnum}] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
+            [~,file_shifts{filenum,modelnum}] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
         end
     end
 
-    allMonkeyShifts_real = vertcat(monkey_shifts{:,end});
+    allFileShifts_real = vertcat(file_shifts{:,end});
 
+    % Make histograms
     hists = figure('defaultaxesfontsize',18);
-    subplot(1,num_model_plots+1,1)
-    h = histogram(gca,allMonkeyShifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
-    set(h,'edgecolor','k')
-    set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 30],'ytick',[0 15 30],'view',[-90 90])
+    for monkeynum = 1:length(monkey_names)
+        % Set subplot of figure
+        subplot(length(monkey_names),num_model_plots+1,(monkeynum-1)*(num_model_plots+1)+1)
+        
+        % categorize file
+        [~,monkey_shifts] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum});
 
+        % split by session
+        session_dates = unique(monkey_shifts.date);
+        for sessionnum = 1:length(session_dates)
+            [~,session_shifts] = getNTidx(monkey_shifts,'date',session_dates{sessionnum});
+            h = histogram(gca,session_shifts.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+            set(h,'edgecolor',session_colors(sessionnum,:))
+            hold on
+        end
+        set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
+        ylabel(monkey_names{monkeynum})
+        if monkeynum == 1
+            title('Actual PD Shift')
+        end
+
+        for modelnum = 1:num_model_plots
+            % Set subplot of figure
+            subplot(length(monkey_names),num_model_plots+1,(monkeynum-1)*(num_model_plots+1)+modelnum+1)
+
+            allFileShifts_model = vertcat(file_shifts{:,modelnum});
+
+            for sessionnum = 1:length(session_dates)
+                [~,session_shifts] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+                h = histogram(gca,session_shifts.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+                set(h,'edgecolor',session_colors(sessionnum,:))
+                hold on
+            end
+            set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
+            if monkeynum == 1
+                title(sprintf('%s modeled PD shift',model_titles{modelnum}))
+            end
+        end
+    end
+
+    % make scatter plots
     scatters = figure('defaultaxesfontsize',18);
     for modelnum = 1:num_model_plots
-        allMonkeyShifts_model = vertcat(monkey_shifts{:,modelnum});
+        allFileShifts_model = vertcat(file_shifts{:,modelnum});
 
         figure(scatters)
         subplot(1,num_model_plots,modelnum)
-        % hsh = scatterhist(180/pi*allMonkeyShifts_model.velPD,180/pi*allMonkeyShifts_real.velPD,...
-        %     'markersize',50,'group',allMonkeyShifts_real.monkey,'location','NorthWest',...
+        % hsh = scatterhist(180/pi*allFileShifts_model.velPD,180/pi*allFileShifts_real.velPD,...
+        %     'markersize',50,'group',allFileShifts_real.monkey,'location','NorthWest',...
         %     'direction','out','plotgroup','off','color',monkey_colors,'marker','...',...
         %     'nbins',[15 15],'style','stairs');
         % hsh(3).Children.EdgeColor = [0 0 0];
         % hsh(2).Children.EdgeColor = model_colors(modelnum,:);
-        scatter(180/pi*allMonkeyShifts_model.velPD,180/pi*allMonkeyShifts_real.velPD,50,model_colors(modelnum,:),'filled')
+        scatter(180/pi*allFileShifts_model.velPD,180/pi*allFileShifts_real.velPD,50,model_colors(modelnum,:),'filled')
         hold on
         plot([-180 180],[0 0],'-k','linewidth',2)
         plot([0 0],[-180 180],'-k','linewidth',2)
@@ -250,19 +280,13 @@
         xlabel 'Modeled PD Shift'
         ylabel 'Actual PD Shift'
         title(sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum}),'interpreter','none')
-
-        figure(hists)
-        subplot(1,num_model_plots+1,modelnum+1)
-        h = histogram(gca,allMonkeyShifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
-        set(h,'edgecolor',model_colors(modelnum,:))
-        set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 30],'ytick',[0 15 30],'view',[-90 90])
     end
 
 %% Plot PD shift error on all monkeys
-    num_monks = 3;
+    num_monks = length(filename);
     correction = 1/100 + 1/4;
-    % models_to_plot = {'ext','ego','joint','musc','handelbow'};
-    models_to_plot = encoderResults.params.model_aliases;
+    models_to_plot = {'ext','ego','musc','handelbow'};
+    % models_to_plot = encoderResults.params.model_aliases;
     model_colors = getModelColors(models_to_plot);
     % models_to_plot = model_aliases;
     % x coordinate of individual monkey bars
@@ -300,10 +324,9 @@
     ylabel('Error of model')
 
 %% Plot pR2 of all monkeys
-    num_monks = 3;
+    num_monks = length(filename);
     % correction = 1/100 + 1/4;
-    % models_to_plot = {'ego','ext','musc','markers'};
-    models_to_plot = model_aliases;
+    models_to_plot = {'ego','ext','musc','handelbow'};
     % x coordinate of individual monkey bars
     monk_x = (2:3:((num_monks-1)*3+2))/10;
     % template for within monkey bars separation
@@ -344,9 +367,9 @@
     ylabel('Model pseudo-R^2')
 
 %% Tuning curve shape comparison
-    num_monks = 3;
+    num_monks = length(filename);
     correction = 1/100 + 1/4;
-    models_to_plot = {'ego','ext','joint','musc','handelbow'};
+    models_to_plot = {'ego','ext','musc','handelbow'};
     % x coordinate of individual monkey bars
     monk_x = (2:3:((num_monks-1)*3+2))/10;
     % template for within monkey bars separation
@@ -354,7 +377,6 @@
     model_spacing = mode(diff(template_x));
 
     num_boots = 1;
-
 
     % find correlations between modeled tuning curves and true tuning curve
     figure('defaultaxesfontsize',18)
@@ -429,7 +451,7 @@
         'xticklabel',filename,'ticklabelinterpreter','none')
     % axis equal
     % ylim([0 0.6])
-    xlim([0 1])
+    % xlim([0 1])
     ylabel('Modeled tuning curve correlations')
 
 %% Get example tuning curves for all models
