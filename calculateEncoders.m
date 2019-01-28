@@ -5,42 +5,25 @@ else
     homefolder = '/home/raeed';
 end
 
-datadir = fullfile(homefolder,'data','td-library');
-fileprefix = {'Chips_20170907_TRT'};
+datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','td-library');
+file_info = dir(fullfile(datadir,'*TRT*'));
+filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Encoding');
-savesuffix = '_encodingResults_allModels_run20190124.mat';
+savesuffix = '_encodingResults_allModels_run20190127.mat';
 
 model_aliases = {'ext','ego','joint','musc','handelbow','ego_handelbow'};
 arrayname = 'S1';
 num_musc_pcs = 5;
-required_signals = {...
-    'pos',...
-	'vel',...
-	'markers',...
-	'joint_ang',...
-	'joint_vel',...
-	'muscle_len',...
-	'muscle_vel',...
-	'opensim_hand_pos',...
-	'opensim_hand_vel',...
-	'opensim_elbow_pos',...
-	'opensim_elbow_vel',...
-    };
 
 %% Loop through files
-for filenum = 1:length(fileprefix)
+for filenum = 1:length(filenames)
     clear encoderResults
 
     %% Load data
-    td = load(fullfile(datadir,[fileprefix{filenum} '_TD.mat']));
+    td = load(fullfile(datadir,[filenames{filenum}]));
 
     % rename trial_data for ease
     td = td.trial_data;
-
-    % to save memory, get rid of some continuous signals we don't need
-    cont_fields = getTDfields(td,'cont');
-    unused_fields = cont_fields(~ismember(cont_fields,required_signals));
-    td = rmfield(td,unused_fields);
 
     % first process marker data
     % find times when markers are NaN and replace with zeros temporarily
@@ -108,11 +91,11 @@ for filenum = 1:length(fileprefix)
     % td = trimTD(td,{'idx_bumpTime',0},{'idx_bumpTime',15});
 
     % bin data at 50ms
-    td = binTD(td,50);
+    td = binTD(td,0.05/td(1).bin_size);
 
     %% Get encoding models
     encoderResults = mwEncoders(td,struct('model_aliases',{model_aliases},'arrayname',arrayname,'num_tuning_bins',16,'num_repeats',20,'num_folds',5));
 
     %% save
-    save(fullfile(savedir,[fileprefix{filenum} savesuffix]),'encoderResults')
+    save(fullfile(savedir,strrep(filenames{filenum},'_TD.mat',savesuffix)),'encoderResults')
 end
