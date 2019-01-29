@@ -170,29 +170,6 @@
             plot(tuning_corr','-ok','linewidth',2)
             set(gca,'box','off','tickdir','out','xlim',[0 size(tuning_corr,2)+1])
     end
-    
-%% Histogram of PD shift for all monkeys
-    models_to_plot = {'ext','ego','handelbow','musc'};
-    num_models = length(models_to_plot);
-    figure('defaultaxesfontsize',18)
-    for monkeynum = 1:num_monks
-        % load data
-        load(fullfile(datadir,filename{monkeynum}))
-
-        shift_tables = calculatePDShiftTables(encoderResults);
-        mean_shifts = cell(num_models,1);
-        for modelnum = 1:num_models
-            mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
-        end
-
-        % subplot(num_monks,1,monkeynum)
-        figure
-        h = histogram(gca,mean_shifts{end}.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
-        set(h,'edgecolor','k')
-        set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 20],'ytick',[0 20])
-        title(filename(monkeynum),'interpreter','none')
-    end
-    xlabel 'Change in Preferred Direction'
 
 %% PD shifts over all monkeys
     models_to_plot = {'ext','ego','musc','handelbow'};
