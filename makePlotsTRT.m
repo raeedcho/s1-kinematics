@@ -47,7 +47,7 @@
         141,160,203]/255;
 
 %% Loop over all monkeys for encoder figures and errors
-    models_to_plot = {'ext','ego','handelbow','musc'};
+    % models_to_plot = {'ext','ego','handelbow','musc'};
     % num_model_plots = length(models_to_plot);
     % model_titles = getModelTitles(models_to_plot);
     % model_colors = getModelColors(models_to_plot);
@@ -173,17 +173,16 @@
 
 %% PD shifts over all monkeys
     models_to_plot = {'ext','ego','musc','handelbow'};
-    num_model_plots = length(models_to_plot);
     model_titles = getModelTitles(models_to_plot);
-    model_colors = getModelColors(models_to_plot);
-    file_shifts = cell(length(filename),num_model_plots); % shift tables for each model in each file
+    % model_colors = getModelColors(models_to_plot);
+    file_shifts = cell(length(filename),length(models_to_plot)); % shift tables for each model in each file
     for filenum = 1:length(filename)
         % load data
         load(fullfile(datadir,filename{filenum}))
 
         shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',models_to_plot,'_model') 'S1_FR']);
-        mean_shifts = cell(num_model_plots,1);
-        for modelnum = 1:num_model_plots+1
+        mean_shifts = cell(length(models_to_plot),1);
+        for modelnum = 1:length(models_to_plot)+1
             mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},contains(shift_tables{modelnum}.Properties.VariableDescriptions,'meta'));
             [~,file_shifts{filenum,modelnum}] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
         end
