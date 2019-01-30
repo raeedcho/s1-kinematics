@@ -190,73 +190,167 @@
 
     allFileShifts_real = vertcat(file_shifts{:,end});
 
-    % Make histograms
+    % Make histograms and scatters
     hists = figure('defaultaxesfontsize',18);
-    for monkeynum = 1:length(monkey_names)
-        % Set subplot of figure
-        subplot(length(monkey_names),num_model_plots+1,(monkeynum-1)*(num_model_plots+1)+1)
-        
-        % categorize file
-        [~,monkey_shifts] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum});
-
-        % split by session
-        session_dates = unique(monkey_shifts.date);
-        for sessionnum = 1:length(session_dates)
-            [~,session_shifts] = getNTidx(monkey_shifts,'date',session_dates{sessionnum});
-            h = histogram(gca,session_shifts.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
-            set(h,'edgecolor',session_colors(sessionnum,:))
-            hold on
-        end
-        set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
-        ylabel(monkey_names{monkeynum})
-        if monkeynum == 1
-            title('Actual PD Shift')
-        end
-
-        for modelnum = 1:num_model_plots
-            % Set subplot of figure
-            subplot(length(monkey_names),num_model_plots+1,(monkeynum-1)*(num_model_plots+1)+modelnum+1)
-
-            allFileShifts_model = vertcat(file_shifts{:,modelnum});
-
-            for sessionnum = 1:length(session_dates)
-                [~,session_shifts] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
-                h = histogram(gca,session_shifts.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
-                set(h,'edgecolor',session_colors(sessionnum,:))
-                hold on
-            end
-            set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
-            if monkeynum == 1
-                title(sprintf('%s modeled PD shift',model_titles{modelnum}))
-            end
-        end
-    end
-
-    % make scatter plots
+    total_hists = figure('defaultaxesfontsize',18);
     scatters = figure('defaultaxesfontsize',18);
-    for modelnum = 1:num_model_plots
-        allFileShifts_model = vertcat(file_shifts{:,modelnum});
+    for monkeynum = 1:length(monkey_names)
+        % get monkey specific session dates
+        [~,monkey_shifts_real] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum});
+        session_dates = unique(monkey_shifts_real.date);
 
-        figure(scatters)
-        subplot(1,num_model_plots,modelnum)
-        % hsh = scatterhist(180/pi*allFileShifts_model.velPD,180/pi*allFileShifts_real.velPD,...
-        %     'markersize',50,'group',allFileShifts_real.monkey,'location','NorthWest',...
-        %     'direction','out','plotgroup','off','color',monkey_colors,'marker','...',...
-        %     'nbins',[15 15],'style','stairs');
-        % hsh(3).Children.EdgeColor = [0 0 0];
-        % hsh(2).Children.EdgeColor = model_colors(modelnum,:);
-        scatter(180/pi*allFileShifts_model.velPD,180/pi*allFileShifts_real.velPD,50,model_colors(modelnum,:),'filled')
-        hold on
-        plot([-180 180],[0 0],'-k','linewidth',2)
-        plot([0 0],[-180 180],'-k','linewidth',2)
-        plot([-180 180],[-180 180],'--k','linewidth',2)
-        axis equal
-        set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
-        % labels
-        xlabel 'Modeled PD Shift'
-        ylabel 'Actual PD Shift'
-        title(sprintf('%s model PD shift vs Actual PD shift',model_titles{modelnum}),'interpreter','none')
+        % make histogram combining sessions
+            % first figure out ylim
+            % ylim_high = 10*floor(height(monkey_shifts_real)/20);
+            ylim_high = 40;
+            % actual PD shift histogram
+            figure(total_hists)
+            subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
+            h = histogram(gca,monkey_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
+            set(h,'facecolor','k','edgecolor','none')
+            subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
+            set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
+            ylabel(monkey_names{monkeynum})
+            if monkeynum == 1
+                title('Actual PD Shift')
+            end
+            for modelnum = 1:length(models_to_plot)
+                allFileShifts_model = vertcat(file_shifts{:,modelnum});
+                [~,monkey_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum});
+
+                % modeled PD shift histogram
+                subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
+                h = histogram(gca,monkey_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
+                set(h,'facecolor','k','edgecolor','none')
+                subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
+                set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
+                if monkeynum == 1
+                    title(sprintf('%s modeled PD shift',model_titles{modelnum}))
+                end
+            end
+
+        % make plots separating sessions
+            for sessionnum = 1:length(session_dates)
+                % get real shifts for this session
+                [~,session_shifts_real] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+                % first the real PD shift histogram
+                figure(hists)
+                subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
+                h = histogram(gca,session_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
+                set(h,'facecolor',session_colors(sessionnum,:),'edgecolor','none')
+                hold on
+
+                % now the models
+                for modelnum = 1:length(models_to_plot)
+                    % get the modeled shifts for this session
+                    allFileShifts_model = vertcat(file_shifts{:,modelnum});
+                    [~,session_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+                    % modeled PD shift histogram
+                    figure(hists)
+                    subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
+                    h = histogram(gca,session_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
+                    set(h,'facecolor',session_colors(sessionnum,:),'edgecolor','none')
+                    hold on
+
+                    % scatter plots
+                    figure(scatters)
+                    subplot(length(monkey_names),length(models_to_plot),(monkeynum-1)*(length(models_to_plot))+modelnum)
+                    % hsh = scatterhist(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,...
+                    %     'markersize',50,'group',allFileShifts_real.monkey,'location','NorthWest',...
+                    %     'direction','out','plotgroup','off','color',monkey_colors,'marker','...',...
+                    %     'nbins',[15 15],'style','stairs');
+                    % hsh(3).Children.EdgeColor = [0 0 0];
+                    % hsh(2).Children.EdgeColor = model_colors(modelnum,:);
+                    scatter(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,50,session_colors(sessionnum,:),'filled')
+                    hold on
+                end
+            end
+            % make axes pretty
+            figure(hists)
+            subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
+            set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
+            ylabel(monkey_names{monkeynum})
+            if monkeynum == 1
+                title('Actual PD Shift')
+            end
+            for modelnum = 1:length(models_to_plot)
+                % histograms
+                figure(hists)
+                subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
+                set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
+                if monkeynum == 1
+                    title(sprintf('%s modeled PD shift',model_titles{modelnum}))
+                end
+
+                % scatter plots
+                figure(scatters)
+                subplot(length(monkey_names),length(models_to_plot),(monkeynum-1)*length(models_to_plot)+modelnum)
+                plot([-180 180],[0 0],'-k','linewidth',2)
+                plot([0 0],[-180 180],'-k','linewidth',2)
+                plot([-180 180],[-180 180],'--k','linewidth',2)
+                axis equal
+                set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
+                % labels
+                if monkeynum == length(monkey_names)
+                    xlabel 'Modeled PD Shift'
+                end
+                if modelnum == 1
+                    ylabel({monkey_names{monkeynum};'Actual PD Shift'})
+                    ylbl = get(gca,'ylabel');
+                    set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','right')
+                end
+                if monkeynum == 1
+                    title(sprintf('%s model',model_titles{modelnum}),'interpreter','none')
+                end
+            end
     end
+
+%% PD shift error dotplot
+    models_to_plot = {'ext','ego','musc','handelbow'};
+    monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
+    template_y = linspace(-1,1,length(models_to_plot))/10;
+    model_spacing = mode(diff(template_x));
+
+    % compile error information
+    err = cell(length(monkey_names),size(session_colors,1));
+    session_ctr = zeros(length(monkey_names),1);
+    for filenum = 1:length(filename)
+        % load data
+        load(fullfile(datadir,filename{filenum}))
+
+        % classify monkey and session number
+        monkey_idx = find(strcmpi(encoderResults.crossEval.monkey{1},monkey_names));
+        session_ctr(monkey_idx) = session_ctr(monkey_idx) + 1;
+
+        err{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftErr(encoderResults,struct('model_aliases',{models_to_plot}));
+    end
+
+    figure('defaultaxesfontsize',18)
+    for monkeynum = 1:length(monkey_names)
+        for sessionnum = 1:session_ctr(monkeynum)
+            yval = repmat(monkey_y(monkeynum) + template_y,length(err{monkeynum,sessionnum}{:,:}),1);
+            % add some jitter
+            yval = yval+randn(size(yval))/150;
+
+            % sparsify the lines
+            doplot = rand(length(yval),1)<0.2;
+            plot(err{monkeynum,sessionnum}{:,:}(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',ones(1,3)*0.5)
+            hold on
+            scatter(err{monkeynum,sessionnum}{:,:}(:),yval(:),50,session_colors(sessionnum,:),'filled')
+        end
+    end
+    axis ij
+    ytickmarks = monkey_y + template_y';
+    set(gca,'box','off','tickdir','out',...
+        'xlim',[0,1.5],'xtick',0:0.5:1.5,...
+        'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
+    ylabel(vertcat(monkey_names(:)))
+    ylbl = get(gca,'ylabel');
+    set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
+    title('PD Shift Model Error')
+    xlabel('PD Shift Model Error')
 
 %% Plot PD shift error on all monkeys
     num_monks = length(filename);
