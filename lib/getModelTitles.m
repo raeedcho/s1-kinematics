@@ -1,11 +1,13 @@
 function model_titles = getModelTitles(model_alias)
 % get model titles, given a list of aliases
-    if ~iscell(model_alias)
-        model_alias = {model_alias};
+    if iscell(model_alias)
+        model_alias_cell = model_alias;
+    else
+        model_alias_cell = {model_alias};
     end
-    model_titles = cell(length(model_alias),1);
-    for modelnum = 1:length(model_alias)
-        switch model_alias{modelnum}
+    model_titles = cell(length(model_alias_cell),1);
+    for modelnum = 1:length(model_alias_cell)
+        switch model_alias_cell{modelnum}
         case 'ext'
             model_titles{modelnum} = 'Extrinsic';
         case 'opensim_ext'
@@ -31,3 +33,6 @@ function model_titles = getModelTitles(model_alias)
         end
     end
 
+    if ~iscell(model_alias)
+        model_titles = model_titles{1};
+    end
