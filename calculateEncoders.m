@@ -85,6 +85,16 @@ for filenum = 1:length(filenames)
     end
     td(bad_trial) = [];
     fprintf('Removed %d trials because of missing markers\n',sum(bad_trial))
+    
+    % remove trials where muscles aren't present
+    bad_trial = false(length(td),1);
+    for trialnum = 1:length(td)
+        if any(any(isnan(td(trialnum).muscle_len) | isnan(td(trialnum).muscle_vel)))
+            bad_trial(trialnum) = true;
+        end
+    end
+    td(bad_trial) = [];
+    fprintf('Removed %d trials because of missing muscles\n',sum(bad_trial))
 
     % for bumps
     % td = td(~isnan(cat(1,td.idx_bumpTime)));
