@@ -643,6 +643,21 @@
     end
 
 %% Extra stuff/in progress...
+    %% plot out example firing rates
+        for filenum = 4
+            % load data
+            load(fullfile(datadir,filename{filenum}))
+
+            h = figure('defaultaxesfontsize',18);
+            for neuronnum = 10
+            % for neuronnum = 1:size(encoderResults.td_tuning{2}(1).S1_spikes,2)
+                clf
+                plotExampleFR(encoderResults.td_tuning{2},...
+                    struct('neuron_idx',neuronnum,'models',{models_to_plot}))
+                title(sprintf('Neuron %d',neuronnum))
+                waitforbuttonpress
+            end
+        end
     %% Plot handle positions
         figure('defaultaxesfontsize',18)
         pos_dl = cat(1,results.td_test{2}.pos);
