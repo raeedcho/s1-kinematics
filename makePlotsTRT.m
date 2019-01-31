@@ -96,31 +96,83 @@
 
                 % check decisiveness of victory
                 best_model_wins = strcmpi(winners{monkeynum,sessionnum}(best_pairs_idx,neuronnum),best_model);
-                if all(best_model_wins) == 0
+                if all(best_model_wins)
                     yval = yval(model_sort_idx(end));
+                    model_xval(model_sort_idx(end)) = model_xval(model_sort_idx(end)) + 1;
+                    xval = model_xval(model_sort_idx(end));
                 else
-                    yval = [];
+                    yval = yval(end);
+                    model_xval(end) = model_xval(end) + 1;
+                    xval = model_xval(end);
                 end
 
                 % plot dots with darkness coding for value of pR2
                 scatter(repmat(xval,size(yval)),yval,[],session_colors(sessionnum,:),'filled')
-                % scatter(repmat(xval,size(yval)),yval,[],avg_pR2{monkeynum,sessionnum}(neuronnum,:),'filled')
+                % scatter(repmat(model_xval,size(yval)),yval,[],avg_pR2{monkeynum,sessionnum}(neuronnum,:),'filled')
                 hold on
 
                 % increment x value
-                xval = xval + 0.1;
             end
         end
+        title(monkey_names{monkeynum})
+        axis ij
+        if monkeynum == 1
+            set(gca,'box','off','tickdir','out',...
+                'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
+                'ytick',model_y,...
+                'xlim',[0 30],...
+                'xtick',0:10:30,...
+                'yticklabel',[getModelTitles(models_to_plot);{'None'}])
+        else
+            set(gca,'box','off','tickdir','out',...
+                'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
+                'ytick',model_y,...
+                'xlim',[0 30],...
+                'xtick',0:10:30,...
+                'yticklabel',{})
+        end
+        xlabel('Number of neurons')
     end
-    axis ij
-    ytickmarks = monkey_y + template_y';
-    set(gca,'box','off','tickdir','out',...
-        'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
-    ylabel(vertcat(monkey_names(:)))
-    ylbl = get(gca,'ylabel');
-    set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
-    title('Pseudo-R^2')
-    xlabel('Neuron')
+
+    % make the pairwise comparison scatter plot
+    figure
+    for monkeynum = 1:length(monkey_names)
+        for pairnum = 1:size(model_pairs,1)
+            % set subplot
+            subplot(length(monkey_names),size(model_pairs,1),...
+                (monkeynum-1)*size(model_pairs,1)+pairnum)
+            plot([-1 1],[-1 1],'k--','linewidth',0.5)
+            hold on
+            plot([0 0],[-1 1],'k-','linewidth',0.5)
+            plot([-1 1],[0 0],'k-','linewidth',0.5)
+            for sessionnum = 1:session_ctr(monkeynum)
+                % find the indices of models to plot for this pair
+                model1_idx = find(strcmpi(models_to_plot,model_pairs{pairnum,1}));
+                model2_idx = find(strcmpi(models_to_plot,model_pairs{pairnum,2}));
+
+                % scatter filled circles if there's a winner, empty circles if not
+                no_winner =  cellfun(@isempty,winners{monkeynum,sessionnum}(pairnum,:));
+                scatter(...
+                    avg_pR2{monkeynum,sessionnum}(no_winner,model1_idx),...
+                    avg_pR2{monkeynum,sessionnum}(no_winner,model2_idx),...
+                    [],session_colors(sessionnum,:))
+                scatter(...
+                    avg_pR2{monkeynum,sessionnum}(~no_winner,model1_idx),...
+                    avg_pR2{monkeynum,sessionnum}(~no_winner,model2_idx),...
+                    [],session_colors(sessionnum,:),'filled')
+            end
+            % make axes pretty
+            set(gca,'box','off','tickdir','out',...
+                'xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
+            axis square
+            if monkeynum ~= length(monkey_names) || pairnum ~= 1
+                set(gca,'box','off','tickdir','out',...
+                    'xtick',[],'ytick',[])
+            end
+            xlabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,1})))
+            ylabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,2})))
+        end
+    end
 
 %% Plot pR2 of all monkeys bar plot
     % x coordinate of individual monkey bars
