@@ -30,10 +30,7 @@
     filename = horzcat({files.name});
 
     monkey_names = {'Chips','Han','Lando'};
-
-    num_monks = length(filename);
-    hyp = cell(num_monks,1);
-    p_val = cell(num_monks,1);
+    models_to_plot = {'ext','ego','musc','handelbow'};
 
     % colors for pm, dl conditions
     cond_colors = [...
@@ -46,8 +43,6 @@
         141,160,203]/255;
 
 %% Get pR2 pairwise comparisons for all model pairs and all neurons
-    models_to_plot = {'ext','ego','musc','handelbow'};
-
     % Go by file and compile
     avg_pR2 = cell(length(monkey_names),size(session_colors,1));
     winners = cell(length(monkey_names),size(session_colors,1));
@@ -123,7 +118,6 @@
     xlabel('Neuron')
 
 %% Plot pR2 of all monkeys bar plot
-    models_to_plot = {'ego','ext','musc','handelbow'};
     % x coordinate of individual monkey bars
     monk_x = (2:3:((num_monks-1)*3+2))/10;
     % template for within monkey bars separation
@@ -164,8 +158,6 @@
     ylabel('Model pseudo-R^2')
 
 %% Tuning curve shape comparison
-    models_to_plot = {'ego','ext','musc','handelbow'};
-
     % find correlations between modeled tuning curves and true tuning curve
     tuning_corr = cell(length(monkey_names),size(session_colors,1));
     session_ctr = zeros(length(monkey_names),1);
@@ -259,9 +251,6 @@
     xlabel('Modeled tuning curve correlations')
 
 %% PD shifts over all monkeys
-    models_to_plot = {'ext','ego','musc','handelbow'};
-    model_titles = getModelTitles(models_to_plot);
-    % model_colors = getModelColors(models_to_plot);
     file_shifts = cell(length(filename),length(models_to_plot)); % shift tables for each model in each file
     for filenum = 1:length(filename)
         % load data
@@ -312,7 +301,7 @@
                 subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
                 set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
                 if monkeynum == 1
-                    title(sprintf('%s modeled PD shift',model_titles{modelnum}))
+                    title(sprintf('%s modeled PD shift',getModelTitles(models_to_plot{modelnum})))
                 end
             end
 
@@ -368,7 +357,7 @@
                 % subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
                 % set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
                 % if monkeynum == 1
-                %     title(sprintf('%s modeled PD shift',model_titles{modelnum}))
+                %     title(sprintf('%s modeled PD shift',getModelTitles(models_to_plot{modelnum})))
                 % end
 
                 % scatter plots
@@ -389,16 +378,12 @@
                     set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','right')
                 end
                 if monkeynum == 1
-                    title(sprintf('%s model',model_titles{modelnum}),'interpreter','none')
+                    title(sprintf('%s model',getModelTitles(models_to_plot{modelnum})),'interpreter','none')
                 end
             end
     end
 
 %% PD shift error dotplot
-    models_to_plot = {'ext','ego','musc','handelbow'};
-    monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
-    template_y = linspace(-1,1,length(models_to_plot))/10;
-
     % compile error information
     err = cell(length(monkey_names),size(session_colors,1));
     session_ctr = zeros(length(monkey_names),1);
@@ -414,6 +399,8 @@
     end
 
     figure('defaultaxesfontsize',18)
+    monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
+    template_y = linspace(-1,1,length(models_to_plot))/10;
     for monkeynum = 1:length(monkey_names)
         for sessionnum = 1:session_ctr(monkeynum)
             yval = repmat(monkey_y(monkeynum) + template_y,length(err{monkeynum,sessionnum}{:,:}),1);
