@@ -67,18 +67,23 @@
         [winners{monkey_idx,session_ctr(monkey_idx)},model_pairs] = compareEncoderPR2(encoderResults,models_to_plot);
     end
 
-    % make the plot
+    % make the winner dot plot
     figure('defaultaxesfontsize',18)
-    % y coordinate of individual monkey
-    monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
-    % template for within monkey bars separation
-    template_y = linspace(-1,1,length(models_to_plot))/10;
+    % y coordinate of individual models
+    model_y = (2:3:(length(models_to_plot)*3+2))/10;
     for monkeynum = 1:length(monkey_names)
-        % reset x value
-        xval = 0;
+        % different subplots for different monkeys
+        subplot(1,3,monkeynum)
+
+        % template for within model session differences
+        template_y = linspace(-0.3,0.3,session_ctr(monkeynum))/10;
+
+        % make dotplot
         for sessionnum = 1:session_ctr(monkeynum)
+            % reset x value
+            model_xval = zeros(length(models_to_plot)+1,1);
             for neuronnum = 1:size(avg_pR2{monkeynum,sessionnum})
-                yval = monkey_y(monkeynum) + template_y;
+                yval = model_y + template_y(sessionnum);
 
                 % find highest pR2
                 [~,model_sort_idx] = sort(avg_pR2{monkeynum,sessionnum}(neuronnum,:));
