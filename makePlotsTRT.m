@@ -500,22 +500,32 @@
             end
     end
 
-%% Extra stuff/in progress...
-    %% plot out example firing rates
-        for filenum = 4
-            % load data
-            load(fullfile(datadir,filename{filenum}))
+%% Plot out example firing rates
+    % load data
+    filenum = 4;
+    load(fullfile(datadir,filename{filenum}))
 
-            h = figure('defaultaxesfontsize',18);
-            for neuronnum = 10
-            % for neuronnum = 1:size(encoderResults.td_tuning{2}(1).S1_spikes,2)
-                clf
-                plotExampleFR(encoderResults.td_tuning{2},...
-                    struct('neuron_idx',neuronnum,'models',{models_to_plot}))
-                title(sprintf('Neuron %d',neuronnum))
-                waitforbuttonpress
-            end
+    % set plotting params
+    num_trials = 10;
+    trials_to_plot = randperm(length(encoderResults.td_tuning{2}),num_trials);
+
+    % just for fun...
+    model_random = models_to_plot(randperm(length(models_to_plot)));
+
+    for neuronnum = 1:size(encoderResults.td_tuning{2}(1).S1_spikes,2)
+        h = figure('defaultaxesfontsize',18);
+        ax = zeros(length(models_to_plot),2);
+        for spacenum = 1:2
+            ax(spacenum) = subplot(2,1,spacenum);
+            plotExampleFR(encoderResults.td_tuning{spacenum},...
+                struct('neuron_idx',neuronnum,'models',{models_to_plot},'trial_idx',trials_to_plot))
+            title(sprintf('Neuron %d, spacenum %d',neuronnum,spacenum))
         end
+        linkaxes(ax(:),'y')
+        waitfor(h)
+    end
+
+%% Extra stuff/in progress...
     %% Plot handle positions
         figure('defaultaxesfontsize',18)
         pos_dl = cat(1,results.td_test{2}.pos);
