@@ -482,47 +482,6 @@
     title('PD Shift Model Error')
     xlabel('PD Shift Model Error')
 
-%% Plot PD shift error on all monkeys
-    num_monks = length(filename);
-    correction = 1/100 + 1/4;
-    models_to_plot = {'ext','ego','musc','handelbow'};
-    % models_to_plot = encoderResults.params.model_aliases;
-    model_colors = getModelColors(models_to_plot);
-    % models_to_plot = model_aliases;
-    % x coordinate of individual monkey bars
-    monk_x = (2:3:((num_monks-1)*3+2))/10;
-    % template for within monkey bars separation
-    template_x = linspace(-1,1,length(models_to_plot))/10;
-    model_spacing = mode(diff(template_x));
-
-    % make plot
-    figure('defaultaxesfontsize',18)
-    for monkeynum = 1:num_monks
-        % load data
-        load(fullfile(datadir,filename{monkeynum}))
-        err{monkeynum} = calculateEncoderPDShiftErr(encoderResults,struct('model_aliases',{models_to_plot}));
-
-        for modelnum = 1:length(models_to_plot)
-            mean_err = mean(err{monkeynum}.(models_to_plot{modelnum}));
-            var_err = var(err{monkeynum}.(models_to_plot{modelnum}));
-            std_err_err = sqrt(correction*var_err);
-
-            xval = monk_x(monkeynum) + template_x(modelnum);
-            bar(xval,mean_err,model_spacing,'facecolor',model_colors(modelnum,:),'edgecolor','none')
-            hold on
-            plot([xval xval],[mean_err-std_err_err mean_err+std_err_err],'k','linewidth',3)
-        end
-        % xval = repmat(monk_x(monkeynum)+template_x,length(err{monkeynum}{:,:}),1);
-        % scatter(xval(:),err{monkeynum}{:,:}(:),[],'k','filled')
-        % plot(xval',err{monkeynum}{:,:}','-k','linewidth',1)
-    end
-    set(gca,'tickdir','out','box','off','xtick',monk_x,...
-        'xticklabel',filename,'ytick',[0 0.5],'ticklabelinterpreter','none')
-    % axis equal
-    ylim([0 0.7])
-    % xlim([0 1])
-    ylabel('Error of model')
-
 %% Get example tuning curves for all models
     for monkeynum = 1%:num_monks
         clear encoderResults
