@@ -33,7 +33,6 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
     % default parameters
     num_folds = 5;
     num_repeats = 20;
-    num_tuning_bins = 16;
     verbose = true;
     if nargin > 1, assignParams(who,params); end % overwrite parameters
 
@@ -204,7 +203,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     model_eval_metric = 'pr2';
     glm_params = {};
     model_names = {};
-    num_tuning_bins = 8;
+    num_tuning_bins = 16;
     unit_guide = [];
     if nargin > 2
         assignParams(who,params);
