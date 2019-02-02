@@ -33,6 +33,7 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
     % default parameters
     num_folds = 5;
     num_repeats = 20;
+    num_tuning_bins = 16;
     verbose = true;
     if nargin > 1, assignParams(who,params); end % overwrite parameters
 
@@ -185,6 +186,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
 %       .glm_params - cell array of paramter structs to fit glm models with getModel
 %       .model_names - names of models to check classical tuning for
 %           (including actual neural signal)
+%       .num_tuning_bins - number of bins for tuning
 %
 % Outputs:
 %   foldEval - NeuronTable structure with evaluation information from fold
