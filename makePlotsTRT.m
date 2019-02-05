@@ -442,7 +442,7 @@
 
 %% PD shift error dotplot
     % compile error information
-    err = cell(length(monkey_names),size(session_colors,1));
+    shift_err = cell(length(monkey_names),size(session_colors,1));
     session_ctr = zeros(length(monkey_names),1);
     for filenum = 1:length(filename)
         % load data
@@ -452,35 +452,73 @@
         monkey_idx = find(strcmpi(encoderResults.crossEval.monkey{1},monkey_names));
         session_ctr(monkey_idx) = session_ctr(monkey_idx) + 1;
 
-        err{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftErr(encoderResults,struct('model_aliases',{models_to_plot}));
+        shift_err{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftErr(encoderResults,struct('model_aliases',{models_to_plot}));
     end
 
-    figure('defaultaxesfontsize',18)
-    monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
-    template_y = linspace(-1,1,length(models_to_plot))/10;
-    for monkeynum = 1:length(monkey_names)
-        for sessionnum = 1:session_ctr(monkeynum)
-            yval = repmat(monkey_y(monkeynum) + template_y,length(err{monkeynum,sessionnum}{:,:}),1);
-            % add some jitter
-            yval = yval+randn(size(yval))/150;
-
-            % sparsify the lines
-            doplot = rand(length(yval),1)<0.2;
-            plot(err{monkeynum,sessionnum}{:,:}(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',ones(1,3)*0.5)
-            hold on
-            scatter(err{monkeynum,sessionnum}{:,:}(:),yval(:),50,session_colors(sessionnum,:),'filled')
+    % plot by neuron
+        figure('defaultaxesfontsize',18)
+        monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
+        template_y = linspace(-1,1,length(models_to_plot))/10;
+        for monkeynum = 1:length(monkey_names)
+            for sessionnum = 1:session_ctr(monkeynum)
+                % average for each TUNED neuron
+                avg_err = neuronAverage(shift_err{monkeynum,sessionnum},...
+                    struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
+                yval = repmat(monkey_y(monkeynum) + template_y,height(avg_err),1);
+                % add some jitter
+                yval = yval+randn(size(yval,1),1)/150;
+    
+                % sparsify the lines
+                doplot = true(length(yval),1);
+                cols = contains(avg_err.Properties.VariableNames,'err');
+                xvals = avg_err{:,cols};
+                plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',ones(1,3)*0.5)
+                hold on
+                scatter(xvals(:),yval(:),50,session_colors(sessionnum,:),'filled')
+            end
         end
-    end
-    axis ij
-    ytickmarks = monkey_y + template_y';
-    set(gca,'box','off','tickdir','out',...
-        'xlim',[0,1.5],'xtick',0:0.5:1.5,...
-        'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
-    ylabel(vertcat(monkey_names(:)))
-    ylbl = get(gca,'ylabel');
-    set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
-    title('PD Shift Model Error')
-    xlabel('PD Shift Model Error')
+        axis ij
+        ytickmarks = monkey_y + template_y';
+        set(gca,'box','off','tickdir','out',...  'xlim',[0,1.5],'xtick',0:0.5:1.5,...
+            'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
+        ylabel(vertcat(monkey_names(:)))
+        ylbl = get(gca,'ylabel');
+        set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
+        title('PD Shift Model Error')
+        xlabel('PD Shift Model Error')
+
+    % plot by crossval run
+        figure('defaultaxesfontsize',18)
+        monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
+        template_y = linspace(-1,1,length(models_to_plot))/10;
+        for monkeynum = 1:length(monkey_names)
+            for sessionnum = 1:session_ctr(monkeynum)
+                % average for each TUNED neuron
+                avg_err = neuronAverage(shift_err{monkeynum,sessionnum},...
+                    struct('keycols',{{'monkey','date','task','crossvalID'}},'do_ci',false));
+                yval = repmat(monkey_y(monkeynum) + template_y,height(avg_err),1);
+                % add some jitter
+                yval = yval+randn(size(yval,1),1)/150;
+    
+                % sparsify the lines
+                doplot = rand(length(yval),1)<0.5;
+                cols = contains(avg_err.Properties.VariableNames,'err');
+                xvals = avg_err{:,cols};
+                plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',session_colors(sessionnum,:))
+                hold on
+                scatter(xvals(:),yval(:),25,ones(1,3)*0.5,'filled')
+            end
+        end
+        axis ij
+        ytickmarks = monkey_y + template_y';
+        set(gca,'box','off','tickdir','out',...
+            'xlim',[0,1.5],'xtick',0:0.5:1.5,...
+            'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
+        ylabel(vertcat(monkey_names(:)))
+        ylbl = get(gca,'ylabel');
+        set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
+        title('PD Shift Model Error')
+        xlabel('PD Shift Model Error')
 
 %% Get example tuning curves for all models
     for monkeynum = 1%:num_monks

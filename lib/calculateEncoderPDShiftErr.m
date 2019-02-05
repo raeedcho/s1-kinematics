@@ -1,5 +1,25 @@
-function err = calculateEncoderPDShiftErr(encoderResults,params)
-% Calculates error in predicting preferred direction shifts for given models
+function shift_err = calculateEncoderPDShiftErr(encoderResults,params)
+    % Calculates error in predicting preferred direction shifts for given models
+    % Inputs:
+    %   encoderResults - The struct output from mwEncoders
+    %   params - Paramers struct
+    %       .model_aliases - aliases for models names to evaluate
+    %       .neural_signal - name of actual neural signal
+    % Outputs:
+    %   shift_err - table with error values for each crossval sample
+    %       Table will match neuron table standard, with columns for:
+    %           monkey (meta)
+    %           date (meta)
+    %           task (meta)
+    %           signalID (meta) - only gives back tuned neurons
+    %           crossvalID (meta) - [repeatnum foldnum]
+    %           {model_aliases}_err
+    %
+    % Note: this code assumes that the crossTuning table is in a specific order, i.e.
+    % neurons are nested inside spacenum, nested inside folds, nested inside repeats
+    % and order inside nestings is preserved and identical
+
+    % default params
     model_aliases = encoderResults.params.model_aliases;
     neural_signal = 'S1_FR';
 
@@ -8,20 +28,36 @@ function err = calculateEncoderPDShiftErr(encoderResults,params)
         assignParams(who,params);
     end
 
-    err_arr = zeros(100,length(model_aliases));
+    % get shift tables
     shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',model_aliases,'_model') neural_signal]);
-    for modelnum = 1:length(model_aliases)
-        [~,real_shifts] = getNTidx(shift_tables{end},'signalID',encoderResults.tunedNeurons);
-        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
-        err_arr_all = model_shifts.velPD-real_shifts.velPD;
-        for i = 1:100
-            err_idx = 1:length(encoderResults.tunedNeurons);
-            err_idx = err_idx + (i-1)*length(encoderResults.tunedNeurons);
-            % use a 1-cos style error because of circular data
-            % This value will range between 0 and 2
-            err_arr(i,modelnum) = mean(1-cos(err_arr_all(err_idx)));
-        end
-    end
+    [~,real_shifts] = getNTidx(shift_tables{end},'signalID',encoderResults.tunedNeurons);
 
-    err = array2table(err_arr,'VariableNames',model_aliases);
-        
+    % define some variables for convenience
+    num_folds = encoderResults.params.num_folds;
+    num_repeats = encoderResults.params.num_repeats;
+    num_neurons = size(unique(real_shifts.signalID,'rows'),1);
+
+    % figure out what meta columns to keep
+    metacols = strcmpi(real_shifts.Properties.VariableDescriptions,'meta');
+
+    % loop through shift tables
+    model_err_mat = zeros(height(real_shifts),length(model_aliases));
+    for modelnum = 1:length(model_aliases)
+        % get modeled shifts
+        [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
+        model_err_mat(:,modelnum) = 1-cos(model_shifts.velPD-real_shifts.velPD);
+    end
+    model_err = array2table(model_err_mat,'VariableNames',strcat(model_aliases,'_err'));
+    model_err.Properties.VariableDescriptions = repmat({'linear'},size(model_aliases));
+
+    % compose crossvalID table
+    [foldnum,~,repeatnum] = meshgrid(1:num_folds,1:num_neurons,1:num_repeats);
+    foldnum = foldnum(:);
+    repeatnum = repeatnum(:);
+    crossvalID = table([repeatnum foldnum],'VariableNames',{'crossvalID'});
+    crossvalID.Properties.VariableDescriptions = {'meta'};
+
+    shift_err = horzcat(...
+        real_shifts(:,metacols),...
+        crossvalID,...
+        model_err);
