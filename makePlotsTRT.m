@@ -26,11 +26,11 @@
 %% Set up plotting variables
     datadir = '/home/raeed/data/project-data/limblab/s1-kinematics/Results/Encoding';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
-    files = dir(fullfile(datadir,'*encodingResults_allModels_run20190127.mat'));
+    files = dir(fullfile(datadir,'*encodingResults_allModels_run20190202.mat'));
     filename = horzcat({files.name});
 
     monkey_names = {'Chips','Han','Lando'};
-    models_to_plot = {'ext','ego','musc','handelbow'};
+    models_to_plot = {'ego','ext','musc','handelbow'};
 
     % colors for pm, dl conditions
     cond_colors = [...
@@ -41,6 +41,8 @@
         102,194,165;...
         252,141,98;...
         141,160,203]/255;
+
+%% Compile information over all files
 
 %% Get pR2 pairwise comparisons for all model pairs and all neurons
     % Go by file and compile
