@@ -215,97 +215,89 @@
     ylabel('Model pseudo-R^2')
 
 %% Tuning curve shape comparison
-    % find correlations between modeled tuning curves and true tuning curve
-    tuning_corr = cell(length(monkey_names),size(session_colors,1));
-    session_ctr = zeros(length(monkey_names),1);
-    for filenum = 1:length(filename)
-        % load data
-        load(fullfile(datadir,filename{filenum}))
+    % go by file and compile
+        % find correlations between modeled tuning curves and true tuning curve
+        tuning_corr = cell(length(monkey_names),size(session_colors,1));
+        session_ctr = zeros(length(monkey_names),1);
+        for filenum = 1:length(filename)
+            % load data
+            load(fullfile(datadir,filename{filenum}))
 
-        % classify monkey and session number
-        monkey_idx = find(strcmpi(encoderResults.crossEval.monkey{1},monkey_names));
-        session_ctr(monkey_idx) = session_ctr(monkey_idx) + 1;
+            % classify monkey and session number
+            monkey_idx = find(strcmpi(encoderResults.crossEval.monkey{1},monkey_names));
+            session_ctr(monkey_idx) = session_ctr(monkey_idx) + 1;
 
-        % setup...
-        num_bins = encoderResults.params.num_tuning_bins;
-        num_neurons = height(encoderResults.tuning_curves{1,1});
+            tuning_corr{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderTuningCorr(...
+                encoderResults,struct('model_aliases',{models_to_plot},'neural_signal','S1_FR'));
+        end
 
-        true_tuning_idx = contains(encoderResults.params.model_names,'S1');
-        tuning_corr{monkey_idx,session_ctr(monkey_idx)} = zeros(height(encoderResults.tuning_curves{1,1}),length(models_to_plot));
+    % plot by neuron
+        figure('defaultaxesfontsize',18)
+        % y coordinate of individual monkey bars
+        monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
+        % template for within monkey bars separation
+        template_y = linspace(-1,1,length(models_to_plot))/10;
+        for monkeynum = 1:length(monkey_names)
+            for sessionnum = 1:session_ctr(monkeynum)
+                % average for each neuron
+                avg_corr = neuronAverage(tuning_corr{monkeynum,sessionnum},...
+                    struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
+                yval = repmat(monkey_y(monkeynum) + template_y,height(avg_corr),1);
+                % add some jitter
+                yval = yval+randn(size(yval,1),1)/150;
 
-        % arrange tuning curves for each neuron
-        for neuron_idx = 1:num_neurons
-            tuning_curve_mat = zeros(num_bins*2,length(models_to_plot)+1);
-            for spacenum = 1:2
-                tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),end) = encoderResults.tuning_curves{spacenum,true_tuning_idx}(neuron_idx,:).velCurve';
-                for modelnum = 1:length(models_to_plot)
-                    tuning_idx = strcmp(encoderResults.params.model_aliases,models_to_plot{modelnum});
-                    tuning_curve_mat(num_bins*(spacenum-1)+(1:num_bins),modelnum) = encoderResults.tuning_curves{spacenum,tuning_idx}(neuron_idx,:).velCurve';
-                end
+                % sparsify the lines if needed (not for neurons...)
+                doplot = true(length(yval),1);
+                cols = contains(avg_corr.Properties.VariableNames,'tuningCorr');
+                xvals = avg_corr{:,cols};
+                plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',ones(1,3)*0.5)
+                hold on
+                scatter(xvals(:),yval(:),50,session_colors(sessionnum,:),'filled')
             end
-            covar_mat = nancov(tuning_curve_mat);
-            tuning_corr{monkey_idx,session_ctr(monkey_idx)}(neuron_idx,:) = covar_mat(end,1:end-1)./sqrt(diag(covar_mat(1:end-1,1:end-1))'*covar_mat(end,end));
-            % tuning_corr(neuron_idx,:) = covar_mat(end,1:end-1);
         end
+        axis ij
+        ytickmarks = monkey_y + template_y';
+        set(gca,'box','off','tickdir','out',...  'xlim',[0,1],'xtick',0:0.5:1.0,...
+            'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
+        ylabel(vertcat(monkey_names(:)))
+        ylbl = get(gca,'ylabel');
+        set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
+        title('Modeled tuning curve correlations')
+        xlabel('Modeled tuning curve correlations')
 
-        % % bootstrap correlation values for actual tuning curves
-        % boot_tuning_corr = zeros(num_neurons,num_boots);
-        % boot_tic = tic;
-        % for bootnum = 1:num_boots
-        %     [~,boot_idx1] = datasample(encoderResults.td_tuning{1},length(encoderResults.td_tuning{1}));
-        %     [~,boot_idx2] = datasample(encoderResults.td_tuning{1},length(encoderResults.td_tuning{1}));
+    % plot by crossval run
+        figure('defaultaxesfontsize',18)
+        % y coordinate of individual monkey bars
+        monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
+        % template for within monkey bars separation
+        template_y = linspace(-1,1,length(models_to_plot))/10;
+        for monkeynum = 1:length(monkey_names)
+            for sessionnum = 1:session_ctr(monkeynum)
+                % average for each neuron
+                avg_corr = neuronAverage(tuning_corr{monkeynum,sessionnum},...
+                    struct('keycols',{{'monkey','date','task','crossvalID'}},'do_ci',false));
+                yval = repmat(monkey_y(monkeynum) + template_y,height(avg_corr),1);
+                % add some jitter
+                yval = yval+randn(size(yval,1),1)/150;
 
-        %     % arrange tuning curves for each neuron
-        %     for neuron_idx = 1:height(encoderResults.tuning_curves{1,1})
-        %         % split into two estimates of tuning curve for each workspace
-        %         % then concatenate tuning curves of two workspaces for two overall tuning curve
-        %         temp_curves = zeros(num_bins*2,2);
-        %         for spacenum = 1:2
-        %             tuning_params = struct('out_signals',{{'S1_FR',neuron_idx}},'out_signal_names',1,...
-        %                 'num_bins',num_bins,'meta',struct('spaceNum',spacenum));
-        %             temp_table1 = getTuningCurves(encoderResults.td_tuning{spacenum}(boot_idx1),tuning_params);
-        %             temp_table2 = getTuningCurves(encoderResults.td_tuning{spacenum}(boot_idx2),tuning_params);
-        %             temp_curves(num_bins*(spacenum-1)+(1:num_bins),1) = temp_table1.velCurve';
-        %             temp_curves(num_bins*(spacenum-1)+(1:num_bins),2) = temp_table2.velCurve';
-        %         end
-
-        %         temp_covar = nancov(temp_curves);
-        %         boot_tuning_corr(neuron_idx,bootnum) = temp_covar(1,2)/sqrt(prod(nanvar(temp_curves)));
-        %     end
-        %     % tuning_corr(neuron_idx,:) = covar_mat(end,1:end-1);
-        %     fprintf('Bootstrap %d done at time %f\n',bootnum,toc(boot_tic))
-        % end
-    end
-
-    figure('defaultaxesfontsize',18)
-    % y coordinate of individual monkey bars
-    monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
-    % template for within monkey bars separation
-    template_y = linspace(-1,1,length(models_to_plot))/10;
-    for monkeynum = 1:length(monkey_names)
-        for sessionnum = 1:session_ctr(monkeynum)
-            yval = repmat(monkey_y(monkeynum) + template_y,length(tuning_corr{monkeynum,sessionnum}),1);
-            % add some jitter
-            yval = yval+randn(size(yval))/150;
-
-            % sparsify the lines
-            % doplot = rand(length(yval),1)<0.5;
-            doplot = true(length(yval),1);
-            plot(tuning_corr{monkeynum,sessionnum}(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',ones(1,3)*0.5)
-            hold on
-            scatter(tuning_corr{monkeynum,sessionnum}(:),yval(:),50,session_colors(sessionnum,:),'filled')
+                % sparsify the lines
+                doplot = rand(length(yval),1)<0.5;
+                cols = contains(avg_corr.Properties.VariableNames,'tuningCorr');
+                xvals = avg_corr{:,cols};
+                plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',session_colors(sessionnum,:))
+                hold on
+                scatter(xvals(:),yval(:),25,ones(1,3)*0.5,'filled')
+            end
         end
-    end
-    axis ij
-    ytickmarks = monkey_y + template_y';
-    set(gca,'box','off','tickdir','out',...
-        'xlim',[0,1],'xtick',0:0.5:1.0,...
-        'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
-    ylabel(vertcat(monkey_names(:)))
-    ylbl = get(gca,'ylabel');
-    set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
-    title('Modeled tuning curve correlations')
-    xlabel('Modeled tuning curve correlations')
+        axis ij
+        ytickmarks = monkey_y + template_y';
+        set(gca,'box','off','tickdir','out',...  'xlim',[0,1],'xtick',0:0.5:1.0,...
+            'ytick',ytickmarks(:),'yticklabel',repmat(getModelTitles(models_to_plot),1,length(monkey_names)))
+        ylabel(vertcat(monkey_names(:)))
+        ylbl = get(gca,'ylabel');
+        set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','center')
+        title('Modeled tuning curve correlations')
+        xlabel('Modeled tuning curve correlations')
 
 %% PD shifts over all monkeys
     file_shifts = cell(length(filename),length(models_to_plot)); % shift tables for each model in each file
