@@ -238,8 +238,10 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     for modelnum = 1:length(model_names)-1
         eval_params{modelnum}.eval_metric = model_eval_metric;
         eval_params{modelnum}.num_boots = 1;
-        model_eval{modelnum} = array2table(squeeze(evalModel([td_test{2} td_test{1}],eval_params{modelnum}))',...
-                                            'VariableNames',strcat(model_names(modelnum),'_eval'));
+        model_eval{modelnum} = array2table(...
+            squeeze(evalModel([td_test{2} td_test{1}],eval_params{modelnum}))',...
+            'VariableNames',strcat(model_names(modelnum),'_eval'));
+        model_eval{modelnum}.Properties.VariableDescriptions = {'linear'};
     end
     foldEval = horzcat(foldEval, model_eval{:});
 
