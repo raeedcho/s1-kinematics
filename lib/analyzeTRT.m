@@ -232,7 +232,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     end
 
     % Evaluate model fits and add to foldEval table
-    foldEval = makeNeuronTableStarter(td_train,struct('out_signal_names',unit_guide));
+    foldEval = makeNeuronTableStarter(td_train,struct('out_signal_names',unit_guide,'meta',struct('crossvalID',crossvalID)));
     model_eval = cell(1,length(model_names)-1);
     eval_params = glm_info;
     for modelnum = 1:length(model_names)-1
