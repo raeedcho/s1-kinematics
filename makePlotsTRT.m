@@ -1,27 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This script makes plots from results given by analyzeTRT
+% This script makes plots from results saved by calculateEncoders
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%%%%%%%%%%%%%%%% Main line figures %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Figure 1 - Task and classic analysis methods
-    % 1a - Monkey using manipulandum (in illustrator)
-
-    % 1b - example movements in two workspaces (with neural firing dots?)
-    % First, get example trials
-    [~,td_pm_ex] = getTDidx(trial_data,'spaceNum',1,'result','R','rand',1);
-    [~,td_dl_ex] = getTDidx(trial_data,'spaceNum',2,'result','R','rand',1);
-    % trim to just go from target start to end
-    td_ex = trimTD([td_pm_ex td_dl_ex],{'idx_ctHoldTime',0},{'idx_endTime',0});
-    % plot the example trials
-    figure('defaultaxesfontsize',18)
-    plotTRTTrials(td_ex);
-    % plot neural firing?
-    unit_idx = 1;
-    plotSpikesOnHandle(td_ex,struct('unit_idx',unit_idx,'spikespec','b.','spikesize',10));
-    % plot of same muscle movement given different Jacobians?
-
-    % Switch to classical PDs?
-    % 1c - example directional rasters and tuning curves?
 
 %% Set up plotting variables
     datadir = '/home/raeed/data/project-data/limblab/s1-kinematics/Results/Encoding';
@@ -46,175 +25,135 @@
 
 %% Get pR2 pairwise comparisons for all model pairs and all neurons
     % Go by file and compile
-    avg_pR2 = cell(length(monkey_names),size(session_colors,1));
-    winners = cell(length(monkey_names),size(session_colors,1));
-    session_ctr = zeros(length(monkey_names),1);
-    for filenum = 1:length(filename)
-        % load data
-        load(fullfile(datadir,filename{filenum}))
+        avg_pR2 = cell(length(monkey_names),size(session_colors,1));
+        winners = cell(length(monkey_names),size(session_colors,1));
+        session_ctr = zeros(length(monkey_names),1);
+        for filenum = 1:length(filename)
+            % load data
+            load(fullfile(datadir,filename{filenum}))
 
-        % classify monkey and session number
-        monkey_idx = find(strcmpi(encoderResults.crossEval.monkey{1},monkey_names));
-        session_ctr(monkey_idx) = session_ctr(monkey_idx) + 1;
+            % classify monkey and session number
+            monkey_idx = find(strcmpi(encoderResults.crossEval.monkey{1},monkey_names));
+            session_ctr(monkey_idx) = session_ctr(monkey_idx) + 1;
 
-        % get average pR2s by neuron
-        avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
+            % get average pR2s by neuron
+            avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
 
-        avg_pR2{monkey_idx,session_ctr(monkey_idx)} = zeros(height(avgEval),length(models_to_plot));
-        for modelnum = 1:length(models_to_plot)
-            avg_pR2{monkey_idx,session_ctr(monkey_idx)}(:,modelnum) = avgEval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum}));
-        end
-
-        % get comparison
-        [winners{monkey_idx,session_ctr(monkey_idx)},model_pairs] = compareEncoderPR2(encoderResults,models_to_plot);
-    end
-
-    % make the winner dot plot
-    figure('defaultaxesfontsize',18)
-    % y coordinate of individual models
-    model_y = (2:3:(length(models_to_plot)*3+2))/10;
-    for monkeynum = 1:length(monkey_names)
-        % different subplots for different monkeys
-        subplot(1,3,monkeynum)
-
-        % template for within model session differences
-        template_y = linspace(-0.3,0.3,session_ctr(monkeynum))/10;
-
-        % make dotplot
-        for sessionnum = 1:session_ctr(monkeynum)
-            % reset x value
-            model_xval = zeros(length(models_to_plot)+1,1);
-            for neuronnum = 1:size(avg_pR2{monkeynum,sessionnum})
-                yval = model_y + template_y(sessionnum);
-
-                % find highest pR2
-                [~,model_sort_idx] = sort(avg_pR2{monkeynum,sessionnum}(neuronnum,:));
-                model_order = models_to_plot(model_sort_idx);
-                best_model = model_order{end};
-                runnerup_model = model_order{end-1};
-
-                % find model pairs involving best model
-                best_pairs_idx = any(strcmpi(model_pairs,best_model),2);
-
-                % check decisiveness of victory
-                best_model_wins = strcmpi(winners{monkeynum,sessionnum}(best_pairs_idx,neuronnum),best_model);
-                if all(best_model_wins)
-                    yval = yval(model_sort_idx(end));
-                    model_xval(model_sort_idx(end)) = model_xval(model_sort_idx(end)) + 1;
-                    xval = model_xval(model_sort_idx(end));
-                else
-                    yval = yval(end);
-                    model_xval(end) = model_xval(end) + 1;
-                    xval = model_xval(end);
-                end
-
-                % plot dots with darkness coding for value of pR2
-                scatter(repmat(xval,size(yval)),yval,[],session_colors(sessionnum,:),'filled')
-                % scatter(repmat(model_xval,size(yval)),yval,[],avg_pR2{monkeynum,sessionnum}(neuronnum,:),'filled')
-                hold on
-
-                % increment x value
+            avg_pR2{monkey_idx,session_ctr(monkey_idx)} = zeros(height(avgEval),length(models_to_plot));
+            for modelnum = 1:length(models_to_plot)
+                avg_pR2{monkey_idx,session_ctr(monkey_idx)}(:,modelnum) = avgEval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum}));
             end
+
+            % get comparison
+            [winners{monkey_idx,session_ctr(monkey_idx)},model_pairs] = compareEncoderPR2(encoderResults,models_to_plot);
         end
-        title(monkey_names{monkeynum})
-        axis ij
-        if monkeynum == 1
-            set(gca,'box','off','tickdir','out',...
-                'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
-                'ytick',model_y,...
-                'xlim',[0 30],...
-                'xtick',0:10:30,...
-                'yticklabel',[getModelTitles(models_to_plot);{'None'}])
-        else
-            set(gca,'box','off','tickdir','out',...
-                'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
-                'ytick',model_y,...
-                'xlim',[0 30],...
-                'xtick',0:10:30,...
-                'yticklabel',{})
-        end
-        xlabel('Number of neurons')
-    end
 
     % make the pairwise comparison scatter plot
-    figure
-    for monkeynum = 1:length(monkey_names)
-        for pairnum = 1:size(model_pairs,1)
-            % set subplot
-            subplot(length(monkey_names),size(model_pairs,1),...
-                (monkeynum-1)*size(model_pairs,1)+pairnum)
-            plot([-1 1],[-1 1],'k--','linewidth',0.5)
-            hold on
-            plot([0 0],[-1 1],'k-','linewidth',0.5)
-            plot([-1 1],[0 0],'k-','linewidth',0.5)
-            for sessionnum = 1:session_ctr(monkeynum)
-                % find the indices of models to plot for this pair
-                model1_idx = find(strcmpi(models_to_plot,model_pairs{pairnum,1}));
-                model2_idx = find(strcmpi(models_to_plot,model_pairs{pairnum,2}));
+        figure
+        for monkeynum = 1:length(monkey_names)
+            for pairnum = 1:size(model_pairs,1)
+                % set subplot
+                subplot(length(monkey_names),size(model_pairs,1),...
+                    (monkeynum-1)*size(model_pairs,1)+pairnum)
+                plot([-1 1],[-1 1],'k--','linewidth',0.5)
+                hold on
+                plot([0 0],[-1 1],'k-','linewidth',0.5)
+                plot([-1 1],[0 0],'k-','linewidth',0.5)
+                for sessionnum = 1:session_ctr(monkeynum)
+                    % find the indices of models to plot for this pair
+                    model1_idx = find(strcmpi(models_to_plot,model_pairs{pairnum,1}));
+                    model2_idx = find(strcmpi(models_to_plot,model_pairs{pairnum,2}));
 
-                % scatter filled circles if there's a winner, empty circles if not
-                no_winner =  cellfun(@isempty,winners{monkeynum,sessionnum}(pairnum,:));
-                scatter(...
-                    avg_pR2{monkeynum,sessionnum}(no_winner,model1_idx),...
-                    avg_pR2{monkeynum,sessionnum}(no_winner,model2_idx),...
-                    [],session_colors(sessionnum,:))
-                scatter(...
-                    avg_pR2{monkeynum,sessionnum}(~no_winner,model1_idx),...
-                    avg_pR2{monkeynum,sessionnum}(~no_winner,model2_idx),...
-                    [],session_colors(sessionnum,:),'filled')
-            end
-            % make axes pretty
-            set(gca,'box','off','tickdir','out',...
-                'xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-            axis square
-            if monkeynum ~= length(monkey_names) || pairnum ~= 1
+                    % scatter filled circles if there's a winner, empty circles if not
+                    no_winner =  cellfun(@isempty,winners{monkeynum,sessionnum}(pairnum,:));
+                    scatter(...
+                        avg_pR2{monkeynum,sessionnum}(no_winner,model1_idx),...
+                        avg_pR2{monkeynum,sessionnum}(no_winner,model2_idx),...
+                        [],session_colors(sessionnum,:))
+                    scatter(...
+                        avg_pR2{monkeynum,sessionnum}(~no_winner,model1_idx),...
+                        avg_pR2{monkeynum,sessionnum}(~no_winner,model2_idx),...
+                        [],session_colors(sessionnum,:),'filled')
+                end
+                % make axes pretty
                 set(gca,'box','off','tickdir','out',...
-                    'xtick',[],'ytick',[])
+                    'xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
+                axis square
+                if monkeynum ~= length(monkey_names) || pairnum ~= 1
+                    set(gca,'box','off','tickdir','out',...
+                        'xtick',[],'ytick',[])
+                end
+                xlabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,1})))
+                ylabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,2})))
             end
-            xlabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,1})))
-            ylabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,2})))
         end
-    end
 
-%% Plot pR2 of all monkeys bar plot
-    % x coordinate of individual monkey bars
-    monk_x = (2:3:((num_monks-1)*3+2))/10;
-    % template for within monkey bars separation
-    template_x = linspace(-0.5,0.5,length(models_to_plot))/10;
-    model_spacing = mode(diff(template_x));
+    % make the winner dot plot
+        figure('defaultaxesfontsize',18)
+        % y coordinate of individual models
+        model_y = (2:3:(length(models_to_plot)*3+2))/10;
+        for monkeynum = 1:length(monkey_names)
+            % different subplots for different monkeys
+            subplot(1,3,monkeynum)
 
-    % make plot
-    figure('defaultaxesfontsize',18)
-    for filenum = 1:length(filename)
-        % load data
-        load(fullfile(datadir,filename{filenum}))
+            % template for within model session differences
+            template_y = linspace(-0.3,0.3,session_ctr(monkeynum))/10;
 
-        avgEval = neuronAverage(encoderResults.crossEval,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
+            % make dotplot
+            for sessionnum = 1:session_ctr(monkeynum)
+                % reset x value
+                model_xval = zeros(length(models_to_plot)+1,1);
+                for neuronnum = 1:size(avg_pR2{monkeynum,sessionnum})
+                    yval = model_y + template_y(sessionnum);
 
-        % model_idx = find(contains(err{monkeynum}.Properties.VariableNames,models_to_plot));
-        % mean_err = mean(err{monkeynum}{:,model_idx});
-        % var_err = var(err{monkeynum}{:,model_idx});
-        % std_err_err = sqrt(correction*var_err);
+                    % find highest pR2
+                    [~,model_sort_idx] = sort(avg_pR2{monkeynum,sessionnum}(neuronnum,:));
+                    model_order = models_to_plot(model_sort_idx);
+                    best_model = model_order{end};
+                    runnerup_model = model_order{end-1};
 
-        avg_pR2 = zeros(height(avgEval),length(models_to_plot));
-        for modelnum = 1:length(models_to_plot)
-            xval = monk_x(monkeynum) + template_x(modelnum);
-            mean_pR2 = mean(avgEval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})));
-            avg_pR2(:,modelnum) = avgEval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum}));
-            bar(xval,mean_pR2,model_spacing,'facecolor',getModelColors(models_to_plot{modelnum}),'edgecolor','none')
-            hold on
-            % plot([xval xval],[mean_err(modelnum)-std_err_err(modelnum) mean_err(modelnum)+std_err_err(modelnum)],'k','linewidth',3)
+                    % find model pairs involving best model
+                    best_pairs_idx = any(strcmpi(model_pairs,best_model),2);
+
+                    % check decisiveness of victory
+                    best_model_wins = strcmpi(winners{monkeynum,sessionnum}(best_pairs_idx,neuronnum),best_model);
+                    if all(best_model_wins)
+                        yval = yval(model_sort_idx(end));
+                        model_xval(model_sort_idx(end)) = model_xval(model_sort_idx(end)) + 1;
+                        xval = model_xval(model_sort_idx(end));
+                    else
+                        yval = yval(end);
+                        model_xval(end) = model_xval(end) + 1;
+                        xval = model_xval(end);
+                    end
+
+                    % plot dots with darkness coding for value of pR2
+                    scatter(repmat(xval,size(yval)),yval,[],session_colors(sessionnum,:),'filled')
+                    % scatter(repmat(model_xval,size(yval)),yval,[],avg_pR2{monkeynum,sessionnum}(neuronnum,:),'filled')
+                    hold on
+
+                    % increment x value
+                end
+            end
+            title(monkey_names{monkeynum})
+            axis ij
+            if monkeynum == 1
+                set(gca,'box','off','tickdir','out',...
+                    'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
+                    'ytick',model_y,...
+                    'xlim',[0 30],...
+                    'xtick',0:10:30,...
+                    'yticklabel',[getModelTitles(models_to_plot);{'None'}])
+            else
+                set(gca,'box','off','tickdir','out',...
+                    'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
+                    'ytick',model_y,...
+                    'xlim',[0 30],...
+                    'xtick',0:10:30,...
+                    'yticklabel',{})
+            end
+            xlabel('Number of neurons')
         end
-        xval = repmat(monk_x(monkeynum)+template_x,length(avg_pR2),1);
-        scatter(xval(:),avg_pR2(:),[],'k','filled')
-        plot(xval',avg_pR2','-k','linewidth',1)
-    end
-    set(gca,'tickdir','out','box','off','xtick',monk_x,...
-        'xticklabel',filename,'ytick',[0 0.25 0.5],'ticklabelinterpreter','none')
-    % axis equal
-    ylim([0 0.6])
-    % xlim([0 1])
-    ylabel('Model pseudo-R^2')
 
 %% Tuning curve shape comparison
     % go by file and compile
