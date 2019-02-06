@@ -72,10 +72,11 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
 
             % analyze fold to get model evaluations
             if exist('params','var')
-                [foldEval{foldctr},foldTuning{foldctr}] = analyzeFold(td_train,td_test,params);
+                params.crossvalID = [repeatctr foldctr];
             else
-                [foldEval{foldctr},foldTuning{foldctr}] = analyzeFold(td_train,td_test);
+                params = struct('crossvalID',[repeatctr foldctr]);
             end
+            [foldEval{foldctr},foldTuning{foldctr}] = analyzeFold(td_train,td_test,params);
 
             if verbose
                 fprintf('\tEvaluated fold %d of %d at time %f\n',foldctr,num_folds,toc(fold_timer));
@@ -205,6 +206,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     model_names = {};
     num_tuning_bins = 16;
     unit_guide = [];
+    crossvalID = [];
     if nargin > 2
         assignParams(who,params);
     end % overwrite parameters
@@ -213,6 +215,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     assert(~isempty(glm_params),'Must pass in glm parameters')
     assert(~isempty(model_names),'Must pass in model names')
     assert(length(model_names) == length(glm_params) + 1,'Model names must have one more element than glm_params')
+    assert(~isempty(crossvalID),'Must pass in crossvalID')
 
 %% Fit models
     % set up parameters for models
@@ -245,15 +248,24 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     for spacenum = 1:2
         for modelnum = 1:length(model_names)
             % get tuning weights for each model
-            pdParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
-                                    'out_signal_names',unit_guide,...
-                                    'bootForTuning',false,'num_boots',50,'verbose',false,'meta',struct('spaceNum',spacenum));
+            pdParams = struct(...
+                'out_signals',model_names(modelnum),...
+                'prefix',model_names{modelnum},...
+                'out_signal_names',unit_guide,...
+                'bootForTuning',false,...
+                'num_boots',50,...
+                'verbose',false,...
+                'meta',struct('spaceNum',spacenum,'crossvalID',crossvalID));
             temp_pdTable = getTDClassicalPDs(td_test{spacenum},pdParams);
             % temp_pdTable = getTDPDs(td_test{spacenum},pdParams);
 
-            tuningParams = struct('out_signals',model_names(modelnum),'prefix',model_names{modelnum},...
-                                    'out_signal_names',unit_guide,...
-                                    'calc_CIs',false,'num_bins',num_tuning_bins,'meta',struct('spaceNum',spacenum));
+            tuningParams = struct(...
+                'out_signals',model_names(modelnum),...
+                'prefix',model_names{modelnum},...
+                'out_signal_names',unit_guide,...
+                'calc_CIs',false,...
+                'num_bins',num_tuning_bins,...
+                'meta',struct('spaceNum',spacenum,'crossvalID',crossvalID));
             temp_tuning_table = getTuningCurves(td_test{spacenum},tuningParams);
             temp_table = join(temp_pdTable,temp_tuning_table);
 
