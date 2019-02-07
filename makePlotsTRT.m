@@ -34,17 +34,6 @@
         monkey_idx = find(strcmpi(encoderResults.crossEval.monkey{1},monkey_names));
         session_ctr(monkey_idx) = session_ctr(monkey_idx) + 1;
 
-        %% extract crossval tables into cells classified by monkey and session
-        % compose crossvalID table (TEMPORARY)
-        num_folds = encoderResults.params.num_folds;
-        num_repeats = encoderResults.params.num_repeats;
-        num_neurons = size(unique(encoderResults.crossEval.signalID,'rows'),1);
-        [foldnum,~,repeatnum] = meshgrid(1:num_folds,1:num_neurons,1:num_repeats);
-        foldnum = foldnum(:);
-        repeatnum = repeatnum(:);
-        crossvalID = table([repeatnum foldnum],'VariableNames',{'crossvalID'});
-        crossvalID.Properties.VariableDescriptions = {'meta'};
-
         % We already have evaluation table in crossEval... just extract the models we want
         model_eval{monkey_idx,session_ctr(monkey_idx)} = encoderResults.crossEval(:,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
         model_eval_cell = cell(1,length(models_to_plot));
@@ -56,7 +45,6 @@
 
         model_eval{monkey_idx,session_ctr(monkey_idx)} = horzcat(...
             model_eval{monkey_idx,session_ctr(monkey_idx)},...
-            crossvalID,... % temporary...
             model_eval_cell{:});
 
         % Get tuning curve correlation table

@@ -32,11 +32,6 @@ function shift_err = calculateEncoderPDShiftErr(encoderResults,params)
     shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',model_aliases,'_model') neural_signal]);
     [~,real_shifts] = getNTidx(shift_tables{end},'signalID',encoderResults.tunedNeurons);
 
-    % define some variables for convenience
-    num_folds = encoderResults.params.num_folds;
-    num_repeats = encoderResults.params.num_repeats;
-    num_neurons = size(unique(real_shifts.signalID,'rows'),1);
-
     % figure out what meta columns to keep
     metacols = strcmpi(real_shifts.Properties.VariableDescriptions,'meta');
 
@@ -50,14 +45,6 @@ function shift_err = calculateEncoderPDShiftErr(encoderResults,params)
     model_err = array2table(model_err_mat,'VariableNames',strcat(model_aliases,'_err'));
     model_err.Properties.VariableDescriptions = repmat({'linear'},size(model_aliases));
 
-    % compose crossvalID table
-    [foldnum,~,repeatnum] = meshgrid(1:num_folds,1:num_neurons,1:num_repeats);
-    foldnum = foldnum(:);
-    repeatnum = repeatnum(:);
-    crossvalID = table([repeatnum foldnum],'VariableNames',{'crossvalID'});
-    crossvalID.Properties.VariableDescriptions = {'meta'};
-
     shift_err = horzcat(...
         real_shifts(:,metacols),...
-        crossvalID,...
         model_err);
