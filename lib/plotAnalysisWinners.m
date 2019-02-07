@@ -40,46 +40,57 @@ function plotAnalysisWinners(metric_tables,winners,params)
             model_cols = endsWith(avg_metric.Properties.VariableNames,postfix);
             model_colnames = strrep(avg_metric.Properties.VariableNames(model_cols),postfix,'');
 
-            % set x counter and potential y values
-            model_xval = zeros(length(models_to_plot)+1,1);
-            model_yval = model_y + template_y(sessionnum);
-            for neuronnum = 1:height(avg_metric)
+            assert(all(strcmpi(model_colnames,models_to_plot)),'Models in table are in different order than specified!')
 
+            % count all full wins and partial wins for this session
+            full_win_ctr = zeros(length(models_to_plot)+1,1);
+            part_win_ctr = zeros(length(models_to_plot)+1,1);
+            for neuronnum = 1:height(avg_metric)
                 % find highest pR2
                 [~,model_sort_idx] = sort(avg_metric{neuronnum,model_cols});
-                model_order = model_colnames(model_sort_idx);
-                best_model = model_order{end};
-                runnerup_model = model_order{end-1};
+                best_idx = model_sort_idx(end);
+                runnerup_idx = model_sort_idx(end-1);
+                best_model = model_colnames{best_idx};
+                runnerup_model = model_colnames{runnerup_idx};
 
-                % check decisiveness of victory
+                % find number of wins
                 best_model_wins = strcmpi(winners{monkeynum,sessionnum}(:,neuronnum),best_model);
                 runnerup_wins = strcmpi(winners{monkeynum,sessionnum}(:,neuronnum),runnerup_model);
-                if sum(best_model_wins) == length(models_to_plot)-1
-                    yval_plot = model_yval(model_sort_idx(end));
-                    model_xval(model_sort_idx(end)) = model_xval(model_sort_idx(end)) + 1;
-                    xval_plot = model_xval(model_sort_idx(end));
-                    scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'filled')
-                elseif sum(best_model_wins) == length(models_to_plot)-2
-                    yval_plot = model_yval(model_sort_idx(end));
-                    model_xval(model_sort_idx(end)) = model_xval(model_sort_idx(end)) + 1;
-                    xval_plot = model_xval(model_sort_idx(end));
-                    scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'<','filled')
-
-                    if sum(runnerup_wins) == length(models_to_plot)-2
-                        yval_plot = model_yval(model_sort_idx(end-1));
-                        model_xval(model_sort_idx(end-1)) = model_xval(model_sort_idx(end-1)) + 1;
-                        xval_plot = model_xval(model_sort_idx(end-1));
-                        scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'<','filled')
+                if sum(best_model_wins) == length(models_to_plot)-1 % won all comparisons
+                    full_win_ctr(best_idx) = full_win_ctr(best_idx)+1;
+                elseif sum(best_model_wins) == length(models_to_plot)-2 % won all but one comparison
+                    part_win_ctr(best_idx) = part_win_ctr(best_idx)+1;
+                    if sum(runnerup_wins) == length(models_to_plot)-2 % there's another partial winner
+                        part_win_ctr(runnerup_idx) = part_win_ctr(runnerup_idx)+1;
                     end
-                else
-                    yval_plot = model_yval(end);
-                    model_xval(end) = model_xval(end) + 1;
-                    xval_plot = model_xval(end);
-                    scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'filled')
+                else % no full or partial winners
+                    full_win_ctr(end) = full_win_ctr(end)+1;
                 end
-
                 hold on
             end
+
+            % plot dots
+            % full wins first
+            dot_xval = cell(1,length(full_win_ctr));
+            dot_yval = cell(1,length(full_win_ctr));
+            for modelnum = 1:length(full_win_ctr)
+                dot_xval{modelnum} = 1:full_win_ctr(modelnum);
+                dot_yval{modelnum} = repmat(model_y(modelnum) + template_y(sessionnum),1,full_win_ctr(modelnum));
+            end
+            dot_xval = horzcat(dot_xval{:});
+            dot_yval = horzcat(dot_yval{:});
+            scatter(dot_xval,dot_yval,[],session_colors(sessionnum,:),'filled')
+
+            % then part wins
+            dot_xval = cell(1,length(part_win_ctr));
+            dot_yval = cell(1,length(part_win_ctr));
+            for modelnum = 1:length(part_win_ctr)
+                dot_xval{modelnum} = full_win_ctr(modelnum)+(1:part_win_ctr(modelnum));
+                dot_yval{modelnum} = repmat(model_y(modelnum) + template_y(sessionnum),1,part_win_ctr(modelnum));
+            end
+            dot_xval = horzcat(dot_xval{:});
+            dot_yval = horzcat(dot_yval{:});
+            scatter(dot_xval,dot_yval,[],session_colors(sessionnum,:))
         end
         title(monkey_names{monkeynum})
         axis ij
