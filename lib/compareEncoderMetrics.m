@@ -1,24 +1,38 @@
-function [winners,model_pairs] = compareEncoderPR2(encoderResults,models)
-    % comareEncoderPR2 - get outcomes of all pairwise
-    % model comparisons
+function [winners,model_pairs] = compareEncoderMetrics(metric_table,params)
+    % comareEncoderPR2 - get outcomes of all pairwise model comparisons
+    % with a bonferroni correction and cross-validation resampling correction
+    % Inputs:
+    %   metric_table - table of metric to compare models on
+    %   params - parameters struct
+    %       .models - names of models in cell array
+    %       .alpha - alpha value to test at (before corrections) Default: 0.05
+    %       .num_folds - number of folds in crossvalidation
+    %       .num_repeats - number of repeats in crossvalidation
+    %       .postfix - postfix of models in metric_table
 
+    models = {};
     alpha = 0.05;
+    num_folds = 5;
+    num_repeats = 20;
+    postfix = '';
+    assignParams(who,params)
 
     model_pairs = nchoosek(models,2);
     bonferroni_alpha = alpha/size(model_pairs,1);
 
-    neuron_ids = unique(encoderResults.crossEval.signalID,'rows');
+    neuron_ids = unique(metric_table.signalID,'rows');
 
     winners = cell(size(model_pairs,1),size(neuron_ids,1));
     for neuronnum = 1:size(neuron_ids,1)
-        [~,neuron_eval] = getNTidx(encoderResults.crossEval,'signalID',neuron_ids(neuronnum,:));
+        [~,neuron_eval] = getNTidx(metric_table,'signalID',neuron_ids(neuronnum,:));
         for pairnum = 1:size(model_pairs,1)
             winners{pairnum,neuronnum} = test_model_pair(...
                 neuron_eval,...
                 model_pairs(pairnum,:),...
                 struct('alpha',bonferroni_alpha,...
-                    'num_folds',encoderResults.params.num_folds,...
-                    'num_repeats',encoderResults.params.num_repeats));
+                    'postfix',postfix,...
+                    'num_folds',num_folds,...
+                    'num_repeats',num_repeats));
         end
     end
 end
@@ -31,10 +45,11 @@ function winner = test_model_pair(neuron_eval,model_pair,params)
     alpha = 0.05;
     num_folds = 5;
     num_repeats = 20;
+    postfix = '';
     assignParams(who,params);
 
     crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
-    diffstat = neuron_eval.(sprintf('glm_%s_model_eval',model_pair{2}))-neuron_eval.(sprintf('glm_%s_model_eval',model_pair{1}));
+    diffstat = neuron_eval.(strcat(model_pair{2},postfix))-neuron_eval.(strcat(model_pair{1},postfix));
 
     alphaup = 1-alpha/2;
     alphalow = alpha/2;
