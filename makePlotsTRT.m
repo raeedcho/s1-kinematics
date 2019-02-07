@@ -52,7 +52,8 @@
             encoderResults,struct('model_aliases',{models_to_plot},'neural_signal','S1_FR'));
 
         % Get PD shift error table
-        shift_err{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftErr(encoderResults,struct('model_aliases',{models_to_plot}));
+        shift_err{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftErr(...
+            encoderResults,struct('model_aliases',{models_to_plot}));
 
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
