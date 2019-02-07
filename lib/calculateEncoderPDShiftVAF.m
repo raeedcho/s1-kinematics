@@ -1,4 +1,4 @@
-function shift_err = calculateEncoderPDShiftErr(encoderResults,params)
+function shift_err = calculateEncoderPDShiftVAF(encoderResults,params)
     % Calculates error in predicting preferred direction shifts for given models
     % Inputs:
     %   encoderResults - The struct output from mwEncoders
@@ -40,7 +40,7 @@ function shift_err = calculateEncoderPDShiftErr(encoderResults,params)
     for modelnum = 1:length(model_aliases)
         % get modeled shifts
         [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
-        model_err_mat(:,modelnum) = 1-cos(model_shifts.velPD-real_shifts.velPD);
+        model_err_mat(:,modelnum) = cos(model_shifts.velPD-real_shifts.velPD);
     end
     model_err = array2table(model_err_mat,'VariableNames',strcat(model_aliases,'_err'));
     model_err.Properties.VariableDescriptions = repmat({'linear'},size(model_aliases));
