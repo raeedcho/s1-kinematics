@@ -109,86 +109,13 @@
         end
 
     % make the winner dot plot
-        figure('defaultaxesfontsize',18)
-        % y coordinate of individual models
-        model_y = (2:3:(length(models_to_plot)*3+2))/10;
-        for monkeynum = 1:length(monkey_names)
-            % different subplots for different monkeys
-            subplot(1,3,monkeynum)
-
-            % template for within model session differences
-            template_y = linspace(-0.3,0.3,session_ctr(monkeynum))/10;
-
-            % make dotplot
-            for sessionnum = 1:session_ctr(monkeynum)
-                % get avg pR2
-                avg_pR2 = neuronAverage(model_eval{monkeynum,sessionnum},struct('keycols','signalID','do_ci',false));
-                model_cols = endsWith(avg_pR2.Properties.VariableNames,'_eval');
-                model_colnames = strrep(avg_pR2.Properties.VariableNames(model_cols),'_eval','');
-
-                % reset x value
-                model_xval = zeros(length(models_to_plot)+1,1);
-                for neuronnum = 1:height(avg_pR2)
-                    yval = model_y + template_y(sessionnum);
-
-                    % find highest pR2
-                    [~,model_sort_idx] = sort(avg_pR2{neuronnum,model_cols});
-                    model_order = model_colnames(model_sort_idx);
-                    best_model = model_order{end};
-                    runnerup_model = model_order{end-1};
-
-                    % check decisiveness of victory
-                    best_model_wins = strcmpi(pr2_winners{monkeynum,sessionnum}(:,neuronnum),best_model);
-                    runnerup_wins = strcmpi(pr2_winners{monkeynum,sessionnum}(:,neuronnum),runnerup_model);
-                    if sum(best_model_wins) == length(models_to_plot)-1
-                        yval_plot = yval(model_sort_idx(end));
-                        model_xval(model_sort_idx(end)) = model_xval(model_sort_idx(end)) + 1;
-                        xval_plot = model_xval(model_sort_idx(end));
-                        scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'filled')
-                    elseif sum(best_model_wins) == length(models_to_plot)-2
-                        yval_plot = yval(model_sort_idx(end));
-                        model_xval(model_sort_idx(end)) = model_xval(model_sort_idx(end)) + 1;
-                        xval_plot = model_xval(model_sort_idx(end));
-                        scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'<','filled')
-
-                        if sum(runnerup_wins) == length(models_to_plot)-2
-                            yval_plot = yval(model_sort_idx(end-1));
-                            model_xval(model_sort_idx(end-1)) = model_xval(model_sort_idx(end-1)) + 1;
-                            xval_plot = model_xval(model_sort_idx(end-1));
-                            scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'<','filled')
-                        end
-                    else
-                        yval_plot = yval(end);
-                        model_xval(end) = model_xval(end) + 1;
-                        xval_plot = model_xval(end);
-                        scatter(repmat(xval_plot,size(yval_plot)),yval_plot,[],session_colors(sessionnum,:),'filled')
-                    end
-
-                    % scatter(repmat(model_xval,size(yval)),yval,[],avg_pR2{monkeynum,sessionnum}(neuronnum,:),'filled')
-                    hold on
-
-                    % increment x value
-                end
-            end
-            title(monkey_names{monkeynum})
-            axis ij
-            if monkeynum == 1
-                set(gca,'box','off','tickdir','out',...
-                    'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
-                    'ytick',model_y,...
-                    'xlim',[0 30],...
-                    'xtick',0:10:30,...
-                    'yticklabel',[getModelTitles(models_to_plot);{'None'}])
-            else
-                set(gca,'box','off','tickdir','out',...
-                    'ylim',[model_y(1)+template_y(1)-0.1 model_y(end)+template_y(end)+0.1],...
-                    'ytick',model_y,...
-                    'xlim',[0 30],...
-                    'xtick',0:10:30,...
-                    'yticklabel',{})
-            end
-            xlabel('Number of neurons')
-        end
+    figure('defaultaxesfontsize',18)
+    plotAnalysisWinners(model_eval,pr2_winners,struct(...
+        'monkey_names',{monkey_names},...
+        'session_ctr',session_ctr,...
+        'session_colors',session_colors,...
+        'models_to_plot',{models_to_plot},...
+        'postfix','_eval'))
 
     % plot by neuron
     figure('defaultaxesfontsize',18)
