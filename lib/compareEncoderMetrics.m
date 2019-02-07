@@ -6,22 +6,24 @@ function [winners,model_pairs] = compareEncoderMetrics(metric_table,params)
     %   params - parameters struct
     %       .models - names of models in cell array
     %       .alpha - alpha value to test at (before corrections) Default: 0.05
-    %       .num_folds - number of folds in crossvalidation
-    %       .num_repeats - number of repeats in crossvalidation
     %       .postfix - postfix of models in metric_table
+    %       .num_repeats - number of repeats in crossvalidation
+    %           (default is to infer from metric_table)
+    %       .num_folds - number of folds in crossvalidation
+    %           (default is to infer from metric_table)
 
     models = {};
     alpha = 0.05;
-    num_folds = 5;
-    num_repeats = 20;
+    num_repeats = double(max(metric_table.crossvalID(:,1)));
+    num_folds = double(max(metric_table.crossvalID(:,2)));
     postfix = '';
     assignParams(who,params)
 
-    model_pairs = nchoosek(models,2);
-    bonferroni_alpha = alpha/size(model_pairs,1);
-
     neuron_ids = unique(metric_table.signalID,'rows');
 
+    % make the comparisons
+    model_pairs = nchoosek(models,2);
+    bonferroni_alpha = alpha/size(model_pairs,1);
     winners = cell(size(model_pairs,1),size(neuron_ids,1));
     for neuronnum = 1:size(neuron_ids,1)
         [~,neuron_eval] = getNTidx(metric_table,'signalID',neuron_ids(neuronnum,:));
@@ -47,6 +49,9 @@ function winner = test_model_pair(neuron_eval,model_pair,params)
     num_repeats = 20;
     postfix = '';
     assignParams(who,params);
+
+    % check on size of data
+    assert(height(neuron_eval)==num_folds*num_repeats,'Number of samples does not match the cross-validation parameters!')
 
     crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
     diffstat = neuron_eval.(strcat(model_pair{2},postfix))-neuron_eval.(strcat(model_pair{1},postfix));
