@@ -61,15 +61,15 @@
 
 %% Get pR2 pairwise comparisons for all model pairs and all neurons
     % find winners of pR2
-        pr2_winners = cell(length(monkey_names),size(session_colors,1));
-        for monkeynum = 1:length(monkey_names)
-            for sessionnum = 1:session_ctr(monkeynum)
-                [pr2_winners{monkeynum,sessionnum},model_pairs] = compareEncoderMetrics(...
-                        model_eval{monkeynum,sessionnum},struct(...
-                            'models',{models_to_plot},...
-                            'postfix','_eval'));
-            end
+    pr2_winners = cell(length(monkey_names),size(session_colors,1));
+    for monkeynum = 1:length(monkey_names)
+        for sessionnum = 1:session_ctr(monkeynum)
+            [pr2_winners{monkeynum,sessionnum},model_pairs] = compareEncoderMetrics(...
+                    model_eval{monkeynum,sessionnum},struct(...
+                        'models',{models_to_plot},...
+                        'postfix','_eval'));
         end
+    end
 
     % make the pairwise comparison scatter plot
         figure
@@ -142,6 +142,26 @@
     xlabel('Model Pseudo-R^2')
 
 %% Tuning curve shape comparison
+    % find winners of tuning corr
+    tuning_corr_winners = cell(length(monkey_names),size(session_colors,1));
+    for monkeynum = 1:length(monkey_names)
+        for sessionnum = 1:session_ctr(monkeynum)
+            [tuning_corr_winners{monkeynum,sessionnum},model_pairs] = compareEncoderMetrics(...
+                    tuning_corr{monkeynum,sessionnum},struct(...
+                        'models',{models_to_plot},...
+                        'postfix','_tuningCorr'));
+        end
+    end
+
+    % make the winner dot plot
+    figure('defaultaxesfontsize',18)
+    plotAnalysisWinners(tuning_corr,tuning_corr_winners,struct(...
+        'monkey_names',{monkey_names},...
+        'session_ctr',session_ctr,...
+        'session_colors',session_colors,...
+        'models_to_plot',{models_to_plot},...
+        'postfix','_tuningCorr'))
+
     % plot by neuron
     figure('defaultaxesfontsize',18)
     plotModelMetric(tuning_corr,struct(...
@@ -301,7 +321,7 @@
     end
 
 %% PD shift error dotplots
-    % find winners of pR2
+    % find winners of PD shift
     shift_vaf_winners = cell(length(monkey_names),size(session_colors,1));
     for monkeynum = 1:length(monkey_names)
         for sessionnum = 1:session_ctr(monkeynum)
@@ -320,6 +340,7 @@
         'session_colors',session_colors,...
         'models_to_plot',{models_to_plot},...
         'postfix','_err'))
+    suptitle('PD Shift VAF Winners')
 
     % plot by neuron
     figure('defaultaxesfontsize',18)
@@ -331,7 +352,7 @@
         'postfix','_err',...
         'marginal_col','crossvalID',...
         'line_sparsity',0));
-    xlabel('PD Shift Model Error')
+    xlabel('PD Shift Model VAF')
 
     % plot by crossval run
     figure('defaultaxesfontsize',18)
@@ -343,7 +364,7 @@
         'postfix','_err',...
         'marginal_col','signalID',...
         'line_sparsity',0));
-    xlabel('PD Shift Model Error')
+    xlabel('PD Shift Model VAF')
 
 %% Get example tuning curves for all models
     for monkeynum = 1%:num_monks
