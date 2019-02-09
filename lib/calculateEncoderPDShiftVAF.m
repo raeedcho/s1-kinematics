@@ -1,19 +1,19 @@
-function shift_err = calculateEncoderPDShiftVAF(encoderResults,params)
-    % Calculates error in predicting preferred direction shifts for given models
+function shift_vaf = calculateEncoderPDShiftVAF(encoderResults,params)
+    % Calculates circular VAF in predicting preferred direction shifts for given models
     % Inputs:
     %   encoderResults - The struct output from mwEncoders
     %   params - Paramers struct
     %       .model_aliases - aliases for models names to evaluate
     %       .neural_signal - name of actual neural signal
     % Outputs:
-    %   shift_err - table with error values for each crossval sample
+    %   shift_vaf - table with vaf values for each crossval sample
     %       Table will match neuron table standard, with columns for:
     %           monkey (meta)
     %           date (meta)
     %           task (meta)
     %           signalID (meta) - only gives back tuned neurons
     %           crossvalID (meta) - [repeatnum foldnum]
-    %           {model_aliases}_err
+    %           {model_aliases}_vaf
     %
     % Note: this code assumes that the crossTuning table is in a specific order, i.e.
     % neurons are nested inside spacenum, nested inside folds, nested inside repeats
@@ -36,15 +36,15 @@ function shift_err = calculateEncoderPDShiftVAF(encoderResults,params)
     metacols = strcmpi(real_shifts.Properties.VariableDescriptions,'meta');
 
     % loop through shift tables
-    model_err_mat = zeros(height(real_shifts),length(model_aliases));
+    model_vaf_mat = zeros(height(real_shifts),length(model_aliases));
     for modelnum = 1:length(model_aliases)
         % get modeled shifts
         [~,model_shifts] = getNTidx(shift_tables{modelnum},'signalID',encoderResults.tunedNeurons);
-        model_err_mat(:,modelnum) = cos(model_shifts.velPD-real_shifts.velPD);
+        model_vaf_mat(:,modelnum) = cos(model_shifts.velPD-real_shifts.velPD);
     end
-    model_err = array2table(model_err_mat,'VariableNames',strcat(model_aliases,'_err'));
-    model_err.Properties.VariableDescriptions = repmat({'linear'},size(model_aliases));
+    model_vaf = array2table(model_vaf_mat,'VariableNames',strcat(model_aliases,'_vaf'));
+    model_vaf.Properties.VariableDescriptions = repmat({'linear'},size(model_aliases));
 
-    shift_err = horzcat(...
+    shift_vaf = horzcat(...
         real_shifts(:,metacols),...
-        model_err);
+        model_vaf);
