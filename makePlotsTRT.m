@@ -76,40 +76,39 @@
     end
 
     % make the pairwise comparison scatter plot
-        figure
-        for monkeynum = 1:length(monkey_names)
-            for pairnum = 1:size(model_pairs,1)
-                % set subplot
-                subplot(length(monkey_names),size(model_pairs,1),...
-                    (monkeynum-1)*size(model_pairs,1)+pairnum)
-                plot([-1 1],[-1 1],'k--','linewidth',0.5)
-                hold on
-                plot([0 0],[-1 1],'k-','linewidth',0.5)
-                plot([-1 1],[0 0],'k-','linewidth',0.5)
-                for sessionnum = 1:session_ctr(monkeynum)
-                    avg_pR2 = neuronAverage(model_eval{monkeynum,sessionnum},struct('keycols','signalID','do_ci',false));
-                    % scatter filled circles if there's a winner, empty circles if not
-                    no_winner =  cellfun(@isempty,pr2_winners{monkeynum,sessionnum}(pairnum,:));
-                    scatter(...
-                        avg_pR2.(strcat(model_pairs{pairnum,1},'_eval'))(no_winner),...
-                        avg_pR2.(strcat(model_pairs{pairnum,2},'_eval'))(no_winner),...
-                        [],session_colors(sessionnum,:))
-                    scatter(...
-                        avg_pR2.(strcat(model_pairs{pairnum,1},'_eval'))(~no_winner),...
-                        avg_pR2.(strcat(model_pairs{pairnum,2},'_eval'))(~no_winner),...
-                        [],session_colors(sessionnum,:),'filled')
-                end
-                % make axes pretty
-                set(gca,'box','off','tickdir','out',...
-                    'xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
-                axis square
-                if monkeynum ~= length(monkey_names) || pairnum ~= 1
-                    set(gca,'box','off','tickdir','out',...
-                        'xtick',[],'ytick',[])
-                end
-                xlabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,1})))
-                ylabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,2})))
+    figure
+    for monkeynum = 1:length(monkey_names)
+        for pairnum = 1:size(model_pairs,1)
+            % set subplot
+            subplot(length(monkey_names),size(model_pairs,1),...
+                (monkeynum-1)*size(model_pairs,1)+pairnum)
+            plot([-1 1],[-1 1],'k--','linewidth',0.5)
+            hold on
+            plot([0 0],[-1 1],'k-','linewidth',0.5)
+            plot([-1 1],[0 0],'k-','linewidth',0.5)
+            for sessionnum = 1:session_ctr(monkeynum)
+                avg_pR2 = neuronAverage(model_eval{monkeynum,sessionnum},struct('keycols','signalID','do_ci',false));
+                % scatter filled circles if there's a winner, empty circles if not
+                no_winner =  cellfun(@isempty,pr2_winners{monkeynum,sessionnum}(pairnum,:));
+                scatter(...
+                    avg_pR2.(strcat(model_pairs{pairnum,1},'_eval'))(no_winner),...
+                    avg_pR2.(strcat(model_pairs{pairnum,2},'_eval'))(no_winner),...
+                    [],session_colors(sessionnum,:))
+                scatter(...
+                    avg_pR2.(strcat(model_pairs{pairnum,1},'_eval'))(~no_winner),...
+                    avg_pR2.(strcat(model_pairs{pairnum,2},'_eval'))(~no_winner),...
+                    [],session_colors(sessionnum,:),'filled')
             end
+            % make axes pretty
+            set(gca,'box','off','tickdir','out',...
+                'xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
+            axis square
+            if monkeynum ~= length(monkey_names) || pairnum ~= 1
+                set(gca,'box','off','tickdir','out',...
+                    'xtick',[],'ytick',[])
+            end
+            xlabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,1})))
+            ylabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,2})))
         end
     end
     suptitle('Pseudo-R^2 pairwise comparisons')
