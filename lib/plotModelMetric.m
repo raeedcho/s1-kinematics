@@ -10,8 +10,8 @@ function plotModelMetric(metric_tables,params)
     %       .models_to_plot - models to plot
     %       .postfix - postfix of model name in table column names,
     %           e.g. '_eval' for column name 'ext_eval' and model name 'ext'
-    %       .marginal_col - key column over which to average, e.g. 'signalID'
-    %           or 'crossvalID'
+    %       .marginal_col - key column(s) for which to average, e.g. 'signalID'
+    %           or 'crossvalID' or {'signalID','crossvalID'}
     %       .line_sparsity - percent of lines to drop in plot
 
     % parameters
@@ -20,10 +20,16 @@ function plotModelMetric(metric_tables,params)
     session_colors = [];
     models_to_plot = {};
     postfix = '';
-    marginal_col = 'crossvalID';
+    marginal_col = 'signalID';
+    colored_lines = false;
     line_sparsity = 0;
 
     assignParams(who,params)
+
+    if ischar(marginal_col)
+        marginal_col = {marginal_col};
+    end
+    assert(all(endsWith(marginal_col,'ID')),'Marginal col must be signalID, crossvalID or both!')
 
     % y coordinate of individual monkey bars
     monkey_y = (2:3:((length(monkey_names)-1)*3+2))/10;
@@ -32,16 +38,8 @@ function plotModelMetric(metric_tables,params)
     for monkeynum = 1:length(monkey_names)
         for sessionnum = 1:session_ctr(monkeynum)
             % average for each neuron
-            switch(marginal_col)
-                case 'crossvalID'
-                    avg_metric = neuronAverage(metric_tables{monkeynum,sessionnum},...
-                        struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
-                case 'signalID'
-                    avg_metric = neuronAverage(metric_tables{monkeynum,sessionnum},...
-                        struct('keycols',{{'monkey','date','task','crossvalID'}},'do_ci',false));
-                otherwise
-                    error('Marginal col must be one of {''crossvalID'',''signalID''}')
-            end
+            avg_metric = neuronAverage(metric_tables{monkeynum,sessionnum},...
+                struct('keycols',{[{'monkey','date','task'},marginal_col]},'do_ci',false));
             yval = repmat(monkey_y(monkeynum) + template_y,height(avg_metric),1);
             % add some jitter
             yval = yval+randn(size(yval,1),1)/150;
@@ -50,15 +48,14 @@ function plotModelMetric(metric_tables,params)
             doplot = rand(length(yval),1)>=line_sparsity;
             [~,cols] = ismember(strcat(models_to_plot,postfix),avg_metric.Properties.VariableNames);
             xvals = avg_metric{:,cols};
-            switch(marginal_col)
-                case 'crossvalID'
-                    plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',ones(1,3)*0.5)
-                    hold on
-                    scatter(xvals(:),yval(:),50,session_colors(sessionnum,:),'filled')
-                case 'signalID'
-                    plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',session_colors(sessionnum,:))
-                    hold on
-                    scatter(xvals(:),yval(:),25,ones(1,3)*0.5,'filled')
+            if ~colored_lines
+                plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',ones(1,3)*0.5)
+                hold on
+                scatter(xvals(:),yval(:),50,session_colors(sessionnum,:),'filled')
+            else
+                plot(xvals(doplot,:)',yval(doplot,:)','-','linewidth',0.5,'color',session_colors(sessionnum,:))
+                hold on
+                scatter(xvals(:),yval(:),25,ones(1,3)*0.5,'filled')
             end
         end
     end
