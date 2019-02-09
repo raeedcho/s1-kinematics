@@ -7,6 +7,10 @@
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     files = dir(fullfile(datadir,'*encodingResults_allModels_run20190206.mat'));
     filename = horzcat({files.name});
+    
+    % for figure saving
+    figdir = '/home/raeed/Wiki/Projects/limblab/s1-kinematics/figures/Encoding';
+    run_date = char(datetime('today','format','yyyyMMdd'));
 
     monkey_names = {'Chips','Han','Lando'};
     models_to_plot = {'ego','ext','musc','handelbow'};
@@ -107,6 +111,9 @@
                 ylabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,2})))
             end
         end
+    end
+    suptitle('Pseudo-R^2 pairwise comparisons')
+    saveas(gcf,fullfile(figdir,sprintf('pr2_pairwise_run%s.pdf',run_date)))
 
     % make the winner dot plot
     figure('defaultaxesfontsize',18)
@@ -116,6 +123,8 @@
         'session_colors',session_colors,...
         'models_to_plot',{models_to_plot},...
         'postfix','_eval'))
+    suptitle('Pseudo-R^2 Winners')
+    saveas(gcf,fullfile(figdir,sprintf('pr2_winners_run%s.pdf',run_date)))
 
     % plot by neuron
     figure('defaultaxesfontsize',18)
@@ -128,6 +137,7 @@
         'marginal_col','crossvalID',...
         'line_sparsity',0));
     xlabel('Model Pseudo-R^2')
+    saveas(gcf,fullfile(figdir,sprintf('pr2_neurons_run%s.pdf',run_date)))
 
     % plot by crossval run
     figure('defaultaxesfontsize',18)
@@ -140,6 +150,7 @@
         'marginal_col','signalID',...
         'line_sparsity',0));
     xlabel('Model Pseudo-R^2')
+    saveas(gcf,fullfile(figdir,sprintf('pr2_crossvals_run%s.pdf',run_date)))
 
 %% Tuning curve shape comparison
     % find winners of tuning corr
@@ -153,6 +164,46 @@
         end
     end
 
+    % make the pairwise comparison scatter plot
+    figure
+    for monkeynum = 1:length(monkey_names)
+        for pairnum = 1:size(model_pairs,1)
+            % set subplot
+            subplot(length(monkey_names),size(model_pairs,1),...
+                (monkeynum-1)*size(model_pairs,1)+pairnum)
+            plot([-1 1],[-1 1],'k--','linewidth',0.5)
+            hold on
+            plot([0 0],[-1 1],'k-','linewidth',0.5)
+            plot([-1 1],[0 0],'k-','linewidth',0.5)
+            for sessionnum = 1:session_ctr(monkeynum)
+                avg_corr = neuronAverage(tuning_corr{monkeynum,sessionnum},struct('keycols','signalID','do_ci',false));
+                % scatter filled circles if there's a winner, empty circles if not
+                no_winner =  cellfun(@isempty,tuning_corr_winners{monkeynum,sessionnum}(pairnum,:));
+                scatter(...
+                    avg_corr.(strcat(model_pairs{pairnum,1},'_tuningCorr'))(no_winner),...
+                    avg_corr.(strcat(model_pairs{pairnum,2},'_tuningCorr'))(no_winner),...
+                    [],session_colors(sessionnum,:))
+                scatter(...
+                    avg_corr.(strcat(model_pairs{pairnum,1},'_tuningCorr'))(~no_winner),...
+                    avg_corr.(strcat(model_pairs{pairnum,2},'_tuningCorr'))(~no_winner),...
+                    [],session_colors(sessionnum,:),'filled')
+            end
+            % make axes pretty
+            set(gca,'box','off','tickdir','out',...
+                'xlim',[-0.1 1],'ylim',[-0.1 1],...
+                'xtick',0:0.5:1,'ytick',0:0.5:1)
+            axis square
+            if monkeynum ~= length(monkey_names) || pairnum ~= 1
+                set(gca,'box','off','tickdir','out',...
+                    'xtick',[],'ytick',[])
+            end
+            xlabel(sprintf('%s',getModelTitles(model_pairs{pairnum,1})))
+            ylabel(sprintf('%s',getModelTitles(model_pairs{pairnum,2})))
+        end
+    end
+    suptitle('Tuning correlation pairwise comparisons')
+    saveas(gcf,fullfile(figdir,sprintf('tuningCorr_pairwise_run%s.pdf',run_date)))
+
     % make the winner dot plot
     figure('defaultaxesfontsize',18)
     plotAnalysisWinners(tuning_corr,tuning_corr_winners,struct(...
@@ -161,6 +212,8 @@
         'session_colors',session_colors,...
         'models_to_plot',{models_to_plot},...
         'postfix','_tuningCorr'))
+    suptitle('Tuning Correlation Winners')
+    saveas(gcf,fullfile(figdir,sprintf('tuningCorr_winners_run%s.pdf',run_date)))
 
     % plot by neuron
     figure('defaultaxesfontsize',18)
@@ -173,6 +226,7 @@
         'marginal_col','crossvalID',...
         'line_sparsity',0));
     xlabel('Modeled tuning curve correlations')
+    saveas(gcf,fullfile(figdir,sprintf('tuningCorr_neurons_run%s.pdf',run_date)))
 
     % plot by crossval run
     figure('defaultaxesfontsize',18)
@@ -185,6 +239,7 @@
         'marginal_col','signalID',...
         'line_sparsity',0));
     xlabel('Modeled tuning curve correlations')
+    saveas(gcf,fullfile(figdir,sprintf('tuningCorr_crossvals_run%s.pdf',run_date)))
 
 %% PD shifts over all monkeys
     file_shifts = cell(length(filename),length(models_to_plot)); % shift tables for each model in each file
@@ -219,9 +274,8 @@
             % actual PD shift histogram
             figure(total_hists)
             subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
-            h = histogram(gca,monkey_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
-            set(h,'facecolor','k','edgecolor','none')
-            subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
+            h = histogram(gca,monkey_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+            set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
             set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
             ylabel(monkey_names{monkeynum})
             if monkeynum == 1
@@ -233,9 +287,8 @@
 
                 % modeled PD shift histogram
                 subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
-                h = histogram(gca,monkey_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
-                set(h,'facecolor','k','edgecolor','none')
-                subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
+                h = histogram(gca,monkey_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+                set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
                 set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
                 if monkeynum == 1
                     title(sprintf('%s modeled PD shift',getModelTitles(models_to_plot{modelnum})))
@@ -319,8 +372,14 @@
                 end
             end
     end
+    figure(total_hists)
+    suptitle('PD shift histograms')
+    saveas(gcf,fullfile(figdir,sprintf('PDShiftHists_run%s.pdf',run_date)))
+    figure(scatters)
+    suptitle('PD shift scatter plots')
+    saveas(gcf,fullfile(figdir,sprintf('PDShiftScatters_run%s.pdf',run_date)))
 
-%% PD shift error dotplots
+%% PD shift VAF dotplots
     % find winners of PD shift
     shift_vaf_winners = cell(length(monkey_names),size(session_colors,1));
     for monkeynum = 1:length(monkey_names)
@@ -328,7 +387,7 @@
             [shift_vaf_winners{monkeynum,sessionnum},model_pairs] = compareEncoderMetrics(...
                     shift_vaf{monkeynum,sessionnum},struct(...
                         'models',{models_to_plot},...
-                        'postfix','_err'));
+                        'postfix','_vaf'));
         end
     end
 
@@ -339,8 +398,9 @@
         'session_ctr',session_ctr,...
         'session_colors',session_colors,...
         'models_to_plot',{models_to_plot},...
-        'postfix','_err'))
+        'postfix','_vaf'))
     suptitle('PD Shift VAF Winners')
+    saveas(gcf,fullfile(figdir,sprintf('PDShiftVAF_winners_run%s.pdf',run_date)))
 
     % plot by neuron
     figure('defaultaxesfontsize',18)
@@ -349,10 +409,11 @@
         'session_ctr',session_ctr,...
         'session_colors',session_colors,...
         'models_to_plot',{models_to_plot},...
-        'postfix','_err',...
-        'marginal_col','crossvalID',...
+        'postfix','_vaf',...
+        'marginal_col','signalID',...
         'line_sparsity',0));
     xlabel('PD Shift Model VAF')
+    saveas(gcf,fullfile(figdir,sprintf('PDShiftVAF_neurons_run%s.pdf',run_date)))
 
     % plot by crossval run
     figure('defaultaxesfontsize',18)
@@ -361,10 +422,48 @@
         'session_ctr',session_ctr,...
         'session_colors',session_colors,...
         'models_to_plot',{models_to_plot},...
-        'postfix','_err',...
-        'marginal_col','signalID',...
-        'line_sparsity',0));
+        'postfix','_vaf',...
+        'marginal_col','crossvalID',...
+        'colored_lines',true,...
+        'line_sparsity',0.5));
     xlabel('PD Shift Model VAF')
+    saveas(gcf,fullfile(figdir,sprintf('PDShiftVAF_crossvals_run%s.pdf',run_date)))
+
+    % plot session averages with CI bars
+    figure('defaultaxesfontsize',18)
+    alpha = 0.05;
+    model_x = (2:3:((length(models_to_plot)-1)*3+2))/10;
+    for monkeynum = 1:length(monkey_names)
+        subplot(length(monkey_names),1,monkeynum)
+        for sessionnum = 1:session_ctr(monkeynum)
+            % plot session average connected by lines...
+            avg_shift_vaf = neuronAverage(shift_vaf{monkeynum,sessionnum},...
+                struct('keycols',{{'monkey','date','task','crossvalID'}},'do_ci',false));
+
+            % estimate error bars
+            [~,cols] = ismember(strcat(models_to_plot,'_vaf'),avg_shift_vaf.Properties.VariableNames);
+            num_repeats = double(max(shift_vaf{monkeynum,sessionnum}.crossvalID(:,1)));
+            num_folds = double(max(shift_vaf{monkeynum,sessionnum}.crossvalID(:,2)));
+            crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+            yvals = mean(avg_shift_vaf{:,cols});
+            var_vaf = var(avg_shift_vaf{:,cols});
+            upp = tinv(1-alpha/2,num_folds*num_repeats-1);
+            low = tinv(alpha/2,num_folds*num_repeats-1);
+            CI_lo = yvals + low * sqrt(crossval_correction*var_vaf);
+            CI_hi = yvals + upp * sqrt(crossval_correction*var_vaf);
+            
+            % plot dots and lines
+            plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
+            hold on
+            plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+            scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+        end
+        ylabel('PD Shift Circular VAF')
+        set(gca,'box','off','tickdir','out',...
+            'xlim',[0 1.3],'xtick',model_x,'xticklabel',getModelTitles(models_to_plot),...
+            'ylim',[-0.2 1],'ytick',[-0.2 0 1])
+    end
+    saveas(gcf,fullfile(figdir,sprintf('PDShiftVAF_sessionAvg_run%s.pdf',run_date)))
 
 %% Get example tuning curves for all models
     for monkeynum = 1%:num_monks
