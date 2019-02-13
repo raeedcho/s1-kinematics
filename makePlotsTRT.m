@@ -489,21 +489,62 @@
     saveas(gcf,fullfile(figdir,sprintf('PDShiftVAF_sessionAvg_run%s.pdf',run_date)))
 
 %% Get example tuning curves for all models
-    for monkeynum = 1%:num_monks
-        clear encoderResults
+    for monkeynum = 1:length(monkey_names)
+        for sessionnum = 1:session_ctr(monkeynum)
+            %% Plot out tuning curves for tuned neurons
+            f = figure('defaultaxesfontsize',18);
+            % plot a max of 7 neurons
+            num_neurons = min(7,size(tuned_neurons{monkeynum,sessionnum},1));
+            neurons_to_plot = tuned_neurons{monkeynum,sessionnum}(...
+                randperm(size(tuned_neurons{monkeynum,sessionnum},1),num_neurons),...
+                :);
+            for neuronnum = 1:num_neurons
+                % figure out maxFR over both workspaces
+                [~,temp_table] = getNTidx(model_tuning{monkeynum,sessionnum},...
+                    'signalID',neurons_to_plot(neuronnum,:));
+                minFR = floor(min(min(temp_table{:,strcat([models_to_plot {'S1_FR'}],'_velCurve')})));
+                maxFR = ceil(max(max(temp_table{:,strcat([models_to_plot {'S1_FR'}],'_velCurve')})));
 
-        % load data
-        load(fullfile(datadir,filename{monkeynum}))
+                % go plot each workspace
+                for spacenum = 1:size(cond_colors,1)
+                    % get tuning table specifically for this neuron and workspace
+                    [~,temp_table] = getNTidx(model_tuning{monkeynum,sessionnum},...
+                        'signalID',neurons_to_plot(neuronnum,:),...
+                        'spaceNum',spacenum);
 
-        %% Plot out tuning curves
-            % compare PM and DL tuning for each model
-            for modelnum = 1:num_models
-                figure('defaultaxesfontsize',18)
-                % figure
-                compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors))
-                % compareTuning(encoderResults.tuning_curves(:,modelnum),encoderResults.pdTables(:,modelnum),struct('which_units',find(encoderResults.isTuned),'cond_colors',cond_colors,'maxFR',1))
-                title(encoderResults.params.model_names{modelnum},'interpreter','none')
+                    % plot out actual tuning curves
+                    subplot(length(models_to_plot)+1,num_neurons,neuronnum)
+                    plotTuning(temp_table,...
+                        struct('maxFR',maxFR,...
+                            'minFR',minFR,...
+                            'unroll',true,...
+                            'color',cond_colors(spacenum,:),...
+                            'curve_colname',sprintf('%s_velCurve','S1_FR'),...
+                            'pd_colname',sprintf('%s_velPD','S1_FR'),...
+                            'plot_ci',false))
+                    title(strcat('Neuron ',num2str(neurons_to_plot(neuronnum,:))))
+
+                    % plot out modeled tuning curves
+                    for modelnum = 1:length(models_to_plot)
+                        subplot(length(models_to_plot)+1,num_neurons,modelnum*num_neurons+neuronnum)
+                        plotTuning(temp_table,...
+                            struct('maxFR',maxFR,...
+                                'minFR',minFR,...
+                                'unroll',true,...
+                                'color',cond_colors(spacenum,:),...
+                                'curve_colname',sprintf('%s_velCurve',models_to_plot{modelnum}),...
+                                'pd_colname',sprintf('%s_velPD',models_to_plot{modelnum}),...
+                                'plot_ci',false))
+                        title(getModelTitles(models_to_plot{modelnum}),'interpreter','none')
+                    end
+                end
             end
+            % saveas(gcf,fullfile(figdir,sprintf('tuningCurves_%s_%s_run%s.pdf',...
+            %     model_tuning{monkeynum,sessionnum}{1,'monkey'}{1},...
+            %     strrep(model_tuning{monkeynum,sessionnum}{1,'date'}{1},'/',''),...
+            %     run_date)))
+            % close(f)
+        end
     end
 
 %% Plot out example firing rates
