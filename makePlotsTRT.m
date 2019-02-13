@@ -26,7 +26,7 @@
         141,160,203]/255;
 
 %% Compile information over all files
-    [model_eval,tuning_corr,shift_vaf] = deal(cell(length(monkey_names),size(session_colors,1)));
+    [model_eval,model_tuning,tuning_corr,shift_vaf,tuned_neurons] = deal(cell(length(monkey_names),size(session_colors,1)));
     session_ctr = zeros(length(monkey_names),1);
     fileclock = tic;
     fprintf('Started loading files...\n')
@@ -46,10 +46,31 @@
                 'VariableNames',strcat(models_to_plot(modelnum),'_eval'));
             model_eval_cell{modelnum}.Properties.VariableDescriptions = {'linear'};
         end
-
         model_eval{monkey_idx,session_ctr(monkey_idx)} = horzcat(...
             model_eval{monkey_idx,session_ctr(monkey_idx)},...
             model_eval_cell{:});
+
+        % We already have tuning table in crossTuning... just extract the models we want
+        model_tuning{monkey_idx,session_ctr(monkey_idx)} = encoderResults.crossTuning(:,...
+            contains(encoderResults.crossTuning.Properties.VariableDescriptions,'meta') |...
+            strcmpi(encoderResults.crossTuning.Properties.VariableNames,'bins'));
+        model_tuning_cell = cell(1,length(models_to_plot)+1);
+        for modelnum = 1:length(models_to_plot)
+            model_tuning_cell{modelnum} = table(...
+                encoderResults.crossTuning.(sprintf('glm_%s_model_velCurve',models_to_plot{modelnum})),...
+                encoderResults.crossTuning.(sprintf('glm_%s_model_velPD',models_to_plot{modelnum})),...
+                'VariableNames',strcat(models_to_plot(modelnum),{'_velCurve','_velPD'}));
+            model_tuning_cell{modelnum}.Properties.VariableDescriptions = {'linear','circular'};
+        end
+        model_tuning_cell{end} = table(...
+            encoderResults.crossTuning.('S1_FR_velCurve'),...
+            encoderResults.crossTuning.('S1_FR_velPD'),...
+            'VariableNames',strcat('S1_FR',{'_velCurve','_velPD'}));
+        model_tuning_cell{end}.Properties.VariableDescriptions = {'linear','circular'};
+        % put it together
+        model_tuning{monkey_idx,session_ctr(monkey_idx)} = horzcat(...
+            model_tuning{monkey_idx,session_ctr(monkey_idx)},...
+            model_tuning_cell{:});
 
         % Get tuning curve correlation table
         tuning_corr{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderTuningCorr(...
@@ -58,6 +79,9 @@
         % Get PD shift error table
         shift_vaf{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftVAF(...
             encoderResults,struct('model_aliases',{models_to_plot}));
+
+        % get tuned neurons
+        tuned_neurons{monkey_idx,session_ctr(monkey_idx)} = encoderResults.tunedNeurons;
 
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
