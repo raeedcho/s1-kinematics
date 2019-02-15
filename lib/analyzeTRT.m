@@ -72,9 +72,9 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
 
             % analyze fold to get model evaluations
             if exist('params','var')
-                params.crossvalID = [repeatctr foldctr];
+                params.crossvalID = uint16([repeatctr foldctr]);
             else
-                params = struct('crossvalID',[repeatctr foldctr]);
+                params = struct('crossvalID',uint16([repeatctr foldctr]));
             end
             [foldEval{foldctr},foldTuning{foldctr}] = analyzeFold(td_train,td_test,params);
 
