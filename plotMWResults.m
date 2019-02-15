@@ -573,6 +573,28 @@
         waitfor(h)
     end
 
+%% example raster plot
+    % load data
+    filenum = 4;
+    load(fullfile(datadir,filename{filenum}))
+
+    % set plotting params
+    num_trials = 2;
+    trials_to_plot = randperm(length(encoderResults.td_tuning{2}),num_trials);
+
+    for neuronnum = 1:size(encoderResults.td_tuning{2}(1).S1_spikes,2)
+        h = figure('defaultaxesfontsize',18);
+        ax = zeros(length(models_to_plot),2);
+        for spacenum = 1:2
+            ax(spacenum) = subplot(2,1,spacenum);
+            plotExampleRaster(encoderResults.td_tuning{spacenum},...
+                struct('trial_idx',trials_to_plot))
+            title(sprintf('Neuron %d, spacenum %d',neuronnum,spacenum))
+        end
+        linkaxes(ax(:),'y')
+        waitfor(h)
+    end
+
 %% Extra stuff/in progress...
     %% Plot handle positions
         figure('defaultaxesfontsize',18)
