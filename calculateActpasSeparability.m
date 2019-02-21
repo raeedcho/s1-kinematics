@@ -11,7 +11,7 @@ filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
 savesuffix = '_separationResults_allModels_run20190127.mat';
 
-model_aliases = {'ext','extforce','joint','musc','handelbow'};
+model_aliases = {'ext','extforce','handle_ext','joint','musc','handelbow'};
 arrayname = 'S1';
 num_musc_pcs = 5;
 
@@ -101,7 +101,11 @@ for filenum = 1:length(filenames)
     onetime_warn = warning('query','last'); 
     warning('off',onetime_warn.identifier)
     
-    sepResults = actpasSep(td,struct('num_repeats',20,'num_folds',5));
+    sepResults = actpasSep(td,struct(...
+        'num_repeats',20,...
+        'num_folds',5,...
+        'model_aliases',{model_aliases},...
+        'num_musc_pcs',num_musc_pcs));
 
     % turn warning back on
     warning('on',onetime_warn.identifier)
