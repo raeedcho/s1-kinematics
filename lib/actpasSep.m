@@ -167,65 +167,85 @@ function results = actpasSep(td,params)
         meta_table = cell2table({td(1).monkey,td(1).date_time,td(1).task},...
             'VariableNames',{'monkey','date_time','task'});
         meta_table.Properties.VariableDescriptions = repmat({'meta'},1,3);
-        table_entry_cell = cell(num_repeats,num_folds);
-        td_crossval = cell(num_repeats,1);
+        [trial_table_cell,lda_table_cell] = deal(cell(num_repeats,num_folds));
         for repeatnum = 1:num_repeats
             foldidx = crossvalind('kfold',minsize,num_folds);
             fold_tic = tic;
-            td_crossval_entry = cell(1,num_folds);
             for foldnum = 1:num_folds
+                % get crossval table entry
+                crossval_table = table(uint16([repeatnum foldnum]),'VariableNames',{'crossvalID'});
+                crossval_table.Properties.VariableDescriptions = {'meta'};
+
                 % split into training and testing
                 train_idx = (foldidx~=foldnum);
                 td_train = cat(2,td_act(train_idx),td_pas(train_idx));
                 test_idx = (foldidx==foldnum);
                 td_test = cat(2,td_act(test_idx),td_pas(test_idx));
 
-                % train models
+                % train and test models
                 glm_info = cell(1,length(model_names)-1);
-                for modelnum = 1:length(model_names)-1
-                    [~,glm_info{modelnum}] = getModel(td_train,glm_params{modelnum});
-                end
+                [lda_coeff,seps,model_fr] = deal(cell(1,length(model_names)));
+                train_class = cat(1,td_train.ctrHoldBump);
+                test_class = cat(1,td_test.ctrHoldBump);
+                for modelnum = 1:length(model_names)
+                    if modelnum~=length(model_names)
+                        [td_train,glm_info{modelnum}] = getModel(td_train,glm_params{modelnum});
 
-                % predict firing rates
-                for modelnum = 1:length(model_names)-1
-                    td_test = getModel(td_test,glm_info{modelnum});
-                end
+                        % predict firing rates
+                        td_test = getModel(td_test,glm_info{modelnum});
+                    end
         
-                % get LDA models
-                [lda_mdl,lda_coeff] = deal(cell(1,length(model_names)));
-                for modelnum = 1:length(model_names)
-                    [~,lda_mdl{modelnum}] = test_sep(td_train,struct('signals',model_names{modelnum}));
-                    lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(1,1).Const lda_mdl{modelnum}.Coeffs(1,1).Linear];
+                    % get LDA models
+                    train_fr = cat(1,td_train.(model_names{modelnum}));
+                    lda_mdl = fitcdiscr(train_fr,train_class);
+                    lda_coeff{modelnum} = [lda_mdl.Coeffs(1,2).Const;lda_mdl.Coeffs(1,2).Linear]';
+
+                    % get separabilities from LDA models
+                    model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
+                    seps{modelnum} = sum(predict(lda_mdl,model_fr{modelnum}) == test_class)/length(test_class);
                 end
 
-                % get separabilities from LDA models
-                seps = cell(1,length(model_names));
-                for modelnum = 1:length(model_names)
-                    seps{modelnum} = test_sep(td_test,struct(...
-                        'signals',model_names{modelnum},...
-                        'mdl',lda_mdl{modelnum}));
-                end
+                % compile trial table
+                % get direction of trials for trial table
+                bump_dir = cat(1,td_test.bumpDir);
+                tgt_dir = cat(1,td_test.tgtDir);
+                trial_dir = zeros(size(test_class));
+                trial_dir(test_class) = bump_dir(test_class)*pi/180;
+                trial_dir(~test_class) = tgt_dir(~test_class)*pi/180;
+                trial_dir_table = table(trial_dir,'VariableNames',{'trialDir'});
+                trial_dir_table.Properties.VariableDescriptions = {'circular'};
+                % get class for trial table
+                test_class_table = table(test_class,'VariableNames',{'isPassive'});
+                test_class_table.Properties.VariableDescriptions = {'meta'};
+                % get model fr for trial table
+                model_fr_table = table(model_fr{:},'VariableNames',[strcat(model_aliases,'_predFR') {neural_signals}]);
+                model_fr_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                trial_table_cell{repeatnum,foldnum} = horzcat(...
+                    repmat(meta_table,length(trial_dir),1),...
+                    repmat(crossval_table,length(trial_dir),1),...
+                    test_class_table,...
+                    trial_dir_table,...
+                    model_fr_table);
 
-                % construct table entry
-                crossval_table = table(uint16([repeatnum foldnum]),'VariableNames',{'crossvalID'});
-                crossval_table.Properties.VariableDescriptions = {'meta'};
+                % construct LDA table entry
                 lda_coeff_table = cell2table(lda_coeff,'VariableNames',strcat([model_aliases {neural_signals}],'_lda_coeff'));
-                lda_coeff_table.Properties.VariableDescriptions = repmat('linear',1,length(model_names));
+                lda_coeff_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
                 sep_table = cell2table(seps,'VariableNames',strcat([model_aliases {neural_signals}],'_sep'));
-                sep_table.Properties.VariableDescriptions = repmat('linear',1,length(model_names));
-
-                table_entry_cell{repeatnum,foldnum} = horzcat(meta_table,crossval_table,lda_coeff_table,sep_table);
-
-                td_crossval_entry{foldnum} = td_test;
+                sep_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                lda_table_cell{repeatnum,foldnum} = horzcat(...
+                    meta_table,...
+                    crossval_table,...
+                    lda_coeff_table,...
+                    sep_table);
         
                 fprintf('\tEvaluated fold %d at time: %f\n',foldnum,toc(fold_tic))
             end
-            td_crossval{repeatnum} = horzcat(td_crossval_entry{:});
             fprintf('Evaluated repeat %d at time: %f\n',repeatnum,toc(repeat_tic))
         end
 
     %% Package results
         % get one separability table
-        lda_table = vertcat(table_entry_cell{:});
+        lda_table = vertcat(lda_table_cell{:});
+        trial_table = vertcat(trial_table_cell{:});
 
-        results = struct('lda_table',lda_table,'td_crossval',td_crossval);
+        results = struct('lda_table',lda_table,'trial_table',trial_table);
