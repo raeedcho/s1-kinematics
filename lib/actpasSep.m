@@ -3,30 +3,35 @@ function results = actpasSep(td,params)
     %% Prep the data
         % split into active and passive
         [~,td_act] = getTDidx(td,'ctrHoldBump',false);
-        % clean nans out...?
-        nanners = isnan(cat(1,td_act.tgtDir));
-        td_act = td_act(~nanners);
         [~,td_pas] = getTDidx(td,'ctrHoldBump',true);
 
-        % find the movmement onsets
-        td_act = getNorm(td_act,struct('signals','vel','norm_name','speed'));
-        td_act = getMoveOnsetAndPeak(td_act,struct('start_idx','idx_goCueTime','end_idx','idx_endTime','method','peak','min_ds',1));
-        td_pas = getNorm(td_pas,struct('signals','vel','norm_name','speed'));
-        td_pas = getMoveOnsetAndPeak(td_pas,struct('start_idx','idx_bumpTime','end_idx','idx_goCueTime','method','peak','min_ds',1));
-
-        % trim to just movements
-        td_act = trimTD(td_act,{'idx_movement_on',0},{'idx_movement_on',14});
-        td_pas = trimTD(td_pas,{'idx_movement_on',0},{'idx_movement_on',14});
-
-        % find average over the movement
-        td_act = binTD(td_act,'average');
-        td_pas = binTD(td_pas,'average');
-
-        % even out sizes
+        % find the relevant movmement onsets
+        td_act = getMoveOnsetAndPeak(td_act,struct(...
+            'start_idx','idx_goCueTime',...
+            'end_idx','idx_endTime',...
+            'method','peak',...
+            'peak_divisor',10,...
+            'min_ds',1));
+        td_pas = getMoveOnsetAndPeak(td_pas,struct(...
+            'start_idx','idx_bumpTime',...
+            'start_idx_offset',-5,... % give it some wiggle room
+            'peak_idx_offset',-5,... % give it some wiggle room
+            'end_idx','idx_goCueTime',...
+            'method','peak',...
+            'peak_divisor',10,...
+            'min_ds',1));
+        
+        % even out sizes and put back together
         minsize = min(length(td_act),length(td_pas));
         td_act = td_act(1:minsize);
         td_pas = td_pas(1:minsize);
-        td = cat(2,td_act,td_pas);
+        td_bin = cat(2,td_act,td_pas);
+
+        % trim to just movements
+        td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',14});
+
+        % find average over the movement
+        td_bin = binTD(td_bin,'average');
 
     %% set up model variables
         num_folds = 5; % 5 is default number of folds, no need to pass in
@@ -52,20 +57,20 @@ function results = actpasSep(td,params)
                 % PCAparams = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_len') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
                 %                     'do_plot',true);
                 PCAparams = struct('signals','muscle_len', 'do_plot',false);
-                [td,~] = dimReduce(td,PCAparams);
+                [td_bin,~] = dimReduce(td_bin,PCAparams);
                 % get velocity PCA
                 % need to drop a muscle: for some reason, PCA says rank of muscle kinematics matrix is 38, not 39.
                 % PCAparams_vel = struct('signals',{{'opensim',find(contains(td(1).opensim_names,'_muscVel') & ~contains(td(1).opensim_names,'tricep_lat'))}},...
                 %                     'do_plot',true);
                 PCAparams_vel = struct('signals','muscle_vel', 'do_plot',false);
-                [td,~] = dimReduce(td,PCAparams_vel);
+                [td_bin,~] = dimReduce(td_bin,PCAparams_vel);
                 glm_params{modelnum} = struct('model_type',model_type,...
                                         'model_name',[model_aliases{modelnum} '_model'],...
                                         'in_signals',{{'muscle_len_pca',1:num_musc_pcs;'muscle_vel_pca',1:num_musc_pcs}},...
                                         'out_signals',neural_signals);
             case 'ext'
                 markername = 'Marker_1';
-                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
                 assert(all(point_exists),'Hand marker does not exist?')
                 glm_params{modelnum} = struct(...
                     'model_type',model_type,...
@@ -85,7 +90,7 @@ function results = actpasSep(td,params)
                                         'out_signals',neural_signals);
             case 'extforce'
                 markername = 'Marker_1';
-                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
                 assert(all(point_exists),'Hand marker does not exist?')
                 glm_params{modelnum} = struct(...
                     'model_type',model_type,...
@@ -100,7 +105,7 @@ function results = actpasSep(td,params)
                     'out_signals',neural_signals);
             case 'ego'
                 % add in spherical coordinates
-                td = addCoordPoint2TD(td,struct('method','markers','coord','sph','point','hand'));
+                td_bin = addCoordPoint2TD(td_bin,struct('method','markers','coord','sph','point','hand'));
                 glm_params{modelnum} = struct('model_type',model_type,...
                                         'model_name',[model_aliases{modelnum} '_model'],...
                                         'in_signals',{{'markers_sph_hand_pos';'markers_sph_hand_vel'}},...
@@ -115,7 +120,7 @@ function results = actpasSep(td,params)
                 %                         'out_signals',neural_signals);
             case 'cyl'
                 % add in cylindrical coordinates
-                td = addCoordPoint2TD(td,struct('method','markers','coord','cyl','point','hand'));
+                td_bin = addCoordPoint2TD(td_bin,struct('method','markers','coord','cyl','point','hand'));
                 glm_params{modelnum} = struct('model_type',model_type,...
                                         'model_name',[model_aliases{modelnum} '_model'],...
                                         'in_signals',{{'markers_cyl_hand_pos';'markers_cyl_hand_vel'}},...
@@ -136,11 +141,11 @@ function results = actpasSep(td,params)
             case 'handelbow'
                 % indices for cartesian hand coordinates
                 markername = 'Marker_1';
-                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
                 assert(all(point_exists),'Hand marker does not exist?')
 
                 markername = 'Pronation_Pt1';
-                [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+                [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
                 assert(all(point_exists),'Elbow marker does not exist?')
 
                 glm_params{modelnum} = struct('model_type',model_type,...
@@ -149,8 +154,8 @@ function results = actpasSep(td,params)
                                         'out_signals',neural_signals);
             case 'markers_pca'
                 % Get PCA for marker space
-                td = dimReduce(td,struct('signals','markers'));
-                td = dimReduce(td,struct('signals','marker_vel'));
+                td_bin = dimReduce(td_bin,struct('signals','markers'));
+                td_bin = dimReduce(td_bin,struct('signals','marker_vel'));
                 glm_params{modelnum} = struct('model_type',model_type,...
                                         'model_name',[model_aliases{modelnum} '_model'],...
                                         'in_signals',{{'markers_pca',1:num_musc_pcs;'marker_vel_pca',1:num_musc_pcs}},...
@@ -162,8 +167,8 @@ function results = actpasSep(td,params)
                                         'out_signals',neural_signals);
             case 'ego_handelbow'
                 % transform into new coord system
-                td = addCoordPoint2TD(td,struct('method','markers','coord','sph','point','hand'));
-                td = addCoordPoint2TD(td,struct('method','markers','coord','sph','point','elbow'));
+                td_bin = addCoordPoint2TD(td_bin,struct('method','markers','coord','sph','point','hand'));
+                td_bin = addCoordPoint2TD(td_bin,struct('method','markers','coord','sph','point','elbow'));
                 glm_params{modelnum} = struct('model_type',model_type,...
                                         'model_name',[model_aliases{modelnum} '_model'],...
                                         'in_signals',{{'markers_sph_hand_pos';'markers_sph_hand_vel';'markers_sph_elbow_pos';'markers_sph_elbow_vel'}},...
@@ -174,12 +179,12 @@ function results = actpasSep(td,params)
         end
 
     %% cross-validate the separabilities
-        [~,td_act] = getTDidx(td,'ctrHoldBump',false);
-        [~,td_pas] = getTDidx(td,'ctrHoldBump',true);
+        [~,td_act] = getTDidx(td_bin,'ctrHoldBump',false);
+        [~,td_pas] = getTDidx(td_bin,'ctrHoldBump',true);
 
         repeat_tic = tic;
         fprintf('Starting %dx%d cross-validation at time: %f\n',num_repeats,num_folds,toc(repeat_tic))
-        meta_table = cell2table({td(1).monkey,td(1).date_time,td(1).task},...
+        meta_table = cell2table({td_bin(1).monkey,td_bin(1).date_time,td_bin(1).task},...
             'VariableNames',{'monkey','date_time','task'});
         meta_table.Properties.VariableDescriptions = repmat({'meta'},1,3);
         [trial_table_cell,lda_table_cell] = deal(cell(num_repeats,num_folds));
@@ -199,7 +204,7 @@ function results = actpasSep(td,params)
 
                 % train and test models
                 glm_info = cell(1,length(model_names)-1);
-                [lda_coeff,seps,model_fr] = deal(cell(1,length(model_names)));
+                [lda_coeff,self_seps,true_seps,model_fr,lda_mdl] = deal(cell(1,length(model_names)));
                 train_class = cat(1,td_train.ctrHoldBump);
                 test_class = cat(1,td_test.ctrHoldBump);
                 for modelnum = 1:length(model_names)
@@ -212,12 +217,16 @@ function results = actpasSep(td,params)
         
                     % get LDA models
                     train_fr = cat(1,td_train.(model_names{modelnum}));
-                    lda_mdl = fitcdiscr(train_fr,train_class);
-                    lda_coeff{modelnum} = [lda_mdl.Coeffs(1,2).Const;lda_mdl.Coeffs(1,2).Linear]';
+                    lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
+                    lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(1,2).Const;lda_mdl{modelnum}.Coeffs(1,2).Linear]';
+                end
 
+                for modelnum = 1:length(model_names)
                     % get separabilities from LDA models
                     model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
-                    seps{modelnum} = sum(predict(lda_mdl,model_fr{modelnum}) == test_class)/length(test_class);
+                    
+                    self_seps{modelnum} = sum(predict(lda_mdl{modelnum},model_fr{modelnum}) == test_class)/length(test_class);
+                    true_seps{modelnum} = sum(predict(lda_mdl{end},model_fr{modelnum}) == test_class)/length(test_class);
                 end
 
                 % compile trial table
@@ -245,13 +254,16 @@ function results = actpasSep(td,params)
                 % construct LDA table entry
                 lda_coeff_table = cell2table(lda_coeff,'VariableNames',strcat([model_aliases {neural_signals}],'_lda_coeff'));
                 lda_coeff_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
-                sep_table = cell2table(seps,'VariableNames',strcat([model_aliases {neural_signals}],'_sep'));
-                sep_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                self_sep_table = cell2table(self_seps,'VariableNames',strcat([model_aliases {neural_signals}],'_self_sep'));
+                self_sep_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                true_sep_table = cell2table(true_seps,'VariableNames',strcat([model_aliases {neural_signals}],'_true_sep'));
+                true_sep_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
                 lda_table_cell{repeatnum,foldnum} = horzcat(...
                     meta_table,...
                     crossval_table,...
                     lda_coeff_table,...
-                    sep_table);
+                    self_sep_table,...
+                    true_sep_table);
         
                 fprintf('\tEvaluated fold %d at time: %f\n',foldnum,toc(fold_tic))
             end
