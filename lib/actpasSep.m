@@ -37,8 +37,9 @@ function results = actpasSep(td,params)
         num_folds = 5; % 5 is default number of folds, no need to pass in
         num_repeats = 20; % 20 is default number of repeats, no need to pass in
         num_musc_pcs = 5;
+        num_pcs = 5; % number of PCs to train LDA on
         model_type = 'glm';
-        model_aliases = {'ext','extforce','joint','musc','handelbow'};
+        model_aliases = {'ext','extforce','handelbow'};
         arrayname = 'S1';
         assignParams(who,params);
         neural_signals = [arrayname '_FR'];
@@ -203,21 +204,30 @@ function results = actpasSep(td,params)
                 td_test = cat(2,td_act(test_idx),td_pas(test_idx));
 
                 % train and test models
-                glm_info = cell(1,length(model_names)-1);
-                [lda_coeff,self_seps,true_seps,model_fr,lda_mdl] = deal(cell(1,length(model_names)));
+                [lda_coeff,self_seps,true_seps,model_fr,lda_mdl,pca_coeff,pca_mu] = deal(cell(1,length(model_names)));
                 train_class = cat(1,td_train.ctrHoldBump);
                 test_class = cat(1,td_test.ctrHoldBump);
                 for modelnum = 1:length(model_names)
                     if modelnum~=length(model_names)
-                        [td_train,glm_info{modelnum}] = getModel(td_train,glm_params{modelnum});
+                        [td_train,glm_info] = getModel(td_train,glm_params{modelnum});
 
                         % predict firing rates
-                        td_test = getModel(td_test,glm_info{modelnum});
+                        td_test = getModel(td_test,glm_info);
                     end
+                    
+                    % try sqrt transform (doesn't mess with model fitting because neural signals are last
+                    td_train = sqrtTransform(td_train,struct('signals',model_names{modelnum}));
+                    td_test = sqrtTransform(td_test,struct('signals',model_names{modelnum}));
+                    
+                    % get PCA
+                    [~,pca_info] = dimReduce(td_train,struct('signals',model_names{modelnum}));
+                    td_test = dimReduce(td_test,pca_info);
+                    pca_coeff{modelnum} = pca_info.w(:,1:num_pcs);
+                    pca_mu{modelnum} = pca_info.mu;
         
                     % get LDA models
                     train_fr = cat(1,td_train.(model_names{modelnum}));
-                    lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
+                    lda_mdl{modelnum} = fitcdiscr((train_fr-pca_mu{modelnum})*pca_coeff{modelnum},train_class);
                     lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(1,2).Const;lda_mdl{modelnum}.Coeffs(1,2).Linear]';
                 end
 
@@ -225,8 +235,10 @@ function results = actpasSep(td,params)
                     % get separabilities from LDA models
                     model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
                     
-                    self_seps{modelnum} = sum(predict(lda_mdl{modelnum},model_fr{modelnum}) == test_class)/length(test_class);
-                    true_seps{modelnum} = sum(predict(lda_mdl{end},model_fr{modelnum}) == test_class)/length(test_class);
+                    self_seps{modelnum} = sum(predict(lda_mdl{modelnum},(model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}) == test_class)/length(test_class);
+                    
+                    
+                    true_seps{modelnum} = sum(predict(lda_mdl{end},(model_fr{modelnum}-pca_mu{end})*pca_coeff{end}) == test_class)/length(test_class);
                 end
 
                 % compile trial table
