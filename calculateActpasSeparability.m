@@ -12,11 +12,13 @@ savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','R
 savesuffix = '_separationResults_1repeat_run20190221.mat';
 
 model_aliases = {'ext','extforce','handle_ext','handle_extforce','joint','musc','handelbow'};
+model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
+num_pcs = 4;
 
 %% Loop through files
-for filenum = 1:length(filenames)
+for filenum = 2:5%1:length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -119,7 +121,9 @@ for filenum = 1:length(filenames)
         'num_repeats',1,...
         'num_folds',5,...
         'model_aliases',{model_aliases},...
-        'num_musc_pcs',num_musc_pcs));
+        'model_type',model_type,...
+        'num_musc_pcs',num_musc_pcs,...
+        'num_pcs',num_pcs));
 
     % turn warning back on
     warning('on',onetime_warn.identifier)
