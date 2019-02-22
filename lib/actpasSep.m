@@ -70,7 +70,7 @@ function results = actpasSep(td,params)
                                         'in_signals',{{'muscle_len_pca',1:num_musc_pcs;'muscle_vel_pca',1:num_musc_pcs}},...
                                         'out_signals',neural_signals);
             case 'ext'
-                markername = 'Marker_1';
+                markername = 'Marker_3';
                 [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
                 assert(all(point_exists),'Hand marker does not exist?')
                 glm_params{modelnum} = struct(...
@@ -90,7 +90,7 @@ function results = actpasSep(td,params)
                                         'in_signals','opensim_hand_pos',...
                                         'out_signals',neural_signals);
             case 'extforce'
-                markername = 'Marker_1';
+                markername = 'Marker_3';
                 [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
                 assert(all(point_exists),'Hand marker does not exist?')
                 glm_params{modelnum} = struct(...
@@ -141,7 +141,7 @@ function results = actpasSep(td,params)
                                         'out_signals',neural_signals);
             case 'handelbow'
                 % indices for cartesian hand coordinates
-                markername = 'Marker_1';
+                markername = 'Marker_3';
                 [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
                 assert(all(point_exists),'Hand marker does not exist?')
 
@@ -216,8 +216,8 @@ function results = actpasSep(td,params)
                     end
                     
                     % try sqrt transform (doesn't mess with model fitting because neural signals are last
-                    td_train = sqrtTransform(td_train,struct('signals',model_names{modelnum}));
-                    td_test = sqrtTransform(td_test,struct('signals',model_names{modelnum}));
+                    % td_train = sqrtTransform(td_train,struct('signals',model_names{modelnum}));
+                    % td_test = sqrtTransform(td_test,struct('signals',model_names{modelnum}));
                     
                     % get PCA
                     [~,pca_info] = dimReduce(td_train,struct('signals',model_names{modelnum}));
@@ -227,6 +227,7 @@ function results = actpasSep(td,params)
         
                     % get LDA models
                     train_fr = cat(1,td_train.(model_names{modelnum}));
+                    % lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
                     lda_mdl{modelnum} = fitcdiscr((train_fr-pca_mu{modelnum})*pca_coeff{modelnum},train_class);
                     lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(1,2).Const;lda_mdl{modelnum}.Coeffs(1,2).Linear]';
                 end
@@ -235,9 +236,9 @@ function results = actpasSep(td,params)
                     % get separabilities from LDA models
                     model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
                     
+                    % self_seps{modelnum} = sum(predict(lda_mdl{modelnum},model_fr{modelnum}) == test_class)/length(test_class);
+                    % true_seps{modelnum} = sum(predict(lda_mdl{end},model_fr{modelnum}) == test_class)/length(test_class);
                     self_seps{modelnum} = sum(predict(lda_mdl{modelnum},(model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}) == test_class)/length(test_class);
-                    
-                    
                     true_seps{modelnum} = sum(predict(lda_mdl{end},(model_fr{modelnum}-pca_mu{end})*pca_coeff{end}) == test_class)/length(test_class);
                 end
 

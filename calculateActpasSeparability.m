@@ -11,14 +11,14 @@ filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
 savesuffix = '_separationResults_1repeat_run20190221.mat';
 
-model_aliases = {'ext','extforce','handle_ext','handle_extforce','joint','musc','handelbow'};
+model_aliases = {'ext','extforce','handelbow'};
 model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
 num_pcs = 4;
 
 %% Loop through files
-for filenum = 2:5%1:length(filenames)
+for filenum = 1:2%1:length(filenames)
     clear sepResults
 
     %% load and preprocess data

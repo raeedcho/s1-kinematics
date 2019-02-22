@@ -5,7 +5,6 @@ td_pas_avg = trimTD(td_pas,{'idx_movement_on',-15},{'idx_movement_on',30});
 td_act_avg = trialAverage(td_act_avg,'tgtDir');
 td_pas_avg = trialAverage(td_pas_avg,'bumpDir');
 
-%%
 num_vars = 1;
 dir_colors = linspecer(4);
 figure
@@ -48,9 +47,9 @@ end
 
 signame = 'marker_vel';
 figure
-scatter3(getSig(td_act_bin,{signame,1}),getSig(td_act_bin,{signame,2}),getSig(td_act_bin,{signame,3}),[],'k','filled')
+scatter3(getSig(td_act_bin,{signame,7}),getSig(td_act_bin,{signame,8}),getSig(td_act_bin,{signame,9}),[],'k','filled')
 hold on
-scatter3(getSig(td_pas_bin,{signame,1}),getSig(td_pas_bin,{signame,2}),getSig(td_pas_bin,{signame,3}),[],'k')
+scatter3(getSig(td_pas_bin,{signame,7}),getSig(td_pas_bin,{signame,8}),getSig(td_pas_bin,{signame,9}),[],'k')
 axis equal
 
 %% try classifier on kinematics
@@ -64,9 +63,9 @@ sep = sum(predict(mdl,getSig(td_bin(test_idx),{'marker_vel',1:num_sigs})) == cat
 [~,td_pas_bin] = getTDidx(td_bin,'ctrHoldBump',true);
 
 figure
-scatter(getSig(td_act_bin,{'vel',2}),getSig(td_act_bin,{'marker_vel',2})*100,[],'k','filled')
+scatter(getSig(td_act_bin,{'vel',1}),getSig(td_act_bin,{'marker_vel',7})*100,[],'k','filled')
 hold on
-scatter(getSig(td_pas_bin,{'vel',2}),getSig(td_pas_bin,{'marker_vel',2})*100,[],'k')
+scatter(getSig(td_pas_bin,{'vel',1}),getSig(td_pas_bin,{'marker_vel',7})*100,[],'k')
 plot(xlim,xlim,'--k')
 axis equal
 
