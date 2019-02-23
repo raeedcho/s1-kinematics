@@ -18,26 +18,28 @@ for i=1:4
 end
 
 %%
-td_temp = td_pas;
+td_temp =  {td_act,td_pas};
 sig_to_plot = 'speed';
 figure
 for trialnum = 1:30
     clf
-    subplot(2,1,1)
-    plot(td_temp(trialnum).(sig_to_plot),'k','linewidth',2)
-    hold on
-    plot(repmat(td_temp(trialnum).idx_movement_on,2,1),ylim,'--b')
-    plot(repmat(td_temp(trialnum).idx_bumpTime,2,1),ylim,'--r')
-    plot(repmat(td_temp(trialnum).idx_goCueTime,2,1),ylim,'--g')
-    plot(repmat(td_temp(trialnum).idx_endTime,2,1),ylim,'--k')
-    subplot(2,1,2)
-    plot(td_temp(trialnum).(strcat('d',sig_to_plot)),'k','linewidth',2)
-    hold on
-    plot(repmat(td_temp(trialnum).idx_movement_on,2,1),ylim,'--b')
-    plot(repmat(td_temp(trialnum).idx_bumpTime,2,1),ylim,'--r')
-    plot(repmat(td_temp(trialnum).idx_goCueTime,2,1),ylim,'--g')
-    plot(repmat(td_temp(trialnum).idx_endTime,2,1),ylim,'--k')
-    plot(xlim,zeros(2,1),'-k')
+    for i = 1:2
+        subplot(2,2,i)
+        plot(td_temp{i}(trialnum).(sig_to_plot),'k','linewidth',2)
+        hold on
+        plot(repmat(td_temp{i}(trialnum).idx_movement_on,2,1),ylim,'--b')
+        plot(repmat(td_temp{i}(trialnum).idx_bumpTime,2,1),ylim,'--r')
+        plot(repmat(td_temp{i}(trialnum).idx_goCueTime,2,1),ylim,'--g')
+        plot(repmat(td_temp{i}(trialnum).idx_endTime,2,1),ylim,'--k')
+        subplot(2,2,i+2)
+        plot(td_temp{i}(trialnum).(strcat('d',sig_to_plot)),'k','linewidth',2)
+        hold on
+        plot(repmat(td_temp{i}(trialnum).idx_movement_on,2,1),ylim,'--b')
+        plot(repmat(td_temp{i}(trialnum).idx_bumpTime,2,1),ylim,'--r')
+        plot(repmat(td_temp{i}(trialnum).idx_goCueTime,2,1),ylim,'--g')
+        plot(repmat(td_temp{i}(trialnum).idx_endTime,2,1),ylim,'--k')
+        plot(xlim,zeros(2,1),'-k')
+    end
     waitforbuttonpress
 end
 
@@ -45,12 +47,28 @@ end
 [~,td_act_bin] = getTDidx(td_bin,'ctrHoldBump',false);
 [~,td_pas_bin] = getTDidx(td_bin,'ctrHoldBump',true);
 
-signame = 'marker_vel';
+[dirs,~,dir_idx_act] = unique(cat(1,td_act_bin.tgtDir));
+[~,~,dir_idx_pas] = unique(cat(1,td_pas_bin.bumpDir));
+dir_colors = linspecer(max(dir_idx_act));
+forcename = {'force',1:3};
+kinname = {'marker_vel',7:9};
+
 figure
-scatter3(getSig(td_act_bin,{signame,7}),getSig(td_act_bin,{signame,8}),getSig(td_act_bin,{signame,9}),[],'k','filled')
+subplot(1,2,1)
+sig_act = getSig(td_act_bin,kinname);
+sig_pas = getSig(td_pas_bin,kinname);
+scatter3(sig_act(:,1),sig_act(:,2),sig_act(:,3),[],dir_colors(dir_idx_act,:),'filled')
 hold on
-scatter3(getSig(td_pas_bin,{signame,7}),getSig(td_pas_bin,{signame,8}),getSig(td_pas_bin,{signame,9}),[],'k')
+scatter3(sig_pas(:,1),sig_pas(:,2),sig_pas(:,3),[],dir_colors(dir_idx_pas,:))
 axis equal
+subplot(1,2,2)
+sig_act = getSig(td_act_bin,forcename);
+sig_pas = getSig(td_pas_bin,forcename);
+scatter3(sig_act(:,1),sig_act(:,2),sig_act(:,3),[],dir_colors(dir_idx_act,:),'filled')
+hold on
+scatter3(sig_pas(:,1),sig_pas(:,2),sig_pas(:,3),[],dir_colors(dir_idx_pas,:))
+axis equal
+suptitle(strrep(filenames{filenum},'_','-'))
 
 %% try classifier on kinematics
 num_sigs = 3;
