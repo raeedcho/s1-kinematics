@@ -270,6 +270,10 @@ function results = actpasSep(td,params)
                 % construct LDA table entry
                 lda_coeff_table = cell2table(lda_coeff,'VariableNames',strcat([model_aliases {neural_signals}],'_lda_coeff'));
                 lda_coeff_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                pca_coeff_table = cell2table(pca_coeff,'VariableNames',strcat([model_aliases {neural_signals}],'_pca_coeff'));
+                pca_coeff_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                pca_mu_table = cell2table(pca_mu,'VariableNames',strcat([model_aliases {neural_signals}],'_pca_mu'));
+                pca_mu_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
                 self_sep_table = cell2table(self_seps,'VariableNames',strcat([model_aliases {neural_signals}],'_self_sep'));
                 self_sep_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
                 true_sep_table = cell2table(true_seps,'VariableNames',strcat([model_aliases {neural_signals}],'_true_sep'));
@@ -278,6 +282,8 @@ function results = actpasSep(td,params)
                     meta_table,...
                     crossval_table,...
                     lda_coeff_table,...
+                    pca_coeff_table,...
+                    pca_mu_table,...
                     self_sep_table,...
                     true_sep_table);
         
