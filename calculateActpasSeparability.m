@@ -9,16 +9,18 @@ datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','t
 file_info = dir(fullfile(datadir,'*COactpas*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
-savesuffix = '_separationResults_1repeat_run20190221.mat';
+savesuffix = '_separationResults_run20190222.mat';
 
-model_aliases = {'ext','extforce','handelbow'};
+model_aliases = {'ext','extforce','joint','musc','handelbow'};
 model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
-num_pcs = 4;
+num_pcs = 3;
+num_repeats = 20;
+num_folds = 5;
 
 %% Loop through files
-for filenum = 1:2%1:length(filenames)
+for filenum = 1:4%1:length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -111,6 +113,14 @@ for filenum = 1:2%1:length(filenames)
     td(bad_trial) = [];
     fprintf('Removed %d trials because of missing muscles\n',sum(bad_trial))
     
+    % for Chips_20170912, file has bumps on 100% of trials
+    if strcmpi(td(1).monkey,'Chips') && contains(td(1).date_time,'2017/9/12')
+        td_copy = td;
+        [td_copy.ctrHoldBump] = deal(false);
+        td = cat(2,td,td_copy);
+        clear td_copy
+    end
+    
     %% find separabilities
     % suppress getTDfields warning...
     getTDfields(td,'time');
@@ -118,8 +128,8 @@ for filenum = 1:2%1:length(filenames)
     warning('off',onetime_warn.identifier)
     
     sepResults = actpasSep(td,struct(...
-        'num_repeats',1,...
-        'num_folds',5,...
+        'num_repeats',num_repeats,...
+        'num_folds',num_folds,...
         'model_aliases',{model_aliases},...
         'model_type',model_type,...
         'num_musc_pcs',num_musc_pcs,...
