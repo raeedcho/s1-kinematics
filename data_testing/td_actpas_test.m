@@ -18,8 +18,8 @@ for i=1:4
 end
 
 %%
-td_temp = td_act;
-sig_to_plot = 'plane_force_norm';
+td_temp = td_pas;
+sig_to_plot = 'speed';
 figure
 for trialnum = 1:30
     clf
