@@ -20,6 +20,9 @@ function results = actpasSep(td,params)
             'method','peak',...
             'peak_divisor',10,...
             'min_ds',1));
+        % throw out all trials where bumpTime and movement_on are more than 3 bins apart
+        bad_trials = isnan(cat(1,td_pas.idx_movement_on)) | abs(cat(1,td_pas.idx_movement_on)-cat(1,td_pas.idx_bumpTime))>3;
+        td_pas = td_pas(~bad_trials);
         
         % even out sizes and put back together
         minsize = min(length(td_act),length(td_pas));
