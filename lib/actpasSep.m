@@ -1,40 +1,4 @@
-function results = actpasSep(td,params)
-
-    %% Prep the data
-        % split into active and passive
-        [~,td_act] = getTDidx(td,'ctrHoldBump',false);
-        [~,td_pas] = getTDidx(td,'ctrHoldBump',true);
-
-        % find the relevant movmement onsets
-        td_act = getMoveOnsetAndPeak(td_act,struct(...
-            'start_idx','idx_goCueTime',...
-            'end_idx','idx_endTime',...
-            'method','peak',...
-            'peak_divisor',10,...
-            'min_ds',1));
-        td_pas = getMoveOnsetAndPeak(td_pas,struct(...
-            'start_idx','idx_bumpTime',...
-            'start_idx_offset',-5,... % give it some wiggle room
-            'peak_idx_offset',-5,... % give it some wiggle room
-            'end_idx','idx_goCueTime',...
-            'method','peak',...
-            'peak_divisor',10,...
-            'min_ds',1));
-        % throw out all trials where bumpTime and movement_on are more than 3 bins apart
-        bad_trials = isnan(cat(1,td_pas.idx_movement_on)) | abs(cat(1,td_pas.idx_movement_on)-cat(1,td_pas.idx_bumpTime))>3;
-        td_pas = td_pas(~bad_trials);
-        
-        % even out sizes and put back together
-        minsize = min(length(td_act),length(td_pas));
-        td_act = td_act(1:minsize);
-        td_pas = td_pas(1:minsize);
-        td_bin = cat(2,td_act,td_pas);
-
-        % trim to just movements
-        td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',14});
-
-        % find average over the movement
-        td_bin = binTD(td_bin,'average');
+function results = actpasSep(td_bin,params)
 
     %% set up model variables
         num_folds = 5; % 5 is default number of folds, no need to pass in

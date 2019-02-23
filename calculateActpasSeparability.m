@@ -9,7 +9,7 @@ datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','t
 file_info = dir(fullfile(datadir,'*COactpas*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
-savesuffix = '_separationResults_run20190222.mat';
+savesuffix = '_separationResults_run20190223.mat';
 
 model_aliases = {'ext','extforce','joint','musc','handelbow'};
 model_type = 'glm';
@@ -92,6 +92,9 @@ for filenum = 1:4%1:length(filenames)
     nanners = isnan(cat(1,td.tgtDir));
     td = td(~nanners);
     fprintf('Removed %d trials because of missing target direction\n',sum(nanners))
+    biggers = cat(1,td.ctrHoldBump) & abs(cat(1,td.bumpDir))>360;
+    td = td(~biggers);
+    fprintf('Removed %d trials because bump direction makes no sense\n',sum(biggers))
 
     % remove trials where markers aren't present
     bad_trial = false(length(td),1);
@@ -121,13 +124,50 @@ for filenum = 1:4%1:length(filenames)
         clear td_copy
     end
     
+    % split into active and passive
+    [~,td_act] = getTDidx(td,'ctrHoldBump',false);
+    [~,td_pas] = getTDidx(td,'ctrHoldBump',true);
+
+    % find the relevant movmement onsets
+    td_act = getMoveOnsetAndPeak(td_act,struct(...
+        'start_idx','idx_goCueTime',...
+        'start_idx_offset',20,...
+        'peak_idx_offset',20,...
+        'end_idx','idx_endTime',...
+        'method','peak',...
+        'peak_divisor',10,...
+        'min_ds',1));
+    td_pas = getMoveOnsetAndPeak(td_pas,struct(...
+        'start_idx','idx_bumpTime',...
+        'start_idx_offset',-5,... % give it some wiggle room
+        'peak_idx_offset',-5,... % give it some wiggle room
+        'end_idx','idx_goCueTime',...
+        'method','peak',...
+        'peak_divisor',10,...
+        'min_ds',1));
+    % throw out all trials where bumpTime and movement_on are more than 3 bins apart
+    bad_trials = isnan(cat(1,td_pas.idx_movement_on)) | abs(cat(1,td_pas.idx_movement_on)-cat(1,td_pas.idx_bumpTime))>3;
+    td_pas = td_pas(~bad_trials);
+
+    % even out sizes and put back together
+    minsize = min(length(td_act),length(td_pas));
+    td_act = td_act(1:minsize);
+    td_pas = td_pas(1:minsize);
+    td_bin = cat(2,td_act,td_pas);
+
+    % trim to just movements
+    td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',14});
+
+    % find average over the movement
+    td_bin = binTD(td_bin,'average');
+    
     %% find separabilities
     % suppress getTDfields warning...
-    getTDfields(td,'time');
+    getTDfields(td_bin,'time');
     onetime_warn = warning('query','last'); 
     warning('off',onetime_warn.identifier)
     
-    sepResults = actpasSep(td,struct(...
+    sepResults = actpasSep(td_bin,struct(...
         'num_repeats',num_repeats,...
         'num_folds',num_folds,...
         'model_aliases',{model_aliases},...
