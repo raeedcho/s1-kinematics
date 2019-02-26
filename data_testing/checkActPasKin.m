@@ -17,7 +17,6 @@ function checkActPasKin
 end
 
 function makeKinFigs(filename)
-
     %% load and preprocess data
     td = load(filename);
 
