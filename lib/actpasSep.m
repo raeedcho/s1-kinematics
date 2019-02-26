@@ -157,7 +157,7 @@ function results = actpasSep(td_bin,params)
         meta_table.Properties.VariableDescriptions = repmat({'meta'},1,3);
         [trial_table_cell,lda_table_cell] = deal(cell(num_repeats,num_folds));
         for repeatnum = 1:num_repeats
-            foldidx = crossvalind('kfold',minsize,num_folds);
+            foldidx = crossvalind('kfold',length(td_act),num_folds);
             fold_tic = tic;
             for foldnum = 1:num_folds
                 % get crossval table entry
