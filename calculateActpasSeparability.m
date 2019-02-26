@@ -9,7 +9,7 @@ datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','t
 file_info = dir(fullfile(datadir,'*COactpas*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
-savesuffix = '_separationResults_run20190223.mat';
+savesuffix = '_separationResults_run20190224.mat';
 
 model_aliases = {'ext','extforce','joint','musc','handelbow'};
 model_type = 'glm';
@@ -20,7 +20,7 @@ num_repeats = 20;
 num_folds = 5;
 
 %% Loop through files
-for filenum = 1:4%1:length(filenames)
+for filenum = 1:length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -62,9 +62,6 @@ for filenum = 1:4%1:length(filenames)
         spikes(:,unsorted_units) = [];
         td(trialnum).(sprintf('%s_spikes',arrayname)) = spikes;
     end
-
-    % remove low firing neurons
-    td = removeBadNeurons(td,struct('min_fr',0.1));
     
     % add firing rates in addition to spike counts
     td = addFiringRates(td,struct('array',arrayname));
@@ -156,7 +153,10 @@ for filenum = 1:4%1:length(filenames)
     td_bin = cat(2,td_act,td_pas);
 
     % trim to just movements
-    td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',14});
+    td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',11});
+
+    % remove low firing neurons
+    td_bin = removeBadNeurons(td_bin,struct('min_fr',0.1));
 
     % find average over the movement
     td_bin = binTD(td_bin,'average');
