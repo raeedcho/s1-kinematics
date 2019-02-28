@@ -9,7 +9,7 @@ datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','t
 file_info = dir(fullfile(datadir,'*COactpas*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
-savesuffix = '_separationResults_run20190224.mat';
+savesuffix = '_separationResults_run20190227.mat';
 
 model_aliases = {'ext','extforce','joint','musc','handelbow'};
 model_type = 'glm';
@@ -20,7 +20,7 @@ num_repeats = 20;
 num_folds = 5;
 
 %% Loop through files
-for filenum = 1:length(filenames)
+for filenum = 1:4%length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -62,9 +62,6 @@ for filenum = 1:length(filenames)
         spikes(:,unsorted_units) = [];
         td(trialnum).(sprintf('%s_spikes',arrayname)) = spikes;
     end
-    
-    % add firing rates in addition to spike counts
-    td = addFiringRates(td,struct('array',arrayname));
 
     % prep trial data by getting only rewards and trimming to only movements
     % split into trials
@@ -143,8 +140,9 @@ for filenum = 1:length(filenames)
         'peak_divisor',10,...
         'min_ds',1));
     % throw out all trials where bumpTime and movement_on are more than 3 bins apart
-    bad_trials = isnan(cat(1,td_pas.idx_movement_on)) | abs(cat(1,td_pas.idx_movement_on)-cat(1,td_pas.idx_bumpTime))>3;
-    td_pas = td_pas(~bad_trials);
+    bad_trial = isnan(cat(1,td_pas.idx_movement_on)) | abs(cat(1,td_pas.idx_movement_on)-cat(1,td_pas.idx_bumpTime))>3;
+    td_pas = td_pas(~bad_trial);
+    fprintf('Removed %d trials because of bad movement onset\n',sum(bad_trial))
 
     % even out sizes and put back together
     minsize = min(length(td_act),length(td_pas));
@@ -156,7 +154,10 @@ for filenum = 1:length(filenames)
     td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',11});
 
     % remove low firing neurons
-    td_bin = removeBadNeurons(td_bin,struct('min_fr',0.1));
+    td_bin = removeBadNeurons(td_bin,struct('min_fr',1));
+    
+    % add firing rates in addition to spike counts
+    td_bin = addFiringRates(td_bin,struct('array',arrayname));
 
     % find average over the movement
     td_bin = binTD(td_bin,'average');
