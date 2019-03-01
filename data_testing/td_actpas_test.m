@@ -98,3 +98,26 @@ for signum = 1:2
     plot(getSig(td_temp,{'marker_vel',signum})*100,'-r')
 end
 linkaxes(ax,'x')
+
+%%
+    td = getNorm(td,struct('signals',{{'marker_vel',25:27}},'norm_name','elbow_speed'));
+    td = getNorm(td,struct('signals',{{'marker_vel',7:9}},'norm_name','hand_speed'));
+    figure('defaultaxesfontsize',18)
+    for trial = 1:length(td)
+        timevec = ((1:length(td(trial).elbow_speed))-td(trial).idx_movement_on)*td(trial).bin_size;
+        if td(trial).ctrHoldBump
+            plot(timevec,td(trial).elbow_speed,'r')
+        else
+            plot(timevec,td(trial).elbow_speed,'k')
+        end
+        hold on
+    end
+    plot(zeros(2,1),ylim,'--k','linewidth',2)
+    hold on
+    plot(repmat(0.12,2,1),ylim,'--k','linewidth',2)
+    xlabel('Time from movement onset (s)')
+    ylabel('Elbow speed (m/s)')
+    set(gca,'box','off','tickdir','out','xtick',[-0.5 0 0.12 0.5])
+    set(gcf,'renderer','Painters')
+    suptitle(strrep(strrep(filenames{filenum},'_COactpas_TD.mat',''),'_','-'))
+
