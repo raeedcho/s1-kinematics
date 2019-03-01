@@ -5,7 +5,7 @@
 %% Set up plotting variables
     datadir = '/home/raeed/data/project-data/limblab/s1-kinematics/Results/Separability';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
-    files = dir(fullfile(datadir,'*separationResults_run20190224.mat'));
+    files = dir(fullfile(datadir,'*separationResults_run20190228.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -14,6 +14,7 @@
 
     monkey_names = {'Chips','Han'};
     models_to_plot = {'S1_FR','ext_predFR','extforce_predFR','handelbow_predFR'};
+    model_titles = {'Actual Firing','Extrinsic','Extrinsic + Force','Hand/Elbow'};
     num_pcs = 3;
 
     session_colors = [...
@@ -34,7 +35,7 @@
         lda_table_cell{filenum} = sepResults.lda_table;
 
         % compose trial table for one crossval run
-        repeatnum = 1;
+        repeatnum = 3;
         num_folds = max(sepResults.trial_table.crossvalID(:,2));
         trial_table_cell = cell(num_folds,1);
         for foldnum = 1:num_folds
@@ -100,6 +101,9 @@
                 [],'r','filled')
             plot([0 0],ylim,'--k','linewidth',2)
             axis equal
+            axis off
+
+            title(model_titles{modelnum})
         end
         suptitle(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
 
