@@ -289,9 +289,18 @@
     pdTable = vertcat(pdTable{:});
 
 %% make PD plot
+    % set xvals for histogram dot plot
+    num_categories = 4;
+    category_x = (2:3:((num_categories-1)*3+2))/10;
+
+    % start figure
     figure('defaultaxesfontsize',18)
     for monkeynum = 1:length(monkey_names)
-        subplot(1,length(monkey_names),monkeynum)
+        % set template values for sessions based on monkey
+        template_x = linspace(-0.3,0.3,length(session_dates{monkeynum}))/10;
+        hist_xvals = category_x'+template_x;
+
+        subplot(2,length(monkey_names),monkeynum)
         plot([-180 180],[0 0],'-k','linewidth',2)
         hold on
         plot([0 0],[-180 180],'-k','linewidth',2)
@@ -309,16 +318,44 @@
             pasCI(pasCI(:,2)<pasCI(:,1),2) = pasCI(pasCI(:,2)<pasCI(:,1),2)+360;
 
             % isTuned = diff(actCI,1,2)<=90 & diff(pasCI,1,2)<=90;
+            % make scatter plot
+            subplot(2,length(monkey_names),monkeynum)
             scatter(actPD(isTuned),pasPD(isTuned),[],session_colors(sessionnum,:),'filled')
             plot(repmat(actPD(isTuned),1,2)',pasCI(isTuned,:)','-','linewidth',1,'color',session_colors(sessionnum,:))
             plot(actCI(isTuned,:)',repmat(pasPD(isTuned),1,2)','-','linewidth',1,'color',session_colors(sessionnum,:))
             % plot CIs again for wrap around
             plot(repmat(actPD(isTuned),1,2)',pasCI(isTuned,:)'-360,'-','linewidth',1,'color',session_colors(sessionnum,:))
             plot(actCI(isTuned,:)'-360,repmat(pasPD(isTuned),1,2)','-','linewidth',1,'color',session_colors(sessionnum,:))
+
+            % make dot histogram of neural tuning properties
+            subplot(2,length(monkey_names),length(monkey_names)+monkeynum)
+            num_act = sum(session_table.act_movevecTuned & ~session_table.pas_movevecTuned);
+            num_pas = sum(~session_table.act_movevecTuned & session_table.pas_movevecTuned);
+            num_non = sum(~session_table.act_movevecTuned & ~session_table.pas_movevecTuned);
+            num_actpas = sum(isTuned);
+            session_x = hist_xvals(:,sessionnum);
+            scatter(repmat(session_x(1),1,num_act),1:num_act,[],session_colors(sessionnum,:),'filled')
+            hold on
+            scatter(repmat(session_x(2),1,num_pas),1:num_pas,[],session_colors(sessionnum,:),'filled')
+            scatter(repmat(session_x(3),1,num_actpas),1:num_actpas,[],session_colors(sessionnum,:),'filled')
+            scatter(repmat(session_x(4),1,num_non),1:num_non,[],session_colors(sessionnum,:),'filled')
         end
+        % set axes
+        subplot(2,length(monkey_names),monkeynum)
         axis equal
         set(gca,'box','off','tickdir','out','xlim',[-180 180],'ylim',[-180 180],'xtick',[-180 180],'ytick',[-180 180])
         title(monkey_names{monkeynum})
         xlabel('Active PD')
         ylabel('Passive PD')
+
+        % plot out the number of tuned neurons
+        subplot(2,length(monkey_names),length(monkey_names)+monkeynum)
+        set(gca,'box','off','tickdir','out',...
+            'xlim',[category_x(1)+template_x(1)-0.1 category_x(end)+template_x(end)+0.1],...
+            'xtick',category_x,...
+            'ylim',[0 25],...
+            'ytick',0:5:25,...
+            'xticklabel',{'Active-only','Passive-only','Active-Passive','None'})
+        ylabel('Number of neurons')
     end
+
