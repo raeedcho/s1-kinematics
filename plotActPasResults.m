@@ -13,7 +13,8 @@
     run_date = char(datetime('today','format','yyyyMMdd'));
 
     monkey_names = {'Chips','Han'};
-    models_to_plot = {'S1_FR','ext_predFR','extforce_predFR','handelbow_predFR'};
+    models_to_plot = {'S1_FR','ext','extforce','handelbow'};
+    fr_names = {'S1_FR','ext_predFR','extforce_predFR','handelbow_predFR'};
     model_titles = {'Actual Firing','Extrinsic','Extrinsic + Force','Hand/Elbow'};
     num_pcs = 3;
 
@@ -23,8 +24,7 @@
         141,160,203]/255;
 
 %% Compile information over all files
-    [lda_table_cell] = deal(cell(length(filename),1));
-    session_ctr = zeros(length(monkey_names),1);
+    [sep_table_cell] = deal(cell(length(filename),1));
     fileclock = tic;
     fprintf('Started loading files...\n')
     for filenum = 1:length(filename)
@@ -32,7 +32,9 @@
         load(fullfile(datadir,filename{filenum}))
 
         % extract...stuff
-        lda_table_cell{filenum} = sepResults.lda_table;
+        meta_cols = strcmpi(sepResults.lda_table.Properties.VariableDescriptions,'meta');
+        sep_cols = endsWith(sepResults.lda_table.Properties.VariableNames,'true_sep');
+        sep_table_cell{filenum} = sepResults.lda_table(:,meta_cols | sep_cols);
 
         % compose trial table for one crossval run
         repeatnum = 3;
@@ -51,7 +53,7 @@
         for modelnum = 1:length(models_to_plot)
             subplot(1,length(models_to_plot),modelnum)
 
-            model_fr = trial_table.(models_to_plot{modelnum});
+            model_fr = trial_table.(fr_names{modelnum});
             [~,model_pca] = pca(model_fr);
             model_pca = model_pca(:,1:num_pcs);
             lda_mdl = fitcdiscr(model_pca,isActive);
@@ -107,10 +109,49 @@
         end
         suptitle(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
 
-
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
     end
-    lda_table = vertcat(lda_table_cell{:});
+    sep_table = vertcat(sep_table_cell{:});
 
 %% Make scatter
+    % plot session average connected by lines...
+    figure('defaultaxesfontsize',18)
+    alpha = 0.05;
+    model_x = (2:3:((length(models_to_plot)-1)*3+2))/10;
+    for monkeynum = 1:length(monkey_names)
+        subplot(length(monkey_names),1,monkeynum)
+        
+        % figure out what sessions we have for this monkey
+        [~,monkey_seps] = getNTidx(sep_table,'monkey',monkey_names{monkeynum});
+        session_datetimes = unique(monkey_seps.date_time);
+
+        for sessionnum = 1:length(session_datetimes)
+            [~,session_seps] = getNTidx(monkey_seps,'date_time',session_datetimes{sessionnum});
+
+            % estimate error bars
+            [~,cols] = ismember(strcat(models_to_plot,'_true_sep'),session_seps.Properties.VariableNames);
+            num_repeats = double(max(session_seps.crossvalID(:,1)));
+            num_folds = double(max(session_seps.crossvalID(:,2)));
+            crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+            yvals = mean(session_seps{:,cols});
+            var_seps = var(session_seps{:,cols});
+            upp = tinv(1-alpha/2,num_folds*num_repeats-1);
+            low = tinv(alpha/2,num_folds*num_repeats-1);
+            CI_lo = yvals + low * sqrt(crossval_correction*var_seps);
+            CI_hi = yvals + upp * sqrt(crossval_correction*var_seps);
+            
+            % plot dots and lines
+            plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
+            hold on
+            plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+            scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+        end
+        plot([0 1.3],[0.5 0.5],'--k','linewidth',2)
+        ylabel('Separability (%)')
+        set(gca,'box','off','tickdir','out',...
+            'xlim',[0 1.3],'xtick',model_x,'xticklabel',model_titles,...
+            'ylim',[0 1],'ytick',[0 0.5 1])
+    end
+    % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
+
