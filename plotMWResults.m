@@ -6,6 +6,7 @@
     datadir = '/home/raeed/data/project-data/limblab/s1-kinematics/Results/Encoding';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     files = dir(fullfile(datadir,'*encodingResults_allModels_run20190206.mat'));
+    % files = dir(fullfile(datadir,'*encodingResults_opensimControls_run20190311.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -14,6 +15,8 @@
 
     monkey_names = {'Chips','Han','Lando'};
     models_to_plot = {'ego','ext','musc','handelbow'};
+    % models_to_plot = {'ego','ext','joint','musc','handelbow'};
+    % models_to_plot = {'joint','musc','opensim_handelbow','handelbow'};
 
     % colors for pm, dl conditions
     cond_colors = [...
