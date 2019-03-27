@@ -417,6 +417,22 @@
         end
     end
 
+    % Find session winners of PD shift
+    shift_vaf_session_winners = cell(length(monkey_names),size(session_colors,1));
+    for monkeynum = 1:length(monkey_names)
+        for sessionnum = 1:session_ctr(monkeynum)
+            shift_vaf_session = neuronAverage(shift_vaf{monkeynum,sessionnum},struct(...
+                'keycols',{{'monkey','date','task','crossvalID'}},...
+                'do_ci',false));
+            temp_tab = table(ones(height(shift_vaf_session),1),'VariableNames',{'signalID'});
+            shift_vaf_session = horzcat(temp_tab,shift_vaf_session);
+            [shift_vaf_session_winners{monkeynum,sessionnum},model_pairs] = compareEncoderMetrics(...
+                    shift_vaf_session,struct(...
+                        'models',{models_to_plot},...
+                        'postfix','_vaf'));
+        end
+    end
+
     % make the winner dot plot
     figure('defaultaxesfontsize',18)
     plotAnalysisWinners(shift_vaf,shift_vaf_winners,struct(...
