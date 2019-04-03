@@ -102,6 +102,17 @@
         end
     end
 
+    % figure out how many neurons the hand-based models could beat either of the whole-arm models
+    hand_neuron_counter = 0;
+    rowchecks = contains(model_pairs,{'ext','ego'});
+    rowchecks = xor(rowchecks(:,1),rowchecks(:,2));
+    for monkeynum = 1:length(monkey_names)
+        for sessionnum = 1:session_ctr(monkeynum)
+            hand_neuron_counter = hand_neuron_counter + ...
+                sum(any(contains(pr2_winners{monkeynum,sessionnum}(rowchecks,:),{'ext','ego'})),2)
+        end
+    end
+
     % make the pairwise comparison scatter plot
     figure
     for monkeynum = 1:length(monkey_names)
@@ -187,6 +198,17 @@
                     tuning_corr{monkeynum,sessionnum},struct(...
                         'models',{models_to_plot},...
                         'postfix','_tuningCorr'));
+        end
+    end
+
+    % figure out how many neurons the hand-based models could beat either of the whole-arm models
+    hand_neuron_counter = 0;
+    rowchecks = contains(model_pairs,{'ext','ego'});
+    rowchecks = xor(rowchecks(:,1),rowchecks(:,2));
+    for monkeynum = 1:length(monkey_names)
+        for sessionnum = 1:session_ctr(monkeynum)
+            hand_neuron_counter = hand_neuron_counter + ...
+                sum(any(contains(tuning_corr_winners{monkeynum,sessionnum}(rowchecks,:),{'ext','ego'})),2)
         end
     end
 
