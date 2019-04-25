@@ -8,6 +8,7 @@ function results = actpasSep(td_bin,params)
         model_type = 'glm';
         model_aliases = {'ext','extforce','handelbow'};
         arrayname = 'S1';
+        which_units = 'all'; % replace with a list of indices for which units to use for separability
         assignParams(who,params);
         neural_signals = [arrayname '_FR'];
 
@@ -187,13 +188,14 @@ function results = actpasSep(td_bin,params)
                     % td_test = sqrtTransform(td_test,struct('signals',model_names{modelnum}));
                     
                     % get PCA
-                    [~,pca_info] = dimReduce(td_train,struct('signals',model_names{modelnum}));
+                    [~,pca_info] = dimReduce(td_train,struct('signals',{{model_names{modelnum},which_units}}));
                     td_test = dimReduce(td_test,pca_info);
                     pca_coeff{modelnum} = pca_info.w(:,1:num_pcs);
                     pca_mu{modelnum} = pca_info.mu;
         
                     % get LDA models
-                    train_fr = cat(1,td_train.(model_names{modelnum}));
+                    % train_fr = cat(1,td_train.(model_names{modelnum}));
+                    train_fr = getSig(td_train,{model_names{modelnum},which_units});
                     % lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
                     lda_mdl{modelnum} = fitcdiscr((train_fr-pca_mu{modelnum})*pca_coeff{modelnum},train_class);
                     lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(1,2).Const;lda_mdl{modelnum}.Coeffs(1,2).Linear]';
@@ -201,7 +203,8 @@ function results = actpasSep(td_bin,params)
 
                 for modelnum = 1:length(model_names)
                     % get separabilities from LDA models
-                    model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
+                    % model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
+                    model_fr{modelnum} = getSig(td_test,{model_names{modelnum},which_units});
                     
                     % self_seps{modelnum} = sum(predict(lda_mdl{modelnum},model_fr{modelnum}) == test_class)/length(test_class);
                     % true_seps{modelnum} = sum(predict(lda_mdl{end},model_fr{modelnum}) == test_class)/length(test_class);

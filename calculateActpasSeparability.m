@@ -9,7 +9,7 @@ datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','t
 file_info = dir(fullfile(datadir,'*COactpas*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
-savesuffix = '_separationResults_run20190227.mat';
+savesuffix = '_separationResults_run20190425.mat';
 
 model_aliases = {'ext','extforce','joint','musc','handelbow'};
 model_type = 'glm';
@@ -20,7 +20,7 @@ num_repeats = 20;
 num_folds = 5;
 
 %% Loop through files
-for filenum = 1:4%length(filenames)
+for filenum = 2%1:4%length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -161,6 +161,15 @@ for filenum = 1:4%length(filenames)
 
     % find average over the movement
     td_bin = binTD(td_bin,'average');
+
+    % temporary hack to see what happens if only tuned neurons are used...
+    [~,session_table] = getNTidx(pdTable,...
+        'monkey','Chips',...
+        'date','2017/9/13',...
+        'act_movevecTuned',true,...
+        'pas_movevecTuned',true);
+    % which_units = find(ismember(td_bin(1).([arrayname '_unit_guide']),session_table.signalID,'rows'));
+    which_units = 'all';
     
     %% find separabilities
     % suppress getTDfields warning...
@@ -173,6 +182,7 @@ for filenum = 1:4%length(filenames)
         'num_folds',num_folds,...
         'model_aliases',{model_aliases},...
         'model_type',model_type,...
+        'which_units',which_units,...
         'num_musc_pcs',num_musc_pcs,...
         'num_pcs',num_pcs));
 
