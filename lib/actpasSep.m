@@ -203,12 +203,44 @@ function results = actpasSep(td_bin,params)
                 % get class for trial table
                 train_class = cat(1,td_train.ctrHoldBump);
                 test_class = cat(1,td_test.ctrHoldBump);
+                test_class_table = table(test_class,'VariableNames',{'isPassive'});
+                test_class_table.Properties.VariableDescriptions = {'meta'};
+                % get direction of trials for trial table
+                trial_dir = zeros(size(test_class));
+                trial_dir(test_class) = bump_dir(test_class)*pi/180;
+                trial_dir(~test_class) = tgt_dir(~test_class)*pi/180;
+                trial_dir_table = table(trial_dir,'VariableNames',{'trialDir'});
+                trial_dir_table.Properties.VariableDescriptions = {'circular'};
+
+                % train and test models
+                [lda_coeff,self_seps,true_seps,model_fr,lda_mdl,pca_coeff,pca_mu,self_margin,true_margin] = deal(cell(1,length(model_names)));
+                [input_lda_coeff,input_seps,input_lda_mdl,input_margin] = deal(cell(1,length(model_aliases)));
                 for modelnum = 1:length(model_names)
                     if modelnum~=length(model_names)
                         [td_train,glm_info] = getModel(td_train,glm_params{modelnum});
 
                         % predict firing rates
                         td_test = getModel(td_test,glm_info);
+
+                        % get input LDA models
+                        if strcmpi(model_aliases{modelnum},'ext_actpasbaseline')
+                            % actpas input has zero variance and perfectly separates the classes
+                            % So just put down the coefficients known to separate
+                            input_signals = getSig(td_train,glm_params{modelnum}.in_signals);
+
+                            % set offset coeff to -0.5
+                            input_lda_coeff{modelnum} = zeros(1,size(input_signals,2)+1);
+                            input_lda_coeff{modelnum}(1) = -0.5;
+
+                            % figure out which column is ctrHoldBump
+                            colnums = cumsum(cellfun(@length,glm_params{modelnum}.in_signals(:,2)));
+                            actpas_col = colnums(strcmpi(glm_params{modelnum}.in_signals(:,1),'ctrHoldBump'));
+                            input_lda_coeff{modelnum}(actpas_col+1) = 1;
+                        else
+                            input_signals = getSig(td_train,glm_params{modelnum}.in_signals);
+                            input_lda_mdl{modelnum} = fitcdiscr(input_signals,train_class);
+                            input_lda_coeff{modelnum} = [input_lda_mdl{modelnum}.Coeffs(2,1).Const;input_lda_mdl{modelnum}.Coeffs(2,1).Linear]';
+                        end
                     end
                     
                     % try sqrt transform (doesn't mess with model fitting because neural signals are last
@@ -226,10 +258,24 @@ function results = actpasSep(td_bin,params)
                     train_fr = getSig(td_train,{model_names{modelnum},which_units});
                     % lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
                     lda_mdl{modelnum} = fitcdiscr((train_fr-pca_mu{modelnum})*pca_coeff{modelnum},train_class);
-                    lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(1,2).Const;lda_mdl{modelnum}.Coeffs(1,2).Linear]';
+                    lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(2,1).Const;lda_mdl{modelnum}.Coeffs(2,1).Linear]';
                 end
 
                 for modelnum = 1:length(model_names)
+                    if modelnum ~= length(model_names)
+                        % get input separability
+                        input_signals = getSig(td_test,glm_params{modelnum}.in_signals);
+                        if strcmpi(model_aliases{modelnum},'ext_actpasbaseline')
+                            % actpas input should have 100% separability
+                            input_seps{modelnum} = 1;
+                        else
+                            input_seps{modelnum} = sum(predict(input_lda_mdl{modelnum},input_signals) == test_class)/length(test_class);
+                        end
+
+                        % calculate input margins
+                        input_margin{modelnum} = (input_signals*input_lda_coeff{modelnum}(2:end)' + input_lda_coeff{modelnum}(1))/norm(input_lda_coeff{modelnum}(2:end));
+                    end
+
                     % get separabilities from LDA models
                     % model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
                     model_fr{modelnum} = getSig(td_test,{model_names{modelnum},which_units});
@@ -238,40 +284,47 @@ function results = actpasSep(td_bin,params)
                     % true_seps{modelnum} = sum(predict(lda_mdl{end},model_fr{modelnum}) == test_class)/length(test_class);
                     self_seps{modelnum} = sum(predict(lda_mdl{modelnum},(model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}) == test_class)/length(test_class);
                     true_seps{modelnum} = sum(predict(lda_mdl{end},(model_fr{modelnum}-pca_mu{end})*pca_coeff{end}) == test_class)/length(test_class);
+
+                    % calculate margin from lda boundary
+                    self_margin{modelnum} = ((model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}*lda_coeff{modelnum}(2:end)' + lda_coeff{modelnum}(1))/norm(lda_coeff{modelnum}(2:end));
+                    true_margin{modelnum} = ((model_fr{modelnum}-pca_mu{end})*pca_coeff{end}*lda_coeff{end}(2:end)' + lda_coeff{end}(1))/norm(lda_coeff{end}(2:end));
                 end
 
-                % compile trial table
-                % get direction of trials for trial table
-                trial_id = table(cat(1,td_test.trialID),'VariableNames',{'trialID'});
-                trial_id.Properties.VariableDescriptions = {'meta'};
-                bump_dir = cat(1,td_test.bumpDir);
-                tgt_dir = cat(1,td_test.tgtDir);
-                trial_dir = zeros(size(test_class));
-                trial_dir(test_class) = bump_dir(test_class)*pi/180;
-                trial_dir(~test_class) = tgt_dir(~test_class)*pi/180;
-                trial_dir_table = table(trial_dir,'VariableNames',{'trialDir'});
-                trial_dir_table.Properties.VariableDescriptions = {'circular'};
-                % get class for trial table
-                test_class_table = table(test_class,'VariableNames',{'isPassive'});
-                test_class_table.Properties.VariableDescriptions = {'meta'};
                 % get model fr for trial table
                 model_fr_table = table(model_fr{:},'VariableNames',[strcat(model_aliases,'_predFR') {neural_signals}]);
                 model_fr_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+
+                % get margins for trial table
+                input_margin_table = table(input_margin{:},'VariableNames',strcat(model_aliases,'_input_margin'));
+                input_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_aliases));
+                self_margin_table = table(self_margin{:},'VariableNames',strcat([model_aliases {neural_signals}],'_self_margin'));
+                self_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                true_margin_table = table(true_margin{:},'VariableNames',strcat([model_aliases {neural_signals}],'_true_margin'));
+                true_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+
+                % assemble trial table
                 trial_table_cell{repeatnum,foldnum} = horzcat(...
                     repmat(meta_table,length(trial_dir),1),...
                     repmat(crossval_table,length(trial_dir),1),...
                     trial_id,...
                     test_class_table,...
                     trial_dir_table,...
-                    model_fr_table);
+                    model_fr_table,...
+                    input_margin_table,...
+                    self_margin_table,...
+                    true_margin_table);
 
                 % construct LDA table entry
+                input_lda_coeff_table = cell2table(input_lda_coeff,'VariableNames',strcat(model_aliases,'_input_lda_coeff'));
+                input_lda_coeff_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_aliases));
                 lda_coeff_table = cell2table(lda_coeff,'VariableNames',strcat([model_aliases {neural_signals}],'_lda_coeff'));
                 lda_coeff_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
                 pca_coeff_table = cell2table(pca_coeff,'VariableNames',strcat([model_aliases {neural_signals}],'_pca_coeff'));
                 pca_coeff_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
                 pca_mu_table = cell2table(pca_mu,'VariableNames',strcat([model_aliases {neural_signals}],'_pca_mu'));
                 pca_mu_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                input_sep_table = cell2table(input_seps,'VariableNames',strcat(model_aliases,'_input_sep'));
+                input_sep_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_aliases));
                 self_sep_table = cell2table(self_seps,'VariableNames',strcat([model_aliases {neural_signals}],'_self_sep'));
                 self_sep_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
                 true_sep_table = cell2table(true_seps,'VariableNames',strcat([model_aliases {neural_signals}],'_true_sep'));
@@ -279,9 +332,11 @@ function results = actpasSep(td_bin,params)
                 lda_table_cell{repeatnum,foldnum} = horzcat(...
                     meta_table,...
                     crossval_table,...
+                    input_lda_coeff_table,...
                     lda_coeff_table,...
                     pca_coeff_table,...
                     pca_mu_table,...
+                    input_sep_table,...
                     self_sep_table,...
                     true_sep_table);
         
