@@ -3,6 +3,7 @@ function results = actpasSep(td_bin,params)
     %% set up model variables
         num_folds = 5; % 5 is default number of folds, no need to pass in
         num_repeats = 20; % 20 is default number of repeats, no need to pass in
+        crossval_lookup = []; % table with columns for crossvalID and trialID (to replicate a crossval split from a previous run)
         num_musc_pcs = 5;
         num_pcs = 5; % number of PCs to train LDA on
         model_type = 'glm';
@@ -166,13 +167,28 @@ function results = actpasSep(td_bin,params)
                 crossval_table.Properties.VariableDescriptions = {'meta'};
 
                 % split into training and testing
-                train_idx = (foldidx~=foldnum);
-                td_train = cat(2,td_act(train_idx),td_pas(train_idx));
-                test_idx = (foldidx==foldnum);
-                td_test = cat(2,td_act(test_idx),td_pas(test_idx));
+                if isempty(crossval_lookup)
+                    train_idx = (foldidx~=foldnum);
+                    td_train = cat(2,td_act(train_idx),td_pas(train_idx));
+                    test_idx = (foldidx==foldnum);
+                    td_test = cat(2,td_act(test_idx),td_pas(test_idx));
+                else
+                    % read the crossval_lookup
+                    [~,current_crossval] = getNTidx(crossval_lookup,'crossvalID',[repeatnum foldnum]);
+                    td_whole = cat(2,td_act,td_pas);
+                    whole_ids = cat(1,td_whole.trialID);
+                    test_idx_whole = ismember(whole_ids,current_crossval.trialID);
+                    train_idx_whole = ~ismember(whole_ids,current_crossval.trialID);
+                    td_train = td_whole(train_idx_whole);
+                    td_test = td_whole(test_idx_whole);
+                end
 
-                % train and test models
-                [lda_coeff,self_seps,true_seps,model_fr,lda_mdl,pca_coeff,pca_mu] = deal(cell(1,length(model_names)));
+                % set up meta for trial table
+                trial_id = table(cat(1,td_test.trialID),'VariableNames',{'trialID'});
+                trial_id.Properties.VariableDescriptions = {'meta'};
+                bump_dir = cat(1,td_test.bumpDir);
+                tgt_dir = cat(1,td_test.tgtDir);
+                % get class for trial table
                 train_class = cat(1,td_train.ctrHoldBump);
                 test_class = cat(1,td_test.ctrHoldBump);
                 for modelnum = 1:length(model_names)

@@ -1,26 +1,35 @@
 %% Set up meta info
-if ispc
-    homefolder = 'C:\Users\rhc307';
-else
-    homefolder = '/home/raeed';
-end
-
-datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','td-library');
-file_info = dir(fullfile(datadir,'*COactpas*'));
-filenames = horzcat({file_info.name})';
-savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Separability');
-savesuffix = '_separationResults_run20190425.mat';
-
-model_aliases = {'ext','extforce','joint','musc','handelbow'};
+model_aliases = {'ext','extforce','handelbow','ext_actpasbaseline'};
 model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
 num_pcs = 3;
-num_repeats = 20;
+num_repeats = 1;
 num_folds = 5;
+rerun_crossval = true;
+
+if ispc
+    homefolder = 'C:\Users\rhc307';
+    dataroot = '';
+else
+    homefolder = '/home/raeed';
+    dataroot = '/data/raeed';
+end
+
+datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library');
+file_info = dir(fullfile(datadir,'*COactpas*'));
+filenames = horzcat({file_info.name})';
+savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Separability');
+if rerun_crossval
+    file_info = dir(fullfile(savedir,'*separationResults_run20190228.mat'));
+    oldresultsnames = horzcat({file_info.name})';
+    savesuffix = '_separationResults_run20190228_rerun20190806.mat';
+else
+    savesuffix = '_separationResults_run20190228.mat';
+end
 
 %% Loop through files
-for filenum = 2%1:4%length(filenames)
+for filenum = 1%1:4%length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -163,13 +172,23 @@ for filenum = 2%1:4%length(filenames)
     td_bin = binTD(td_bin,'average');
 
     % temporary hack to see what happens if only tuned neurons are used...
-    [~,session_table] = getNTidx(pdTable,...
-        'monkey','Chips',...
-        'date','2017/9/13',...
-        'act_movevecTuned',true,...
-        'pas_movevecTuned',true);
+    % [~,session_table] = getNTidx(pdTable,...
+    %     'monkey','Chips',...
+    %     'date','2017/9/13',...
+    %     'act_movevecTuned',true,...
+    %     'pas_movevecTuned',true);
     % which_units = find(ismember(td_bin(1).([arrayname '_unit_guide']),session_table.signalID,'rows'));
     which_units = 'all';
+    
+    % if we want to rerun the crossvalidation
+    if rerun_crossval
+        %% load old results for re-running the crossvalidation
+        old_sepResults = load(fullfile(savedir,[oldresultsnames{filenum}]));
+        old_sepResults = old_sepResults.sepResults;
+        crossval_lookup = old_sepResults.trial_table(:,{'crossvalID','trialID'});
+    else
+        crossval_lookup = [];
+    end
     
     %% find separabilities
     % suppress getTDfields warning...
@@ -180,6 +199,7 @@ for filenum = 2%1:4%length(filenames)
     sepResults = actpasSep(td_bin,struct(...
         'num_repeats',num_repeats,...
         'num_folds',num_folds,...
+        'crossval_lookup',crossval_lookup,...
         'model_aliases',{model_aliases},...
         'model_type',model_type,...
         'which_units',which_units,...
