@@ -189,10 +189,12 @@ function results = actpasSep(td_bin,params)
                     [~,current_crossval] = getNTidx(crossval_lookup,'crossvalID',[repeatnum foldnum]);
                     td_whole = cat(2,td_act,td_pas);
                     whole_ids = cat(1,td_whole.trialID);
-                    test_idx_whole = ismember(whole_ids,current_crossval.trialID);
-                    train_idx_whole = ~ismember(whole_ids,current_crossval.trialID);
-                    td_train = td_whole(train_idx_whole);
+                    whole_isPassive = cat(1,false(length(td_act),1),true(length(td_pas),1));
+                    test_idx_whole = ismember([whole_ids whole_isPassive],current_crossval{:,{'trialID' 'isPassive'}},'rows');
+                    train_idx_whole = ~test_idx_whole;
+                    
                     td_test = td_whole(test_idx_whole);
+                    td_train = td_whole(train_idx_whole);
                 end
 
                 % set up meta for trial table
