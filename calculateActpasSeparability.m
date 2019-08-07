@@ -4,7 +4,7 @@ model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
 num_pcs = 3;
-num_repeats = 1;
+num_repeats = 20;
 num_folds = 5;
 rerun_crossval = true;
 
@@ -17,7 +17,7 @@ else
 end
 
 datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library');
-file_info = dir(fullfile(datadir,'*COactpas*'));
+file_info = dir(fullfile(datadir,'*COactpas*.mat'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Separability');
 if rerun_crossval
@@ -29,7 +29,7 @@ else
 end
 
 %% Loop through files
-for filenum = 1%1:4%length(filenames)
+for filenum = [1 2 4]%1:4%length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -52,12 +52,12 @@ for filenum = 1%1:4%length(filenames)
     td = getDifferential(td,struct('signals','markers','alias','marker_vel'));
     
     % get speed and ds
-    td = getNorm(td,struct('signals','vel','norm_name','speed'));
-    td = getDifferential(td,struct('signals','speed','alias','dspeed'));
+    td = getNorm(td,struct('signals','vel','field_extra','_norm'));
+    td = getDifferential(td,struct('signals','vel_norm','alias','dvel_norm'));
     
     % get norm planar force and derivative
-    td = getNorm(td,struct('signals',{{'force',1:2}},'norm_name','plane_force_norm'));
-    td = getDifferential(td,struct('signals','plane_force_norm','alias','dplane_force_norm'));
+    td = getNorm(td,struct('signals',{{'force',1:2}},'field_extra','_plane_norm'));
+    td = getDifferential(td,struct('signals','force_plane_norm','alias','dforce_plane_norm'));
     
     % remove unsorted neurons
     unit_ids = td(1).S1_unit_guide;
@@ -163,7 +163,7 @@ for filenum = 1%1:4%length(filenames)
     td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',11});
 
     % remove low firing neurons
-    td_bin = removeBadNeurons(td_bin,struct('min_fr',1));
+    td_bin = removeBadNeurons(td_bin,struct('min_fr',1,'calc_fr',true));
     
     % add firing rates in addition to spike counts
     td_bin = addFiringRates(td_bin,struct('array',arrayname));
@@ -185,7 +185,7 @@ for filenum = 1%1:4%length(filenames)
         %% load old results for re-running the crossvalidation
         old_sepResults = load(fullfile(savedir,[oldresultsnames{filenum}]));
         old_sepResults = old_sepResults.sepResults;
-        crossval_lookup = old_sepResults.trial_table(:,{'crossvalID','trialID'});
+        crossval_lookup = old_sepResults.trial_table(:,{'crossvalID','trialID','isPassive'});
     else
         crossval_lookup = [];
     end
