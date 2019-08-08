@@ -215,113 +215,111 @@
 
 %% Make summary plots
     % plot session average connected by lines...
-    figure('defaultaxesfontsize',18)
-    alpha = 0.05;
-    model_x = (2:3:((length(models_to_plot)-1)*3+2))/10;
-    for monkeynum = 1:length(monkey_names)
-        subplot(length(monkey_names),1,monkeynum)
-        
-        % figure out what sessions we have for this monkey
-        [~,monkey_seps] = getNTidx(sep_table,'monkey',monkey_names{monkeynum});
-        session_datetimes = unique(monkey_seps.date_time);
-
-        for sessionnum = 1:length(session_datetimes)
-            [~,session_seps] = getNTidx(monkey_seps,'date_time',session_datetimes{sessionnum});
-
-            % estimate error bars
-            [~,cols] = ismember(strcat(models_to_plot,'_true_sep'),session_seps.Properties.VariableNames);
-            num_repeats = double(max(session_seps.crossvalID(:,1)));
-            num_folds = double(max(session_seps.crossvalID(:,2)));
-            crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
-            yvals = mean(session_seps{:,cols});
-            var_seps = var(session_seps{:,cols});
-            upp = tinv(1-alpha/2,num_folds*num_repeats-1);
-            low = tinv(alpha/2,num_folds*num_repeats-1);
-            CI_lo = yvals + low * sqrt(crossval_correction*var_seps);
-            CI_hi = yvals + upp * sqrt(crossval_correction*var_seps);
+        figure('defaultaxesfontsize',18)
+        alpha = 0.05;
+        model_x = (2:3:((length(models_to_plot)-1)*3+2))/10;
+        for monkeynum = 1:length(monkey_names)
+            subplot(length(monkey_names),1,monkeynum)
             
-            % get value of true separability
-            [~,S1_col] = ismember('S1_FR_true_sep',session_seps.Properties.VariableNames);
-            S1_val = mean(session_seps{:,S1_col});
+            % figure out what sessions we have for this monkey
+            [~,monkey_seps] = getNTidx(sep_table,'monkey',monkey_names{monkeynum});
+            session_datetimes = unique(monkey_seps.date_time);
 
-            % plot dots and lines
-            % plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
-            % plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
-            plot([min(model_x)-0.2 max(model_x)+0.2],[S1_val S1_val],'--','linewidth',2,'color',session_colors(sessionnum,:))
-            hold on
-            plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
-            scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+            for sessionnum = 1:length(session_datetimes)
+                [~,session_seps] = getNTidx(monkey_seps,'date_time',session_datetimes{sessionnum});
+
+                % estimate error bars
+                [~,cols] = ismember(strcat(models_to_plot,'_true_sep'),session_seps.Properties.VariableNames);
+                num_repeats = double(max(session_seps.crossvalID(:,1)));
+                num_folds = double(max(session_seps.crossvalID(:,2)));
+                crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+                yvals = mean(session_seps{:,cols});
+                var_seps = var(session_seps{:,cols});
+                upp = tinv(1-alpha/2,num_folds*num_repeats-1);
+                low = tinv(alpha/2,num_folds*num_repeats-1);
+                CI_lo = yvals + low * sqrt(crossval_correction*var_seps);
+                CI_hi = yvals + upp * sqrt(crossval_correction*var_seps);
+                
+                % get value of true separability
+                [~,S1_col] = ismember('S1_FR_true_sep',session_seps.Properties.VariableNames);
+                S1_val = mean(session_seps{:,S1_col});
+
+                % plot dots and lines
+                % plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
+                % plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
+                plot([min(model_x)-0.2 max(model_x)+0.2],[S1_val S1_val],'--','linewidth',2,'color',session_colors(sessionnum,:))
+                hold on
+                plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+                scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+            end
+            plot([min(model_x)-0.2 max(model_x)+0.2],[0.5 0.5],'--k','linewidth',2)
+            ylabel('Separability (%)')
+            set(gca,'box','off','tickdir','out',...
+                'xlim',[min(model_x)-0.2 max(model_x)+0.2],...
+                'xtick',model_x,'xticklabel',model_titles,...
+                'ylim',[0.5 1],'ytick',[0 0.5 1])
         end
-        plot([min(model_x)-0.2 max(model_x)+0.2],[0.5 0.5],'--k','linewidth',2)
-        ylabel('Separability (%)')
-        set(gca,'box','off','tickdir','out',...
-            'xlim',[min(model_x)-0.2 max(model_x)+0.2],...
-            'xtick',model_x,'xticklabel',model_titles,...
-            'ylim',[0.5 1],'ytick',[0 0.5 1])
-    end
-    % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
+        % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
 
     % plot margin corr connected by lines...
-    figure('defaultaxesfontsize',18)
-    alpha = 0.05;
-    model_x = (2:3:((length(models_to_plot)-1)*3+2))/10;
-    for monkeynum = 1:length(monkey_names)
-        % figure out what sessions we have for this monkey
-        [~,monkey_margin_corr] = getNTidx(margin_corr_table,'monkey',monkey_names{monkeynum});
-        session_datetimes = unique(monkey_margin_corr.date_time);
+        figure('defaultaxesfontsize',18)
+        alpha = 0.05;
+        model_x = (2:3:((length(models_to_plot)-1)*3+2))/10;
+        for monkeynum = 1:length(monkey_names)
+            % figure out what sessions we have for this monkey
+            [~,monkey_margin_corr] = getNTidx(margin_corr_table,'monkey',monkey_names{monkeynum});
+            session_datetimes = unique(monkey_margin_corr.date_time);
 
-        margin_varnames_extra = {'','_act','_pas'};
+            margin_varnames_extra = {'','_act','_pas'};
+            for marginnum = 1:length(margin_varnames_extra)
+                % set subplot
+                subplot(length(monkey_names),length(margin_varnames_extra),...
+                    (monkeynum-1)*length(margin_varnames_extra)+marginnum)
+
+                for sessionnum = 1:length(session_datetimes)
+                    [~,session_margin_corr] = getNTidx(monkey_margin_corr,'date_time',session_datetimes{sessionnum});
+
+                    % estimate error bars
+                    [~,cols] = ismember(...
+                        strcat(models_to_plot,'_margin_corr',margin_varnames_extra{marginnum}),...
+                        session_margin_corr.Properties.VariableNames);
+                    num_repeats = double(max(session_margin_corr.crossvalID(:,1)));
+                    num_folds = double(max(session_margin_corr.crossvalID(:,2)));
+                    crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+                    yvals = mean(session_margin_corr{:,cols});
+                    var_margin_corr = var(session_margin_corr{:,cols});
+                    upp = tinv(1-alpha/2,num_folds*num_repeats-1);
+                    low = tinv(alpha/2,num_folds*num_repeats-1);
+                    CI_lo = yvals + low * sqrt(crossval_correction*var_margin_corr);
+                    CI_hi = yvals + upp * sqrt(crossval_correction*var_margin_corr);
+                    
+                    % plot dots and lines
+                    % plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
+                    plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+                    hold on
+                    scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+                end
+                plot([min(model_x)-0.2 max(model_x)+0.2],[0 0],'--k','linewidth',2)
+                set(gca,'box','off','tickdir','out',...
+                    'xlim',[min(model_x)-0.2 max(model_x)+0.2],...
+                    'xtick',model_x,'xticklabel',model_titles,'xticklabelrotation',45,...
+                    'ylim',[-1 1],'ytick',[-1 0 1])
+            end
+        end
+        % add labels
+        for monkeynum = 1:length(monkey_names)
+            % set subplot
+            subplot(length(monkey_names),length(margin_varnames_extra),...
+                (monkeynum-1)*length(margin_varnames_extra)+1)
+
+            ylabel({monkey_names{monkeynum};'Margin Correlation'})
+        end
         for marginnum = 1:length(margin_varnames_extra)
             % set subplot
             subplot(length(monkey_names),length(margin_varnames_extra),...
-                (monkeynum-1)*length(margin_varnames_extra)+marginnum)
+                marginnum)
 
-            for sessionnum = 1:length(session_datetimes)
-                [~,session_margin_corr] = getNTidx(monkey_margin_corr,'date_time',session_datetimes{sessionnum});
-
-                % estimate error bars
-                [~,cols] = ismember(...
-                    strcat(models_to_plot,'_margin_corr',margin_varnames_extra{marginnum}),...
-                    session_margin_corr.Properties.VariableNames);
-                num_repeats = double(max(session_margin_corr.crossvalID(:,1)));
-                num_folds = double(max(session_margin_corr.crossvalID(:,2)));
-                crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
-                yvals = mean(session_margin_corr{:,cols});
-                var_margin_corr = var(session_margin_corr{:,cols});
-                upp = tinv(1-alpha/2,num_folds*num_repeats-1);
-                low = tinv(alpha/2,num_folds*num_repeats-1);
-                CI_lo = yvals + low * sqrt(crossval_correction*var_margin_corr);
-                CI_hi = yvals + upp * sqrt(crossval_correction*var_margin_corr);
-                
-                % plot dots and lines
-                % plot(model_x',yvals','-','linewidth',0.5,'color',ones(1,3)*0.5)
-                plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
-                hold on
-                scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
-            end
-            plot([min(model_x)-0.2 max(model_x)+0.2],[0 0],'--k','linewidth',2)
-            set(gca,'box','off','tickdir','out',...
-                'xlim',[min(model_x)-0.2 max(model_x)+0.2],...
-                'xtick',model_x,'xticklabel',model_titles,'xticklabelrotation',45,...
-                'ylim',[-1 1],'ytick',[-1 0 1])
+            title(sprintf('MarginCorrelation%s',margin_varnames_extra{marginnum}),'interpreter','none')
         end
-    end
-
-    % add labels
-    for monkeynum = 1:length(monkey_names)
-        % set subplot
-        subplot(length(monkey_names),length(margin_varnames_extra),...
-            (monkeynum-1)*length(margin_varnames_extra)+1)
-
-        ylabel({monkey_names{monkeynum};'Margin Correlation'})
-    end
-
-    for marginnum = 1:length(margin_varnames_extra)
-        % set subplot
-        subplot(length(monkey_names),length(margin_varnames_extra),...
-            marginnum)
-
-        title(sprintf('MarginCorrelation%s',margin_varnames_extra{marginnum}),'interpreter','none')
-    end
-    % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
+        % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
 
