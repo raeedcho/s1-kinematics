@@ -196,6 +196,17 @@
         end
         suptitle(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
 
+        % plot margin as a function of trial number (to look for trends)
+        figure('defaultaxesfontsize',18)
+        scatter(trial_table.trialID(isActive),S1_margin(isActive),[],'k','filled')
+        hold on
+        scatter(trial_table.trialID(~isActive),S1_margin(~isActive),[],'r','filled')
+        plot(xlim,[0 0],'-k','linewidth',0.5)
+        set(gca,'box','off','tickdir','out')
+        ylabel('S1 Margin')
+        xlabel('Trial number')
+        title(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
+
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
     end
