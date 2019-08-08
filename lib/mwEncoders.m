@@ -114,6 +114,16 @@ function results = mwEncoders(td,params)
                                     'model_name',[model_aliases{modelnum} '_model'],...
                                     'in_signals',{{'markers',[marker_hand_idx marker_elbow_idx];'marker_vel',[marker_hand_idx marker_elbow_idx]}},...
                                     'out_signals',neural_signals);
+        case 'elbow'
+            % indices for cartesian hand coordinates
+            markername = 'Pronation_Pt1';
+            [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td(1).marker_names);
+            assert(all(point_exists),'Elbow marker does not exist?')
+
+            glm_params{modelnum} = struct('model_type',model_type,...
+                                    'model_name',[model_aliases{modelnum} '_model'],...
+                                    'in_signals',{{'markers',marker_elbow_idx;'marker_vel',marker_elbow_idx}},...
+                                    'out_signals',neural_signals);
         case 'markers_pca'
             % Get PCA for marker space
             td = dimReduce(td,struct('signals','markers'));
