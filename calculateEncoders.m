@@ -1,11 +1,13 @@
 %% Set up meta info
 if ispc
     homefolder = 'C:\Users\rhc307';
+    dataroot = homefolder;
 else
     homefolder = '/home/raeed';
+    dataroot = '/data/raeed/';
 end
 
-datadir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','td-library');
+datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library');
 file_info = dir(fullfile(datadir,'*TRT*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Encoding');
