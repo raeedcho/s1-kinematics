@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
+% function [crossEval, crossTuning, crossvalLookup] = analyzeTRT(trial_data,params)
 % 
 % For multiworkspace files, with dl and pm workspaces:
 %   * Fits three different coordinate frame models to data from both workspaces
@@ -19,27 +19,32 @@
 %                           default: 'pr2'
 %       .num_musc_pcs   :   Number of muscle principle components to use
 %                           default: 5
-%       .num_boots    : # bootstrap iterations to use
-%                           default: 100
+%       .num_repeats    : # crossval repeats to use
+%                           default: 20
+%       .num_folds    : # crossval folds to use
+%                           default: 5
+%       .crossval_lookup    : lookup table to pick specific trials for each crossval
+%                           (columns for crossvalID and trialID)
+%                           default: []
 %       .verbose      :     Print diagnostic information
 %                           default: true
 %
 % OUTPUTS:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
+function [crossEval, crossTuning, crossvalLookup] = analyzeTRT(trial_data,params)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Set up
     % default parameters
     num_folds = 5;
     num_repeats = 20;
+    crossval_lookup = [];
     verbose = true;
     if nargin > 1, assignParams(who,params); end % overwrite parameters
 
 %% Compile training and test sets
     % inialize temporary eval holders
-    repeatEval = cell(num_repeats,1);
-    repeatTuning = cell(num_repeats,1);
+    [repeatEval,repeatTuning,repeatCrossvalLookup] = deal(cell(num_repeats,1));
 
     % extract td_pm and td_dl
     [~,td_pm] = getTDidx(trial_data,'spaceNum',1);
@@ -56,8 +61,7 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
         indices = crossvalind('Kfold',length(td_pm),num_folds);
 
         % initialize temporary fold evaluation structure
-        foldEval = cell(num_folds,1);
-        foldTuning = cell(num_folds,1);
+        [foldEval,foldTuning,foldCrossvalLookup] = deal(cell(num_folds,1));
 
         % loop over number of folds
         if verbose
@@ -65,10 +69,29 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
         end
         for foldctr = 1:num_folds
             % Get test and training indices for this fold
-            test_idx = (indices==foldctr);
-            train_idx = ~test_idx;
-            td_train = [td_pm(train_idx) td_dl(train_idx)];
-            td_test = {td_pm(test_idx); td_dl(test_idx)};
+            % check if there's a crossval lookup table
+            if isempty(crossval_lookup)
+                test_idx = (indices==foldctr);
+                train_idx = ~test_idx;
+                td_train = [td_pm(train_idx) td_dl(train_idx)];
+                td_test = {td_pm(test_idx); td_dl(test_idx)};
+            else
+                % read the crossval_lookup
+                [~,current_crossval] = getNTidx(crossval_lookup,'crossvalID',[repeatnum foldnum]);
+                td_whole = cat(2,td_pm,td_dl);
+                whole_ids = cat(1,td_whole.trialID);
+                whole_spaceNum = cat(1,td_whole.spaceNum);
+                test_idx_whole = ismember([whole_ids whole_spaceNum],current_crossval{:,{'trialID' 'spaceNum'}},'rows');
+
+                % get train and test sets (td_test is supposed to be a cell array
+                td_test = td_whole(test_idx_whole);
+                td_test = {...
+                    td_test(getTDidx(td_test,'spaceNum',1));...
+                    td_test(getTDidx(td_test,'spaceNum',2))};
+
+                train_idx_whole = ~test_idx_whole;
+                td_train = td_whole(train_idx_whole);
+            end
 
             % analyze fold to get model evaluations
             if exist('params','var')
@@ -78,6 +101,13 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
             end
             [foldEval{foldctr},foldTuning{foldctr}] = analyzeFold(td_train,td_test,params);
 
+            % get test trialIDs
+            trialID = cat(1,td_test{1}.trialID,td_test{2}.trialID);
+            spaceNum = cat(1,td_test{1}.spaceNum,td_test{2}.spaceNum);
+            foldCrossvalLookup{foldctr} = table(...
+                repmat(params.crossvalID,length(trialID),1),trialID,spaceNum,...
+                'VariableNames',{'crossvalID','trialID','spaceNum'});
+
             if verbose
                 fprintf('\tEvaluated fold %d of %d at time %f\n',foldctr,num_folds,toc(fold_timer));
             end
@@ -86,6 +116,7 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
         % put fold outputs into larger table
         repeatEval{repeatctr} = vertcat(foldEval{:});
         repeatTuning{repeatctr} = vertcat(foldTuning{:});
+        repeatCrossvalLookup{repeatctr} = vertcat(foldCrossvalLookup{:});
 
         if verbose
             fprintf('Evaluated repeat %d of %d at time %f\n',repeatctr,num_repeats,toc(repeat_timer));
@@ -95,6 +126,7 @@ function [crossEval, crossTuning] = analyzeTRT(trial_data,params)
     % put all evals together
     crossEval = vertcat(repeatEval{:});
     crossTuning = vertcat(repeatTuning{:});
+    crossvalLookup = vertcat(repeatCrossvalLookup{:});
 
 %% Diagnostics...
     % [foldEval,foldTuning] = analyzeFold(td_train,td_test);

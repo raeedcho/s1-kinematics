@@ -210,9 +210,10 @@ function results = mwEncoders(td,params)
         'glm_params',{glm_params},...
         'num_folds',num_folds,...
         'num_repeats',num_repeats,...
+        'crossval_lookup',[],...
         'unit_guide',unit_guide,...
         'num_tuning_bins',num_tuning_bins);
-    [crossEval,crossTuning] = analyzeTRT(td,crossval_params);
+    [crossEval,crossTuning,crossval_lookup] = analyzeTRT(td,crossval_params);
 
 %% create return struct
     % for cross validation plots
@@ -239,3 +240,4 @@ function results = mwEncoders(td,params)
     results.params.num_musc_pcs = num_musc_pcs;
     results.params.neural_signals = neural_signals;
     results.params.glm_params = glm_params;
+    results.params.crossval_lookup = crossval_lookup;
