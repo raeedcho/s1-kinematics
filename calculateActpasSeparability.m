@@ -23,9 +23,9 @@ savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','
 if rerun_crossval
     file_info = dir(fullfile(savedir,'*separationResults_run20190228.mat'));
     oldresultsnames = horzcat({file_info.name})';
-    savesuffix = '_separationResults_run20190228_rerun20190806.mat';
+    savesuffix = '_separationResults_50msLag_run20190228_rerun20190809.mat';
 else
-    savesuffix = '_separationResults_run20190228.mat';
+    savesuffix = '_separationResults_50msLag_run20190228.mat';
 end
 
 %% Loop through files
@@ -60,7 +60,7 @@ for filenum = [1 2 4]%1:4%length(filenames)
     td = getDifferential(td,struct('signals','force_plane_norm','alias','dforce_plane_norm'));
     
     % remove unsorted neurons
-    unit_ids = td(1).S1_unit_guide;
+    unit_ids = td(1).([arrayname '_unit_guide']);
     unsorted_units = (unit_ids(:,2)==0);
     new_unit_guide = unit_ids(~unsorted_units,:);
     
@@ -159,14 +159,20 @@ for filenum = [1 2 4]%1:4%length(filenames)
     td_pas = td_pas(1:minsize);
     td_bin = cat(2,td_act,td_pas);
 
-    % trim to just movements
-    td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',11});
-
     % remove low firing neurons
-    td_bin = removeBadNeurons(td_bin,struct('min_fr',1,'calc_fr',true));
+    td_bin = removeBadNeurons(td_bin,struct(...
+        'min_fr',1,...
+        'fr_window',{{'idx_movement_on',0;'idx_movement_on',11}},...
+        'calc_fr',true));
     
     % add firing rates in addition to spike counts
     td_bin = addFiringRates(td_bin,struct('array',arrayname));
+
+    % shift S1 backwards by 50 ms to account for lag between kinematics and S1
+    td_bin = dupeAndShift(td_bin,[arrayname '_FR'],5);
+
+    % trim to just movements
+    td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',11});
 
     % find average over the movement
     td_bin = binTD(td_bin,'average');
@@ -197,6 +203,7 @@ for filenum = [1 2 4]%1:4%length(filenames)
     warning('off',onetime_warn.identifier)
     
     sepResults = actpasSep(td_bin,struct(...
+        'neural_signals',[arrayname '_FR_shift'],...
         'num_repeats',num_repeats,...
         'num_folds',num_folds,...
         'crossval_lookup',crossval_lookup,...

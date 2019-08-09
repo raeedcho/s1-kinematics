@@ -8,10 +8,9 @@ function results = actpasSep(td_bin,params)
         num_pcs = 5; % number of PCs to train LDA on
         model_type = 'glm';
         model_aliases = {'ext','extforce','handelbow'};
-        arrayname = 'S1';
+        neural_signals = 'S1_FR';
         which_units = 'all'; % replace with a list of indices for which units to use for separability
         assignParams(who,params);
-        neural_signals = [arrayname '_FR'];
 
         model_names = [strcat(model_type,'_',model_aliases,'_model') {neural_signals}];
         num_models = length(model_names);

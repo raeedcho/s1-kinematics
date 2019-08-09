@@ -5,7 +5,8 @@
 %% Set up plotting variables
     datadir = '/data/raeed/project-data/limblab/s1-kinematics/Results/Separability';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
-    files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20190806.mat'));
+    % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20190806.mat'));
+    files = dir(fullfile(datadir,'*separationResults_50msLag_run20190228_rerun20190809.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -13,8 +14,9 @@
     run_date = char(datetime('today','format','yyyyMMdd'));
 
     monkey_names = {'Chips','Han'};
-    models_to_plot = {'S1_FR','ext','extforce','handelbow','ext_actpasbaseline'};
-    fr_names = {'S1_FR','ext_predFR','extforce_predFR','handelbow_predFR','ext_actpasbaseline_predFR'};
+    neural_signals = 'S1_FR_shift';
+    models_to_plot = {neural_signals,'ext','extforce','handelbow','ext_actpasbaseline'};
+    fr_names = {neural_signals,'ext_predFR','extforce_predFR','handelbow_predFR','ext_actpasbaseline_predFR'};
     model_titles = {'Actual Firing','Extrinsic','Extrinsic + Force','Hand/Elbow','Hand+Baseline'};
     num_pcs = 3;
 
@@ -27,7 +29,7 @@
     [sep_table_cell, margin_corr_table_cell] = deal(cell(length(filename),1));
     fileclock = tic;
     fprintf('Started loading files...\n')
-    for filenum = [1 2 4]%1:length(filename)
+    for filenum = 1:length(filename)
         % load data
         load(fullfile(datadir,filename{filenum}))
 
@@ -50,7 +52,7 @@
                 isActive = ~fold_trials.isPassive;
 
                 % get S1 margin
-                S1_margin = fold_trials.S1_FR_self_margin;
+                S1_margin = fold_trials.(strcat(neural_signals,'_self_margin'));
 
                 % initialize
                 [model_margin_corr, model_margin_corr_act, model_margin_corr_pas,model_input_margin_corr, model_input_margin_corr_act, model_input_margin_corr_pas] = deal(zeros(1,length(models_to_plot)));
@@ -64,7 +66,7 @@
                     model_margin_corr_pas(modelnum) = corr(model_margin(~isActive),S1_margin(~isActive));
 
                     % get model input margin
-                    if strcmpi(models_to_plot{modelnum},'S1_FR')
+                    if strcmpi(models_to_plot{modelnum},neural_signals)
                         % Set it to S1 margin I guess...
                         model_input_margin = S1_margin;
                     else
@@ -171,7 +173,7 @@
         suptitle(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
 
         % plot out margin comparisons between models
-        S1_margin = trial_table.S1_FR_self_margin;
+        S1_margin = trial_table.(strcat(neural_signals,'_self_margin'));
         figure('defaultaxesfontsize',18)
         for modelnum = 1:length(models_to_plot)
             subplot(1,length(models_to_plot),modelnum)
@@ -241,7 +243,7 @@
                 CI_hi = yvals + upp * sqrt(crossval_correction*var_seps);
                 
                 % get value of true separability
-                [~,S1_col] = ismember('S1_FR_true_sep',session_seps.Properties.VariableNames);
+                [~,S1_col] = ismember(strcat(neural_signals,'_true_sep'),session_seps.Properties.VariableNames);
                 S1_val = mean(session_seps{:,S1_col});
 
                 % plot dots and lines
