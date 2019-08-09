@@ -26,6 +26,8 @@ function model_titles = getModelTitles(model_alias)
             model_titles{modelnum} = 'Muscle';
         case 'handelbow'
             model_titles{modelnum} = 'Hand/Elbow';
+        case 'elbow'
+            model_titles{modelnum} = 'Elbow';
         case 'opensim_handelbow'
             model_titles{modelnum} = 'OpenSim Hand/Elbow';
         case 'ego_handelbow'
