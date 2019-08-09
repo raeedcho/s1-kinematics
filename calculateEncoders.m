@@ -10,7 +10,7 @@ end
 datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library');
 file_info = dir(fullfile(datadir,'*TRT*'));
 filenames = horzcat({file_info.name})';
-savedir = fullfile(homefolder,'data','project-data','limblab','s1-kinematics','Results','Encoding');
+savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Encoding');
 savesuffix = '_encodingResults_allModels_run20190808.mat';
 
 model_aliases = {'ext','ego','joint','musc','handelbow','elbow'};
