@@ -3,7 +3,7 @@ model_aliases = {'ext','extforce','handelbow','ext_actpasbaseline'};
 model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
-num_pcs = 3;
+num_pcs = 10;
 num_repeats = 20;
 num_folds = 5;
 rerun_crossval = true;
@@ -23,13 +23,13 @@ savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','
 if rerun_crossval
     file_info = dir(fullfile(savedir,'*separationResults_run20190228.mat'));
     oldresultsnames = horzcat({file_info.name})';
-    savesuffix = '_sepCurveResults_run20190228_rerun20190903.mat';
+    savesuffix = '_sepCurveResults_10pcs_run20190228_rerun20190903.mat';
 else
-    savesuffix = '_sepCurveResults_run20190903.mat';
+    savesuffix = '_sepCurveResults_10pcs_run20190903.mat';
 end
 
 %% Loop through files
-for filenum = [1 2 4]%1:4%length(filenames)
+for filenum = 1:4%[1 2 4]%1:4%length(filenames)
     clear sepResults
     
     % if we want to rerun the crossvalidation
