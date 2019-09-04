@@ -8,6 +8,8 @@ function model_colors = getModelColors(model_alias)
         switch model_alias{modelnum}
         case 'ext'
             model_colors(modelnum,:) = [247, 148, 30]/255;
+        case 'extforce'
+            model_colors(modelnum,:) = [38, 34, 98]/255;
         case 'opensim_ext'
             model_colors(modelnum,:) = [247, 148, 30]/255;
         case 'ego'
@@ -27,6 +29,8 @@ function model_colors = getModelColors(model_alias)
         case 'opensim_handelbow'
             model_colors(modelnum,:) = [179, 44, 224]/255;
         case 'ego_handelbow'
+            model_colors(modelnum,:) = [119, 255, 189]/255;
+        case 'ext_actpasbaseline'
             model_colors(modelnum,:) = [119, 255, 189]/255;
         end
     end
