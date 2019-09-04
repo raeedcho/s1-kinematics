@@ -218,6 +218,7 @@ function results = sepTime(td_bin,params)
                 [lda_coeff,pca_coeff,pca_mu] = deal(cell(1,length(timeshifts)));
                 % [neural_seps,neural_margin] = deal(zeros(1,length(timeshifts)));
                 neural_seps = zeros(1,length(timeshifts));
+                neural_margin = zeros(length(td_test),length(timeshifts));
 
                 [input_lda_coeff] = deal(cell(1,length(model_aliases)));
                 [input_seps,input_margin] = deal(cell(1,length(model_aliases)));
