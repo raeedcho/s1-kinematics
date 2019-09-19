@@ -1,4 +1,5 @@
-% This script plots array modality maps and receptive field maps
+function plotArrayMaps(map_plot)
+% This function plots array modality maps and receptive field maps
 
 %% Set up
 % modality colors
@@ -39,10 +40,8 @@ array_rot = {...
 array_rot = cell2table(array_rot,'VariableNames',{'monkey','array_rotation'});
 
 if ispc
-    homefolder = 'C:\Users\rhc307';
     dataroot = '';
 else
-    homefolder = '/home/raeed';
     dataroot = '/data/raeed';
 end
 
@@ -103,13 +102,17 @@ for monkeynum = 1:height(monkeys)
         end
 
         % draw over rectangles with colors based on modality
+        if strcmpi(map_plot,'modality')
+            color_table = array_map_session.modality_color;
+        elseif strcmpi(map_plot,'rf')
+            color_table = array_map_session.rf_color;
+        else
+            error('map_plot must be either ''modality'' or ''rf''')
+        end
         for tabrownum = 1:height(array_map_session)
-            % rectangle(...
-            %     'Position',[array_map_session.colNum(tabrownum) array_map_session.rowNum(tabrownum) 0.8 0.8],...
-            %     'FaceColor',array_map_session.modality_color(tabrownum,:))
             rectangle(...
                 'Position',[array_map_session.colNum(tabrownum) array_map_session.rowNum(tabrownum) 0.8 0.8],...
-                'FaceColor',array_map_session.rf_color(tabrownum,:))
+                'FaceColor',color_table(tabrownum,:))
         end
 
         title(vertcat(monkeys{monkeynum,1},session_dates{monkeynum}(sessionnum)))
@@ -118,3 +121,20 @@ for monkeynum = 1:height(monkeys)
         view(array_map_session.array_rotation(1,:))
     end
 end
+subplot(num_subplot_rows,num_subplot_cols,num_subplot_rows*num_subplot_cols)
+if strcmpi(map_plot,'modality')
+    color_table = modality_color_table;
+elseif strcmpi(map_plot,'rf')
+    color_table = rf_color_table;
+else
+    error('map_plot must be either ''modality'' or ''rf''')
+end
+% color_table = rf_color_table;
+for colornum = 1:height(color_table)
+    rectangle('Position',[1 colornum 0.8 0.8],'FaceColor',color_table{colornum,2})
+    text(2,colornum+0.4,color_table{colornum,1},'FontSize',14)
+end
+rectangle('Position',[1 0 0.8 0.8],'Curvature',1)
+text(2,0.4,'unmapped/none found','FontSize',14)
+axis image
+axis off
