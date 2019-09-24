@@ -11,6 +11,7 @@ mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps')
 
 % which map to plot
 map_plot = 'modality';
+clims = [];
 
 if nargin>1
     assignParams(who,params)
@@ -68,9 +69,17 @@ for monkeynum = 1:height(monkeys)
         % draw over rectangles with colors based on modality
         color_table = array_map_session.(sprintf('%s_color',map_plot));
         for tabrownum = 1:height(array_map_session)
-            rectangle(...
-                'Position',[array_map_session.colNum(tabrownum) array_map_session.rowNum(tabrownum) 0.8 0.8],...
-                'FaceColor',color_table(tabrownum,:))
+            rectanglePatch(...
+                [array_map_session.colNum(tabrownum) array_map_session.rowNum(tabrownum) 0.8 0.8],...
+                color_table(tabrownum,:))
+        end
+
+        if ~strcmpi(map_plot,'modality') && ~strcmpi(map_plot,'receptive_field')
+            if ~isempty(clims)
+                caxis(clims)
+            end
+            colormap(viridis)
+            colorbar
         end
 
         title(vertcat(monkeys{monkeynum,1},session_dates{monkeynum}(sessionnum)))
