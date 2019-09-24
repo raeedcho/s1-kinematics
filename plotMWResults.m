@@ -190,6 +190,25 @@
     xlabel('Model Pseudo-R^2')
     saveas(gcf,fullfile(figdir,sprintf('pr2_crossvals_run%s.pdf',run_date)))
 
+    % plot array map of ext model eval
+    % plot all evals together
+    model_eval_table = vertcat(model_eval{:});
+    % average over all crossvals
+    model_eval_table = neuronAverage(model_eval_table,struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
+    % extract and add chan
+    model_eval_table = horzcat(model_eval_table,...
+        table(model_eval_table.signalID(:,1),'VariableNames',{'chan'}));
+    % extract and add color
+    for modelnum = 1:length(models_to_plot)
+        model_eval_table = horzcat(model_eval_table,...
+            table(model_eval_table.(sprintf('%s_eval',models_to_plot{modelnum})),...
+                'VariableNames',{sprintf('%s_eval_color',models_to_plot{modelnum})}));
+    end
+    for modelnum = 1:length(models_to_plot)
+        plotArrayMap(model_eval_table,struct('map_plot',sprintf('%s_eval',models_to_plot{modelnum})))
+        suptitle(sprintf('%s pR2',getModelTitles(models_to_plot{modelnum})))
+    end
+
 %% Tuning curve shape comparison
     % find winners of tuning corr
     tuning_corr_winners = cell(length(monkey_names),size(session_colors,1));
@@ -427,6 +446,19 @@
     figure(scatters)
     suptitle('PD shift scatter plots')
     saveas(gcf,fullfile(figdir,sprintf('PDShiftScatters_run%s.pdf',run_date)))
+
+    % Make array maps for dPD
+    dPD_map = allFileShifts_real;
+    % extract and append channel 
+    dPD_map = horzcat(dPD_map,table(dPD_map.signalID(:,1),'VariableNames',{'chan'}));
+    % set up color table for dPD
+    % dPD_map = horzcat(dPD_map,...
+    %     table(interp1(linspace(0,pi,100),viridis(100),abs(dPD_map.velPD)),'VariableNames',{'velPD_color'}));
+    dPD_map = horzcat(dPD_map,...
+        table(abs(dPD_map.velPD),'VariableNames',{'velPD_color'}));
+    % plot array maps
+    plotArrayMap(dPD_map,struct('map_plot','velPD','clims',[0 pi/2]))
+    suptitle('dPD array maps')
 
 %% PD shift VAF dotplots
     % find winners of PD shift
