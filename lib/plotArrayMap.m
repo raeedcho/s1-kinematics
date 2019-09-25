@@ -10,7 +10,7 @@ end
 mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps');
 
 % which map to plot
-map_plot = 'modality';
+map_plot = 'modality_color';
 clims = [];
 
 if nargin>1
@@ -18,7 +18,8 @@ if nargin>1
 end
 
 % integrety check
-assert(any(strcmp(sprintf('%s_color',map_plot),array_map.Properties.VariableNames)))
+% assert(any(strcmp(sprintf('%s_color',map_plot),array_map.Properties.VariableNames)))
+assert(isnumeric(array_map.(map_plot)),'Column to plot must be numeric (either index into colormap or n x 3 color array)')
 
 %% join array map with electrode map
 % load in electrode maps
@@ -67,14 +68,14 @@ for monkeynum = 1:height(monkeys)
         end
 
         % draw over rectangles with colors based on modality
-        color_table = array_map_session.(sprintf('%s_color',map_plot));
+        color_table = array_map_session.(map_plot);
         for tabrownum = 1:height(array_map_session)
             rectanglePatch(...
                 [array_map_session.colNum(tabrownum) array_map_session.rowNum(tabrownum) 0.8 0.8],...
                 color_table(tabrownum,:))
         end
 
-        if ~strcmpi(map_plot,'modality') && ~strcmpi(map_plot,'receptive_field')
+        if ~startsWith(map_plot,'modality') && ~startsWith(map_plot,'receptive_field')
             if ~isempty(clims)
                 caxis(clims)
             end
@@ -90,9 +91,9 @@ for monkeynum = 1:height(monkeys)
 end
 
 % print out legend
-if strcmpi(map_plot,'modality')
+if startsWith(map_plot,'modality')
     color_table = getModalityColorTable();
-elseif strcmpi(map_plot,'receptive_field')
+elseif startsWith(map_plot,'receptive_field')
     color_table = getRFColorTable();
 else
     return
