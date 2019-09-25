@@ -193,21 +193,29 @@
     % plot array map of ext model eval
     % plot all evals together
     model_eval_table = vertcat(model_eval{:});
+    model_eval_table = horzcat(model_eval_table,...
+        table(model_eval_table.handelbow_eval-model_eval_table.ext_eval,...
+            'VariableNames',{'he_ext_eval_diff'}));
+    model_eval_table = horzcat(model_eval_table,...
+        table(model_eval_table.ext_eval-model_eval_table.elbow_eval,...
+            'VariableNames',{'ext_elbow_eval_diff'}));
     % average over all crossvals
     model_eval_table = neuronAverage(model_eval_table,struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
     % extract and add chan
     model_eval_table = horzcat(model_eval_table,...
         table(model_eval_table.signalID(:,1),'VariableNames',{'chan'}));
     % extract and add color
-    for modelnum = 1:length(models_to_plot)
-        model_eval_table = horzcat(model_eval_table,...
-            table(model_eval_table.(sprintf('%s_eval',models_to_plot{modelnum})),...
-                'VariableNames',{sprintf('%s_eval_color',models_to_plot{modelnum})}));
-    end
-    for modelnum = 1:length(models_to_plot)
-        plotArrayMap(model_eval_table,struct('map_plot',sprintf('%s_eval',models_to_plot{modelnum})))
-        suptitle(sprintf('%s pR2',getModelTitles(models_to_plot{modelnum})))
-    end
+    % for modelnum = 1:length(models_to_plot)
+    %     model_eval_table = horzcat(model_eval_table,...
+    %         table(model_eval_table.(sprintf('%s_eval',models_to_plot{modelnum})),...
+    %             'VariableNames',{sprintf('%s_eval_color',models_to_plot{modelnum})}));
+    % end
+    % for modelnum = 1:length(models_to_plot)
+    %     plotArrayMap(model_eval_table,struct('map_plot',sprintf('%s_eval',models_to_plot{modelnum})))
+    %     suptitle(sprintf('%s pR2',getModelTitles(models_to_plot{modelnum})))
+    % end
+    plotArrayMap(model_eval_table,struct('map_plot','ext_elbow_eval_diff','clims',[-0.15 0.15]))
+    suptitle('Hand/Elbow pR2 - Extrinsic pR2')
 
 %% Tuning curve shape comparison
     % find winners of tuning corr
