@@ -191,31 +191,37 @@
     saveas(gcf,fullfile(figdir,sprintf('pr2_crossvals_run%s.pdf',run_date)))
 
     % plot array map of ext model eval
-    % plot all evals together
-    model_eval_table = vertcat(model_eval{:});
-    model_eval_table = horzcat(model_eval_table,...
-        table(model_eval_table.handelbow_eval-model_eval_table.ext_eval,...
-            'VariableNames',{'he_ext_eval_diff'}));
-    model_eval_table = horzcat(model_eval_table,...
-        table(model_eval_table.ext_eval-model_eval_table.elbow_eval,...
-            'VariableNames',{'ext_elbow_eval_diff'}));
-    % average over all crossvals
-    model_eval_table = neuronAverage(model_eval_table,struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
-    % extract and add chan
-    model_eval_table = horzcat(model_eval_table,...
-        table(model_eval_table.signalID(:,1),'VariableNames',{'chan'}));
-    % extract and add color
-    % for modelnum = 1:length(models_to_plot)
-    %     model_eval_table = horzcat(model_eval_table,...
-    %         table(model_eval_table.(sprintf('%s_eval',models_to_plot{modelnum})),...
-    %             'VariableNames',{sprintf('%s_eval_color',models_to_plot{modelnum})}));
-    % end
-    % for modelnum = 1:length(models_to_plot)
-    %     plotArrayMap(model_eval_table,struct('map_plot',sprintf('%s_eval',models_to_plot{modelnum})))
-    %     suptitle(sprintf('%s pR2',getModelTitles(models_to_plot{modelnum})))
-    % end
-    plotArrayMap(model_eval_table,struct('map_plot','ext_elbow_eval_diff','clims',[-0.15 0.15]))
-    suptitle('Hand/Elbow pR2 - Extrinsic pR2')
+        % plot all evals together
+        model_eval_table = vertcat(model_eval{:});
+        model_eval_table = horzcat(model_eval_table,...
+            table(model_eval_table.handelbow_eval-model_eval_table.ext_eval,...
+                'VariableNames',{'he_ext_eval_diff'}));
+        model_eval_table = horzcat(model_eval_table,...
+            table(model_eval_table.ext_eval-model_eval_table.elbow_eval,...
+                'VariableNames',{'ext_elbow_eval_diff'}));
+        % average over all crossvals
+        model_eval_table = neuronAverage(model_eval_table,struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
+        % extract and add chan
+        model_eval_table = horzcat(model_eval_table,...
+            table(model_eval_table.signalID(:,1),'VariableNames',{'chan'}));
+        % extract and add color
+        % for modelnum = 1:length(models_to_plot)
+        %     model_eval_table = horzcat(model_eval_table,...
+        %         table(model_eval_table.(sprintf('%s_eval',models_to_plot{modelnum})),...
+        %             'VariableNames',{sprintf('%s_eval_color',models_to_plot{modelnum})}));
+        % end
+        % for modelnum = 1:length(models_to_plot)
+        %     plotArrayMap(model_eval_table,struct('map_plot',sprintf('%s_eval',models_to_plot{modelnum})))
+        %     suptitle(sprintf('%s pR2',getModelTitles(models_to_plot{modelnum})))
+        % end
+        figure('defaultaxesfontsize',18)
+        lm_table = plotArrayMap(model_eval_table,struct('map_plot','ext_eval','calc_linmodels',true));
+        suptitle('Extrinsic pR2')
+        % plotArrayMap(model_eval_table,struct('map_plot','ext_elbow_eval_diff','clims',[-0.15 0.15]))
+        % suptitle('Hand/Elbow pR2 - Extrinsic pR2')
+        for sessionnum = 1:height(lm_table)
+            coefTest(lm_table{sessionnum,3}{1})
+        end
 
 %% Tuning curve shape comparison
     % find winners of tuning corr
@@ -465,8 +471,12 @@
     dPD_map = horzcat(dPD_map,...
         table(abs(dPD_map.velPD),'VariableNames',{'velPD_color'}));
     % plot array maps
-    plotArrayMap(dPD_map,struct('map_plot','velPD','clims',[0 pi/2]))
+    figure('defaultaxesfontsize',18)
+    lm_table = plotArrayMap(dPD_map,struct('map_plot','velPD_color','clims',[0 pi/2],'calc_linmodels',true));
     suptitle('dPD array maps')
+    for sessionnum = 1:height(lm_table)
+        coefTest(lm_table{sessionnum,3}{1})
+    end
 
 %% PD shift VAF dotplots
     % find winners of PD shift
