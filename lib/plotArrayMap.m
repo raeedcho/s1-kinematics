@@ -1,4 +1,4 @@
-function plotArrayMap(array_map,params)
+function lm_table = plotArrayMap(array_map,params)
 % This function plots array map based on params.map_plot (default: 'modality')
 
 %% Set up
@@ -7,11 +7,14 @@ if ispc
 else
     dataroot = '/data/raeed';
 end
-mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps');
 
-% which map to plot
-map_plot = 'modality_color';
-clims = [];
+% parameters we can change with params
+mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps'); % directory of electrode map
+map_plot = 'modality_color'; % what to map
+clims = []; % color limits
+calc_linmodels = false; % whether to calculate and show linear models of map
+cmap = viridis; % color map to use
+show_colorbar = true; % whether to show colorbar legend
 
 if nargin>1
     assignParams(who,params)
@@ -46,7 +49,7 @@ num_subplot_cols = max(num_sessions);
 num_subplot_rows = height(monkeys);
 
 % loop over monkeys/days
-figure('defaultaxesfontsize',18)
+lm_table = cell(max(num_sessions),height(monkeys));
 for monkeynum = 1:height(monkeys)
     for sessionnum = 1:num_sessions(monkeynum)
         % get map table for given session
@@ -79,8 +82,33 @@ for monkeynum = 1:height(monkeys)
             if ~isempty(clims)
                 caxis(clims)
             end
-            colormap(viridis)
-            colorbar
+            colormap(cmap)
+            if show_colorbar
+                colorbar
+            end
+        end
+
+        if calc_linmodels
+            % get linear model of distalness against array position and put in a table
+            lm = fitlm(array_map_session(:,{'colNum','rowNum',map_plot}));
+
+            % plot if lm is good
+            if coefTest(lm)<0.05
+                midpoint = [5.9 5.9];
+                grad = lm.Coefficients.Estimate(2:end);
+                grad = 5*grad/norm(grad);
+                plot(...
+                    [midpoint(1) midpoint(1)+grad(1)],...
+                    [midpoint(2) midpoint(2)+grad(2)],...
+                    'k','linewidth',2)
+            end
+
+            % save table
+            lm_table{sessionnum,monkeynum} = table(...
+                monkeys{monkeynum,1},...
+                session_dates{monkeynum}(sessionnum),...
+                {lm},...
+                'VariableNames',{'monkey','date',strcat(map_plot,'_linmodel')});
         end
 
         title(vertcat(monkeys{monkeynum,1},session_dates{monkeynum}(sessionnum)))
@@ -89,12 +117,15 @@ for monkeynum = 1:height(monkeys)
         view(array_map_session.array_rotation(1,:))
     end
 end
+lm_table = vertcat(lm_table{:});
 
 % print out legend
 if startsWith(map_plot,'modality')
     color_table = getModalityColorTable();
 elseif startsWith(map_plot,'receptive_field')
     color_table = getRFColorTable();
+elseif startsWith(map_plot,'rf_distalness')
+    color_table = getRFDistalnessTable();
 else
     return
     % error('map_plot must be either ''modality'' or ''rf''')
@@ -102,10 +133,14 @@ end
 
 subplot(num_subplot_rows,num_subplot_cols,num_subplot_rows*num_subplot_cols)
 for colornum = 1:height(color_table)
-    rectangle('Position',[1 colornum 0.8 0.8],'FaceColor',color_table{colornum,2})
+    rectanglePatch([1 colornum 0.8 0.8],color_table{colornum,2})
     text(2,colornum+0.4,color_table{colornum,1},'FontSize',14)
 end
 rectangle('Position',[1 0 0.8 0.8],'Curvature',1)
 text(2,0.4,'unmapped/none found','FontSize',14)
+
+if ~isempty(clims)
+    caxis(clims)
+end
 axis image
 axis off
