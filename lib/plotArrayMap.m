@@ -1,15 +1,9 @@
 function lm_table = plotArrayMap(array_map,params)
 % This function plots array map based on params.map_plot (default: 'modality')
+% Must have electrode map attached
 
 %% Set up
-if ispc
-    dataroot = '';
-else
-    dataroot = '/data/raeed';
-end
-
 % parameters we can change with params
-mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps'); % directory of electrode map
 map_plot = 'modality_color'; % what to map
 clims = []; % color limits
 calc_linmodels = false; % whether to calculate and show linear models of map
@@ -23,14 +17,6 @@ end
 % integrety check
 % assert(any(strcmp(sprintf('%s_color',map_plot),array_map.Properties.VariableNames)))
 assert(isnumeric(array_map.(map_plot)),'Column to plot must be numeric (either index into colormap or n x 3 color array)')
-
-%% join array map with electrode map
-% load in electrode maps
-elec_map = load(fullfile(mapdir,'elec-map.mat'));
-elec_map = elec_map.elec_map;
-
-% attach array locations to the receptive fields
-array_map = join(array_map,elec_map);
 
 % attach array rotations
 array_map = join(array_map,getArrayRotationTable());
