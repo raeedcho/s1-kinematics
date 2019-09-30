@@ -220,9 +220,13 @@
         %     plotArrayMap(model_eval_table,struct('map_plot',sprintf('%s_eval',models_to_plot{modelnum})))
         %     suptitle(sprintf('%s pR2',getModelTitles(models_to_plot{modelnum})))
         % end
+        coarseness = 1;
         figure('defaultaxesfontsize',18)
-        lm_table = plotArrayMap(model_eval_table,struct('map_plot','ext_eval','calc_linmodels',true));
-        suptitle('Extrinsic pR2')
+        lm_table = plotArrayMap(model_eval_table,struct(...
+            'map_plot','ext_elbow_eval_diff',...
+            'calc_linmodels',true,...
+            'coarseness',coarseness));
+        suptitle(sprintf('Extrinsic pR2 (coarseness factor: %d)',coarseness))
         % plotArrayMap(model_eval_table,struct('map_plot','ext_elbow_eval_diff','clims',[-0.15 0.15]))
         % suptitle('Hand/Elbow pR2 - Extrinsic pR2')
         for sessionnum = 1:height(lm_table)
@@ -328,6 +332,37 @@
         'line_sparsity',0));
     xlabel('Modeled tuning curve correlations')
     saveas(gcf,fullfile(figdir,sprintf('tuningCorr_crossvals_run%s.pdf',run_date)))
+
+    % plot array map of ext model eval
+        % put together table
+        tuning_corr_table = vertcat(tuning_corr{:});
+        tuning_corr_table = horzcat(tuning_corr_table,...
+            table(tuning_corr_table.handelbow_tuningCorr-tuning_corr_table.ext_tuningCorr,...
+                'VariableNames',{'he_ext_tuningCorr_diff'}));
+        tuning_corr_table.Properties.VariableDescriptions{end} = 'linear';
+        tuning_corr_table = horzcat(tuning_corr_table,...
+            table(tuning_corr_table.ext_tuningCorr-tuning_corr_table.elbow_tuningCorr,...
+                'VariableNames',{'ext_elbow_tuningCorr_diff'}));
+        tuning_corr_table.Properties.VariableDescriptions{end} = 'linear';
+        % average over all crossvals
+        tuning_corr_table = neuronAverage(tuning_corr_table,struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
+        % extract and add chan
+        tuning_corr_table = horzcat(tuning_corr_table,...
+            table(tuning_corr_table.signalID(:,1),'VariableNames',{'chan'}));
+        % plot
+        coarseness = 1;
+        figure('defaultaxesfontsize',18)
+        lm_table = plotArrayMap(tuning_corr_table,struct(...
+            'map_plot','ext_tuningCorr',...
+            'calc_linmodels',true,...
+            'clims',[0 1],...
+            'coarseness',coarseness));
+        suptitle(sprintf('Extrinsic tuning correlation (coarseness factor: %d)',coarseness))
+        % plotArrayMap(tuning_corr_table,struct('map_plot','ext_elbow_eval_diff','clims',[-0.15 0.15]))
+        % suptitle('Hand/Elbow pR2 - Extrinsic pR2')
+        for sessionnum = 1:height(lm_table)
+            coefTest(lm_table{sessionnum,3}{1})
+        end
 
 %% PD shifts over all monkeys
     file_shifts = cell(length(filename),length(models_to_plot)); % shift tables for each model in each file
@@ -585,6 +620,36 @@
             'ylim',[-0.2 1],'ytick',[-0.2 0 1])
     end
     saveas(gcf,fullfile(figdir,sprintf('PDShiftVAF_sessionAvg_run%s.pdf',run_date)))
+
+    % plot array map of ext model shift vaf
+        % put together table
+        shift_vaf_table = vertcat(shift_vaf{:});
+        shift_vaf_table = horzcat(shift_vaf_table,...
+            table(shift_vaf_table.handelbow_vaf-shift_vaf_table.ext_vaf,...
+                'VariableNames',{'he_ext_vaf_diff'}));
+        shift_vaf_table.Properties.VariableDescriptions{end} = 'linear';
+        shift_vaf_table = horzcat(shift_vaf_table,...
+            table(shift_vaf_table.ext_vaf-shift_vaf_table.elbow_vaf,...
+                'VariableNames',{'ext_elbow_vaf_diff'}));
+        shift_vaf_table.Properties.VariableDescriptions{end} = 'linear';
+        % average over all crossvals
+        shift_vaf_table = neuronAverage(shift_vaf_table,struct('keycols',{{'monkey','date','task','signalID'}},'do_ci',false));
+        % extract and add chan
+        shift_vaf_table = horzcat(shift_vaf_table,...
+            table(shift_vaf_table.signalID(:,1),'VariableNames',{'chan'}));
+        % plot
+        coarseness = 2;
+        figure('defaultaxesfontsize',18)
+        lm_table = plotArrayMap(shift_vaf_table,struct(...
+            'map_plot','ext_elbow_vaf_diff',...
+            'calc_linmodels',true,...
+            'coarseness',coarseness));
+        suptitle(sprintf('Extrinsic shift VAF (coarseness factor: %d)',coarseness))
+        % plotArrayMap(tuning_corr_table,struct('map_plot','ext_elbow_eval_diff','clims',[-0.15 0.15]))
+        % suptitle('Hand/Elbow pR2 - Extrinsic pR2')
+        for sessionnum = 1:height(lm_table)
+            coefTest(lm_table{sessionnum,3}{1})
+        end
 
 %% Get example tuning curves for all models
     for monkeynum = 1:length(monkey_names)
