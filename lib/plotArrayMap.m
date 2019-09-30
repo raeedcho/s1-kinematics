@@ -1,10 +1,17 @@
 function lm_table = plotArrayMap(array_map,params)
 % This function plots array map based on params.map_plot (default: 'modality')
-% Must have electrode map attached
 
 %% Set up
+if ispc
+    dataroot = '';
+else
+    dataroot = '/data/raeed';
+end
+
 % parameters we can change with params
+mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps'); % directory of electrode map
 map_plot = 'modality_color'; % what to map
+coarseness = 1; % coarseness of map (averages over NxN area of array)
 clims = []; % color limits
 calc_linmodels = false; % whether to calculate and show linear models of map
 cmap = viridis; % color map to use
@@ -17,6 +24,27 @@ end
 % integrety check
 % assert(any(strcmp(sprintf('%s_color',map_plot),array_map.Properties.VariableNames)))
 assert(isnumeric(array_map.(map_plot)),'Column to plot must be numeric (either index into colormap or n x 3 color array)')
+assert(mod(coarseness,1)==0 && coarseness>0, 'coarseness must be an integer greater than 0')
+
+%% join array map with electrode map
+% load in electrode maps
+elec_map = load(fullfile(mapdir,'elec-map.mat'));
+elec_map = elec_map.elec_map;
+
+% attach array locations to the receptive fields
+array_map = join(array_map,elec_map);
+
+% coarsify array map if necessary
+if coarseness>1
+    array_map.rowNum = floor((array_map.rowNum-1)/coarseness)+1;
+    array_map.colNum = floor((array_map.colNum-1)/coarseness)+1;
+    keycols = ismember(array_map.Properties.VariableNames,{'monkey','date','rowNum','colNum'});
+    map_col = strcmpi(array_map.Properties.VariableNames,map_plot);
+    array_map = neuronAverage(array_map,struct(...
+        'keycols',keycols,...
+        'ignorecols',~keycols & ~map_col,...
+        'do_ci',false));
+end
 
 % attach array rotations
 array_map = join(array_map,getArrayRotationTable());
@@ -49,11 +77,22 @@ for monkeynum = 1:height(monkeys)
 
         % first plot all electrode locations for array as boxes
         [~,elec_map_monkey] = getNTidx(elec_map,'monkey',monkeys{monkeynum,1});
-        for tabrownum = 1:height(elec_map_monkey)
-            rectangle(...
-                'Position',[elec_map_monkey.colNum(tabrownum) elec_map_monkey.rowNum(tabrownum) 0.8 0.8],...
-                'Curvature',1)
-            hold on
+        if coarseness==1
+            for tabrownum = 1:height(elec_map_monkey)
+                rectangle(...
+                    'Position',[elec_map_monkey.colNum(tabrownum) elec_map_monkey.rowNum(tabrownum) 0.8 0.8],...
+                    'Curvature',1)
+                hold on
+            end
+        else
+            for colnum = 1:((max(elec_map_monkey.colNum)-1)/coarseness+1)
+                for rownum = 1:((max(elec_map_monkey.rowNum)-1)/coarseness+1)
+                    rectangle(...
+                        'Position',[colnum rownum 0.8 0.8],...
+                        'Curvature',1)
+                    hold on
+                end
+            end
         end
 
         % draw over rectangles with colors based on modality
@@ -80,9 +119,11 @@ for monkeynum = 1:height(monkeys)
 
             % plot if lm is good
             if coefTest(lm)<0.05
-                midpoint = [5.9 5.9];
+                midpoint = [...
+                    (max(elec_map_monkey.colNum)-1)/coarseness+1,...
+                    (max(elec_map_monkey.rowNum)-1)/coarseness+1]/2+0.9
                 grad = lm.Coefficients.Estimate(2:end);
-                grad = 5*grad/norm(grad);
+                grad = (5/coarseness)*grad/norm(grad);
                 plot(...
                     [midpoint(1) midpoint(1)+grad(1)],...
                     [midpoint(2) midpoint(2)+grad(2)],...
