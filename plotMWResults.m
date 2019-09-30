@@ -3,7 +3,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Set up plotting variables
-    datadir = '/data/raeed/project-data/limblab/s1-kinematics/Results/Encoding';
+    if ispc
+        dataroot = '';
+    else
+        dataroot = '/data/raeed';
+    end
+
+    datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Encoding');
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     % files = dir(fullfile(datadir,'*encodingResults_allModels_run20190206.mat'));
     files = dir(fullfile(datadir,'*encodingResults_allModels_run20190808.mat'));
