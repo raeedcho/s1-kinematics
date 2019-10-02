@@ -12,8 +12,9 @@
     datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Encoding');
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     % files = dir(fullfile(datadir,'*encodingResults_allModels_run20190206.mat'));
-    files = dir(fullfile(datadir,'*encodingResults_allModels_run20190808.mat'));
+    % files = dir(fullfile(datadir,'*encodingResults_allModels_run20190808.mat'));
     % files = dir(fullfile(datadir,'*encodingResults_opensimControls_run20190311.mat'));
+    files = dir(fullfile(datadir,'*encodingResults_*_run20191001.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -21,7 +22,8 @@
     run_date = char(datetime('today','format','yyyyMMdd'));
 
     monkey_names = {'Chips','Han','Lando'};
-    models_to_plot = {'elbow','ext','musc','handelbow'};
+    % models_to_plot = {'elbow','ext','musc','handelbow'};
+    models_to_plot = {'elbow','ext','extforce','handelbow'};
     % models_to_plot = {'ego','ext','joint','musc','handelbow'};
     % models_to_plot = {'joint','musc','opensim_handelbow','handelbow'};
 
