@@ -19,8 +19,8 @@
     filename = horzcat({files.name});
     
     % for figure saving
-    figdir = '/home/raeed/Wiki/Projects/limblab/s1-kinematics/figures/Encoding';
-    run_date = char(datetime('today','format','yyyyMMdd'));
+    % figdir = '/home/raeed/Wiki/Projects/limblab/s1-kinematics/figures/Encoding';
+    % run_date = char(datetime('today','format','yyyyMMdd'));
 
     monkey_names = {'Chips','Han','Lando'};
     % models_to_plot = {'elbow','ext','musc','handelbow'};
