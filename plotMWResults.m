@@ -14,7 +14,8 @@
     % files = dir(fullfile(datadir,'*encodingResults_allModels_run20190206.mat'));
     % files = dir(fullfile(datadir,'*encodingResults_allModels_run20190808.mat'));
     % files = dir(fullfile(datadir,'*encodingResults_opensimControls_run20190311.mat'));
-    files = dir(fullfile(datadir,'*encodingResults_*_run20191001.mat'));
+    % files = dir(fullfile(datadir,'*encodingResults_*_run20191001.mat'));
+    files = dir(fullfile(datadir,'*encodingResults_*_run20191002.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -24,6 +25,7 @@
     monkey_names = {'Chips','Han','Lando'};
     % models_to_plot = {'elbow','ext','musc','handelbow'};
     models_to_plot = {'elbow','ext','extforce','handelbow'};
+    % models_to_plot = {'ext','extforce','handelbow','handelbowforce'};
     % models_to_plot = {'ego','ext','joint','musc','handelbow'};
     % models_to_plot = {'joint','musc','opensim_handelbow','handelbow'};
 
@@ -761,6 +763,29 @@
     end
 
 %% Extra stuff/in progress...
+    %% Collect model prediction differences and plot
+    for filenum = 1%:length(filename)
+        load(fullfile(datadir,filename{filenum}))
+
+        td_tuning = horzcat(encoderResults.td_tuning{:});
+        td_tuning = binTD(td_tuning,'average');
+
+        % get difference between hand/elbow and extrinsic model predictions
+        % handelbow_ext_pred_diff = getSig(td_tuning,'glm_handelbow_model')-getSig(td_tuning,'glm_ext_model');
+        handelbow_ext_pred_diff = vertcat(td_tuning.glm_handelbow_model)-vertcat(td_tuning.glm_ext_model);
+
+        % normalize by z-scoring
+        handelbow_ext_pred_diff = zscore(handelbow_ext_pred_diff);
+
+        % plot image
+        figure
+        imagesc((handelbow_ext_pred_diff'),[-10 10])
+        colormap(viridis)
+        colorbar
+
+        figure
+        plot(abs(handelbow_ext_pred_diff))
+    end
     %% Plot handle positions
         figure('defaultaxesfontsize',18)
         pos_dl = cat(1,results.td_test{2}.pos);
