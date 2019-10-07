@@ -6,7 +6,8 @@
     datadir = '/data/raeed/project-data/limblab/s1-kinematics/Results/Separability';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20190806.mat'));
-    files = dir(fullfile(datadir,'*separationResults_50msLag_run20190228_rerun20190809.mat'));
+    files = dir(fullfile(datadir,'*separationResults_run20190228.mat'));
+    % files = dir(fullfile(datadir,'*separationResults_50msLag_run20190228_rerun20190809.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -14,8 +15,9 @@
     run_date = char(datetime('today','format','yyyyMMdd'));
 
     monkey_names = {'Chips','Han'};
-    neural_signals = 'S1_FR_shift';
-    models_to_plot = {neural_signals,'ext','extforce','handelbow','ext_actpasbaseline'};
+    neural_signals = 'S1_FR';
+    % models_to_plot = {neural_signals,'ext','extforce','handelbow','ext_actpasbaseline'};
+    models_to_plot = {neural_signals,'ext','extforce','handelbow'};
     fr_names = {neural_signals,'ext_predFR','extforce_predFR','handelbow_predFR','ext_actpasbaseline_predFR'};
     model_titles = {'Actual Firing','Extrinsic','Extrinsic + Force','Hand/Elbow','Hand+Baseline'};
     num_pcs = 3;
@@ -44,61 +46,61 @@
         sep_table_cell{filenum} = sepResults.lda_table(:,meta_cols | sep_cols);
 
         % extract margin correlations
-        meta_cols = strcmpi(sepResults.trial_table.Properties.VariableDescriptions,'meta');
-        margin_corr_entries = cell(num_repeats,num_folds);
-        for repeatnum = 1:num_repeats
-            for foldnum = 1:num_folds
-                [~,fold_trials] = getNTidx(sepResults.trial_table,'crossvalID',[repeatnum foldnum]);
-                isActive = ~fold_trials.isPassive;
+        % meta_cols = strcmpi(sepResults.trial_table.Properties.VariableDescriptions,'meta');
+        % margin_corr_entries = cell(num_repeats,num_folds);
+        % for repeatnum = 1:num_repeats
+        %     for foldnum = 1:num_folds
+        %         [~,fold_trials] = getNTidx(sepResults.trial_table,'crossvalID',[repeatnum foldnum]);
+        %         isActive = ~fold_trials.isPassive;
 
-                % get S1 margin
-                S1_margin = fold_trials.(strcat(neural_signals,'_self_margin'));
+        %         % get S1 margin
+        %         S1_margin = fold_trials.(strcat(neural_signals,'_self_margin'));
 
-                % initialize
-                [model_margin_corr, model_margin_corr_act, model_margin_corr_pas,model_input_margin_corr, model_input_margin_corr_act, model_input_margin_corr_pas] = deal(zeros(1,length(models_to_plot)));
-                % compile model margins
-                for modelnum = 1:length(models_to_plot)
-                    % get model margin
-                    model_margin = fold_trials.(sprintf('%s_self_margin',models_to_plot{modelnum}));
+        %         % initialize
+        %         [model_margin_corr, model_margin_corr_act, model_margin_corr_pas,model_input_margin_corr, model_input_margin_corr_act, model_input_margin_corr_pas] = deal(zeros(1,length(models_to_plot)));
+        %         % compile model margins
+        %         for modelnum = 1:length(models_to_plot)
+        %             % get model margin
+        %             model_margin = fold_trials.(sprintf('%s_self_margin',models_to_plot{modelnum}));
 
-                    model_margin_corr(modelnum) = corr(model_margin,S1_margin);
-                    model_margin_corr_act(modelnum) = corr(model_margin(isActive),S1_margin(isActive));
-                    model_margin_corr_pas(modelnum) = corr(model_margin(~isActive),S1_margin(~isActive));
+        %             model_margin_corr(modelnum) = corr(model_margin,S1_margin);
+        %             model_margin_corr_act(modelnum) = corr(model_margin(isActive),S1_margin(isActive));
+        %             model_margin_corr_pas(modelnum) = corr(model_margin(~isActive),S1_margin(~isActive));
 
-                    % get model input margin
-                    if strcmpi(models_to_plot{modelnum},neural_signals)
-                        % Set it to S1 margin I guess...
-                        model_input_margin = S1_margin;
-                    else
-                        model_input_margin = fold_trials.(sprintf('%s_input_margin',models_to_plot{modelnum}));
-                    end
+        %             % get model input margin
+        %             if strcmpi(models_to_plot{modelnum},neural_signals)
+        %                 % Set it to S1 margin I guess...
+        %                 model_input_margin = S1_margin;
+        %             else
+        %                 model_input_margin = fold_trials.(sprintf('%s_input_margin',models_to_plot{modelnum}));
+        %             end
 
-                    model_input_margin_corr(modelnum) = corr(model_input_margin,S1_margin);
-                    model_input_margin_corr_act(modelnum) = corr(model_input_margin(isActive),S1_margin(isActive));
-                    model_input_margin_corr_pas(modelnum) = corr(model_input_margin(~isActive),S1_margin(~isActive));
-                end
-                model_margin_corr_table = array2table(model_margin_corr,...
-                    'VariableNames',strcat(models_to_plot,'_margin_corr'));
-                model_margin_corr_act_table = array2table(model_margin_corr_act,...
-                    'VariableNames',strcat(models_to_plot,'_margin_corr_act'));
-                model_margin_corr_pas_table = array2table(model_margin_corr_pas,...
-                    'VariableNames',strcat(models_to_plot,'_margin_corr_pas'));
-                model_input_margin_corr_table = array2table(model_input_margin_corr,...
-                    'VariableNames',strcat(models_to_plot,'_input_margin_corr'));
-                model_input_margin_corr_act_table = array2table(model_input_margin_corr_act,...
-                    'VariableNames',strcat(models_to_plot,'_input_margin_corr_act'));
-                model_input_margin_corr_pas_table = array2table(model_input_margin_corr_pas,...
-                    'VariableNames',strcat(models_to_plot,'_input_margin_corr_pas'));
-                margin_corr_entries{repeatnum,foldnum} = horzcat(fold_trials(1,'crossvalID'),...
-                    model_margin_corr_table,...
-                    model_margin_corr_act_table,...
-                    model_margin_corr_pas_table,...
-                    model_input_margin_corr_table,...
-                    model_input_margin_corr_act_table,...
-                    model_input_margin_corr_pas_table);
-            end
-        end
-        margin_corr_table_cell{filenum} = join(sepResults.lda_table(:,meta_cols),vertcat(margin_corr_entries{:}));
+        %             model_input_margin_corr(modelnum) = corr(model_input_margin,S1_margin);
+        %             model_input_margin_corr_act(modelnum) = corr(model_input_margin(isActive),S1_margin(isActive));
+        %             model_input_margin_corr_pas(modelnum) = corr(model_input_margin(~isActive),S1_margin(~isActive));
+        %         end
+        %         model_margin_corr_table = array2table(model_margin_corr,...
+        %             'VariableNames',strcat(models_to_plot,'_margin_corr'));
+        %         model_margin_corr_act_table = array2table(model_margin_corr_act,...
+        %             'VariableNames',strcat(models_to_plot,'_margin_corr_act'));
+        %         model_margin_corr_pas_table = array2table(model_margin_corr_pas,...
+        %             'VariableNames',strcat(models_to_plot,'_margin_corr_pas'));
+        %         model_input_margin_corr_table = array2table(model_input_margin_corr,...
+        %             'VariableNames',strcat(models_to_plot,'_input_margin_corr'));
+        %         model_input_margin_corr_act_table = array2table(model_input_margin_corr_act,...
+        %             'VariableNames',strcat(models_to_plot,'_input_margin_corr_act'));
+        %         model_input_margin_corr_pas_table = array2table(model_input_margin_corr_pas,...
+        %             'VariableNames',strcat(models_to_plot,'_input_margin_corr_pas'));
+        %         margin_corr_entries{repeatnum,foldnum} = horzcat(fold_trials(1,'crossvalID'),...
+        %             model_margin_corr_table,...
+        %             model_margin_corr_act_table,...
+        %             model_margin_corr_pas_table,...
+        %             model_input_margin_corr_table,...
+        %             model_input_margin_corr_act_table,...
+        %             model_input_margin_corr_pas_table);
+        %     end
+        % end
+        % margin_corr_table_cell{filenum} = join(sepResults.lda_table(:,meta_cols),vertcat(margin_corr_entries{:}));
 
         % compose trial table for one crossval run
         repeatnum = 3;
@@ -173,41 +175,112 @@
         suptitle(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
 
         % plot out margin comparisons between models
-        S1_margin = trial_table.(strcat(neural_signals,'_self_margin'));
-        figure('defaultaxesfontsize',18)
-        for modelnum = 1:length(models_to_plot)
-            subplot(1,length(models_to_plot),modelnum)
+        % S1_margin = trial_table.(strcat(neural_signals,'_self_margin'));
+        % figure('defaultaxesfontsize',18)
+        % for modelnum = 1:length(models_to_plot)
+        %     subplot(1,length(models_to_plot),modelnum)
 
-            % get model margin
-            model_margin = trial_table.(sprintf('%s_self_margin',models_to_plot{modelnum}));
-            
-            % plot it out
-            scatter(S1_margin(isActive),model_margin(isActive),[],'k','filled')
-            % scatter(S1_margin(~isPassive),handelbow_input_margin(~isPassive),[],'k','filled')
-            hold on
-            scatter(S1_margin(~isActive),model_margin(~isActive),[],'r','filled')
-            % scatter(S1_margin(isPassive),handelbow_input_margin(isPassive),[],'r','filled')
-            plot(xlim,[0 0],'-k')
-            plot([0 0],ylim,'-k')
-            plot(xlim,xlim,'--k')
-            set(gca,'box','off','tickdir','out','xlim',xlim,'ylim',xlim)
-            axis equal
-            title(sprintf('%s vs. S1 Margin comparison',getModelTitles(models_to_plot{modelnum})))
-            ylabel(sprintf('%s model margin',getModelTitles(models_to_plot{modelnum})))
-            xlabel('S1 FR margin')
-        end
-        suptitle(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
+        %     % get model margin
+        %     model_margin = trial_table.(sprintf('%s_self_margin',models_to_plot{modelnum}));
+        %     
+        %     % plot it out
+        %     scatter(S1_margin(isActive),model_margin(isActive),[],'k','filled')
+        %     % scatter(S1_margin(~isPassive),handelbow_input_margin(~isPassive),[],'k','filled')
+        %     hold on
+        %     scatter(S1_margin(~isActive),model_margin(~isActive),[],'r','filled')
+        %     % scatter(S1_margin(isPassive),handelbow_input_margin(isPassive),[],'r','filled')
+        %     plot(xlim,[0 0],'-k')
+        %     plot([0 0],ylim,'-k')
+        %     plot(xlim,xlim,'--k')
+        %     set(gca,'box','off','tickdir','out','xlim',xlim,'ylim',xlim)
+        %     axis equal
+        %     title(sprintf('%s vs. S1 Margin comparison',getModelTitles(models_to_plot{modelnum})))
+        %     ylabel(sprintf('%s model margin',getModelTitles(models_to_plot{modelnum})))
+        %     xlabel('S1 FR margin')
+        % end
+        % suptitle(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
 
-        % plot margin as a function of trial number (to look for trends)
+        % % plot margin as a function of trial number (to look for trends)
+        % figure('defaultaxesfontsize',18)
+        % scatter(trial_table.trialID(isActive),S1_margin(isActive),[],'k','filled')
+        % hold on
+        % scatter(trial_table.trialID(~isActive),S1_margin(~isActive),[],'r','filled')
+        % plot(xlim,[0 0],'-k','linewidth',0.5)
+        % set(gca,'box','off','tickdir','out')
+        % ylabel('S1 Margin')
+        % xlabel('Trial number')
+        % title(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
+
+        % plot out active and passive predictive capabilities of hand/elbow model
+        % passive_trials = neuronAverage(...
+        %     sepResults.trial_table(sepResults.trial_table.isPassive,:),...
+        %     struct('keycols',{{'monkey','date','task','trialID'}}));
+        % active_trials = neuronAverage(...
+        %     sepResults.trial_table(~sepResults.trial_table.isPassive,:),...
+        %     struct('keycols',{{'monkey','date','task','trialID'}}));
+        full_table = neuronAverage(...
+            sepResults.trial_table,...
+            struct('keycols',{{'monkey','date_time','task','crossvalID'}},'do_ci',false));
+        passive_table = neuronAverage(...
+            sepResults.trial_table(sepResults.trial_table.isPassive,:),...
+            struct('keycols',{{'monkey','date_time','task','crossvalID'}},'do_ci',false));
+        active_table = neuronAverage(...
+            sepResults.trial_table(~sepResults.trial_table.isPassive,:),...
+            struct('keycols',{{'monkey','date_time','task','crossvalID'}},'do_ci',false));
+        avg_full_table = neuronAverage(...
+            sepResults.trial_table,...
+            struct('keycols',{{'monkey','date_time','task'}},'do_ci',false));
+        avg_passive_table = neuronAverage(...
+            sepResults.trial_table(sepResults.trial_table.isPassive,:),...
+            struct('keycols',{{'monkey','date_time','task'}},'do_ci',false));
+        avg_active_table = neuronAverage(...
+            sepResults.trial_table(~sepResults.trial_table.isPassive,:),...
+            struct('keycols',{{'monkey','date_time','task'}},'do_ci',false));
         figure('defaultaxesfontsize',18)
-        scatter(trial_table.trialID(isActive),S1_margin(isActive),[],'k','filled')
+        subplot(1,3,1)
+        scatter(passive_table.S1_FR(:),passive_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
         hold on
-        scatter(trial_table.trialID(~isActive),S1_margin(~isActive),[],'r','filled')
-        plot(xlim,[0 0],'-k','linewidth',0.5)
+        scatter(avg_passive_table.S1_FR(:),avg_passive_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
+        plot(xlim,xlim,'--k','linewidth',2)
+        title('Passive Trials')
+        ylabel('Hand/Elbow predicted average firing rate (Hz)')
+        xlabel('Actual average firing rate (Hz)')
+        axis image
         set(gca,'box','off','tickdir','out')
-        ylabel('S1 Margin')
-        xlabel('Trial number')
-        title(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
+        subplot(1,3,2)
+        scatter(active_table.S1_FR(:),active_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
+        hold on
+        scatter(avg_active_table.S1_FR(:),avg_active_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
+        plot(xlim,xlim,'--k','linewidth',2)
+        title('Active Trials')
+        ylabel('Hand/Elbow predicted average firing rate (Hz)')
+        xlabel('Actual average firing rate (Hz)')
+        axis image
+        set(gca,'box','off','tickdir','out')
+        subplot(1,3,3)
+        scatter(full_table.S1_FR(:),full_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
+        hold on
+        scatter(avg_full_table.S1_FR(:),avg_full_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
+        plot(xlim,xlim,'--k','linewidth',2)
+        title('All Trials')
+        xlabel('Hand/Elbow predicted average firing rate (Hz)')
+        ylabel('Actual average firing rate (Hz)')
+        axis image
+        set(gca,'box','off','tickdir','out')
+        suptitle(sprintf('%s-%s',passive_table.monkey{1},passive_table.date_time{1}))
+
+        % plot out active v passive average rates
+        figure('defaultaxesfontsize',18)
+        scatter(passive_table.S1_FR(:),active_table.S1_FR(:),[],[0.8 0.8 0.8],'filled')
+        hold on
+        scatter(avg_passive_table.S1_FR(:),avg_active_table.S1_FR(:),[],[0.2 0.2 0.2],'filled')
+        plot(xlim,xlim,'--k','linewidth',2)
+        title('Neural activity averaged over active and trials')
+        ylabel('Average firing rate during active trials (Hz)')
+        xlabel('Average firing rate during passive trials (Hz)')
+        axis image
+        set(gca,'box','off','tickdir','out')
+
 
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
