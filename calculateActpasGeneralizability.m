@@ -138,7 +138,7 @@
         fprintf('Removed %d trials because of bad movement onset\n',sum(bad_trial))
     
         % Get all 50 ms bins of active movement
-        td_act = trimTD(td_act,{'idx_movement_on',-15},{'idx_endTime',0});
+        td_act = trimTD(td_act,{'idx_movement_on',-15},{'idx_movement_on',20});
         td_act = binTD(td_act,5);
 
         % Get two 50 ms bins of passive movement
@@ -199,4 +199,30 @@
         title(sprintf('%s %s',td(1).monkey,td(1).date_time))
         xlabel('Neuron number (sorted by upper bound of CI)')
         ylabel('pR^2 of active model on passive trials')
+
+        % actual vs predicted average plot
+        td_act_avg = trialAverage(td(act_idx));
+        td_pas_avg = trialAverage(td(pas_idx));
+        figure('defaultaxesfontsize',18)
+        subplot(1,2,1)
+        scatter(td_act_avg.(sprintf('%s_FR',arrayname))(:),td_act_avg.glm_act_handelbow(:),[],[0.8 0.8 0.8],'filled')
+        hold on
+        scatter(mean(td_act_avg.(sprintf('%s_FR',arrayname))),mean(td_act_avg.glm_act_handelbow),[],[0.2 0.2 0.2],'filled')
+        plot(xlim,xlim,'--k','linewidth',2)
+        axis image
+        set(gca,'box','off','tickdir','out')
+        title('Active trials')
+        xlabel('Actual firing (Hz)')
+        ylabel('Predicted firing (Hz)')
+        subplot(1,2,2)
+        scatter(td_pas_avg.(sprintf('%s_FR',arrayname))(:),td_pas_avg.glm_act_handelbow(:),[],[0.8 0.8 0.8],'filled')
+        hold on
+        scatter(mean(td_pas_avg.(sprintf('%s_FR',arrayname))),mean(td_pas_avg.glm_act_handelbow),[],[0.2 0.2 0.2],'filled')
+        plot(xlim,xlim,'--k','linewidth',2)
+        axis image
+        set(gca,'box','off','tickdir','out')
+        title('Passive trials')
+        xlabel('Actual firing (Hz)')
+        ylabel('Predicted firing (Hz)')
+        suptitle(sprintf('%s %s',td(1).monkey,td(1).date_time))
     end
