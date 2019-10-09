@@ -1,5 +1,6 @@
 %% Set up meta info
-model_aliases = {'ext','extforce','handelbow','ext_actpasbaseline'};
+% model_aliases = {'ext','extforce','handelbow','ext_actpasbaseline'};
+model_aliases = {'ext','extforce','handelbow'};
 model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
@@ -7,6 +8,7 @@ num_pcs = 3;
 num_repeats = 20;
 num_folds = 5;
 rerun_crossval = true;
+get_margins = false;
 
 if ispc
     homefolder = 'C:\Users\rhc307';
@@ -20,16 +22,17 @@ datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library
 file_info = dir(fullfile(datadir,'*COactpas*.mat'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Separability');
+run_date = char(datetime('today','format','yyyyMMdd'));
 if rerun_crossval
     file_info = dir(fullfile(savedir,'*separationResults_run20190228.mat'));
     oldresultsnames = horzcat({file_info.name})';
-    savesuffix = '_separationResults_50msLag_run20190228_rerun20190809.mat';
+    savesuffix = sprintf('_separationResults_run20190228_rerun%s.mat',run_date);
 else
-    savesuffix = '_separationResults_50msLag_run20190228.mat';
+    savesuffix = sprintf('_separationResults_run%s.mat',run_date);
 end
 
 %% Loop through files
-for filenum = [1 2 4]%1:4%length(filenames)
+for filenum = 1:4%length(filenames)
     clear sepResults
 
     %% load and preprocess data
@@ -203,13 +206,14 @@ for filenum = [1 2 4]%1:4%length(filenames)
     warning('off',onetime_warn.identifier)
     
     sepResults = actpasSep(td_bin,struct(...
-        'neural_signals',[arrayname '_FR_shift'],...
+        'neural_signals',[arrayname '_FR'],...
         'num_repeats',num_repeats,...
         'num_folds',num_folds,...
         'crossval_lookup',crossval_lookup,...
         'model_aliases',{model_aliases},...
         'model_type',model_type,...
         'which_units',which_units,...
+        'get_margins',false,...
         'num_musc_pcs',num_musc_pcs,...
         'num_pcs',num_pcs));
 
