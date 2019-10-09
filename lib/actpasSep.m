@@ -10,7 +10,13 @@ function results = actpasSep(td_bin,params)
         model_aliases = {'ext','extforce','handelbow'};
         neural_signals = 'S1_FR';
         which_units = 'all'; % replace with a list of indices for which units to use for separability
+        unit_guide = td_bin.S1_unit_guide;
+        get_margins = false;
         assignParams(who,params);
+
+        if ~strcmpi(which_units,'all')
+            warning('which_units applies to only LDA calculations; code will calculate individual separabilities for all neurons')
+        end
 
         model_names = [strcat(model_type,'_',model_aliases,'_model') {neural_signals}];
         num_models = length(model_names);
@@ -170,7 +176,7 @@ function results = actpasSep(td_bin,params)
         meta_table = cell2table({td_bin(1).monkey,td_bin(1).date_time,td_bin(1).task},...
             'VariableNames',{'monkey','date_time','task'});
         meta_table.Properties.VariableDescriptions = repmat({'meta'},1,3);
-        [trial_table_cell,lda_table_cell] = deal(cell(num_repeats,num_folds));
+        [trial_table_cell,lda_table_cell,foldEval] = deal(cell(num_repeats,num_folds));
         for repeatnum = 1:num_repeats
             foldidx = crossvalind('kfold',length(td_act),num_folds);
             fold_tic = tic;
@@ -218,12 +224,23 @@ function results = actpasSep(td_bin,params)
                 % train and test models
                 [lda_coeff,self_seps,true_seps,model_fr,lda_mdl,pca_coeff,pca_mu,self_margin,true_margin] = deal(cell(1,length(model_names)));
                 [input_lda_coeff,input_seps,input_lda_mdl,input_margin] = deal(cell(1,length(model_aliases)));
+                model_eval = cell(1,length(model_aliases));
+                indiv_seps = zeros(length(unit_guide),length(model_names));
                 for modelnum = 1:length(model_names)
                     if modelnum~=length(model_names)
                         [td_train,glm_info] = getModel(td_train,glm_params{modelnum});
 
                         % predict firing rates
                         td_test = getModel(td_test,glm_info);
+
+                        % get individual neural evaluation metrics
+                        eval_params = glm_info;
+                        eval_params.eval_metric = 'pr2';
+                        eval_params.num_boots = 1;
+                        model_eval{modelnum} = array2table(...
+                            squeeze(evalModel(td_test,eval_params))',...
+                            'VariableNames',strcat(model_names(modelnum),'_eval'));
+                        model_eval{modelnum}.Properties.VariableDescriptions = {'linear'};
 
                         % get input LDA models
                         if strcmpi(model_aliases{modelnum},'ext_actpasbaseline')
@@ -262,6 +279,14 @@ function results = actpasSep(td_bin,params)
                     % lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
                     lda_mdl{modelnum} = fitcdiscr((train_fr-pca_mu{modelnum})*pca_coeff{modelnum},train_class);
                     lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(2,1).Const;lda_mdl{modelnum}.Coeffs(2,1).Linear]';
+
+                    % get individual neuron separabilities
+                    train_fr = getSig(td_train,model_names{modelnum});
+                    test_fr = getSig(td_test,model_names{modelnum});
+                    for neuronnum = 1:size(train_fr,2)
+                        indiv_lda_mdl = fitcdiscr(train_fr(:,neuronnum),train_class);
+                        indiv_seps(neuronnum,modelnum) = sum(predict(indiv_lda_mdl,test_fr(:,neuronnum)) == test_class)/length(test_class);
+                    end
                 end
 
                 for modelnum = 1:length(model_names)
@@ -276,7 +301,9 @@ function results = actpasSep(td_bin,params)
                         end
 
                         % calculate input margins
-                        input_margin{modelnum} = (input_signals*input_lda_coeff{modelnum}(2:end)' + input_lda_coeff{modelnum}(1))/norm(input_lda_coeff{modelnum}(2:end));
+                        if get_margins
+                            input_margin{modelnum} = (input_signals*input_lda_coeff{modelnum}(2:end)' + input_lda_coeff{modelnum}(1))/norm(input_lda_coeff{modelnum}(2:end));
+                        end
                     end
 
                     % get separabilities from LDA models
@@ -289,9 +316,22 @@ function results = actpasSep(td_bin,params)
                     true_seps{modelnum} = sum(predict(lda_mdl{end},(model_fr{modelnum}-pca_mu{end})*pca_coeff{end}) == test_class)/length(test_class);
 
                     % calculate margin from lda boundary
-                    self_margin{modelnum} = ((model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}*lda_coeff{modelnum}(2:end)' + lda_coeff{modelnum}(1))/norm(lda_coeff{modelnum}(2:end));
-                    true_margin{modelnum} = ((model_fr{modelnum}-pca_mu{end})*pca_coeff{end}*lda_coeff{end}(2:end)' + lda_coeff{end}(1))/norm(lda_coeff{end}(2:end));
+                    if get_margins
+                        self_margin{modelnum} = ((model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}*lda_coeff{modelnum}(2:end)' + lda_coeff{modelnum}(1))/norm(lda_coeff{modelnum}(2:end));
+                        true_margin{modelnum} = ((model_fr{modelnum}-pca_mu{end})*pca_coeff{end}*lda_coeff{end}(2:end)' + lda_coeff{end}(1))/norm(lda_coeff{end}(2:end));
+                    end
                 end
+
+                % put together individual model evaluations
+                foldEval{repeatnum,foldnum} = horzcat(...
+                    makeNeuronTableStarter(...
+                        td_train,...
+                        struct('out_signal_names',unit_guide,'meta',struct('crossvalID',crossval_table.crossvalID))),...
+                    model_eval{:},...
+                    array2table(...
+                        indiv_seps,...
+                        'VariableNames',strcat(model_names,'_indiv_sep')));
+                foldEval{repeatnum,foldnum}.Properties.VariableDescriptions((end-length(model_names)+1):end) = repmat({'linear'},1,length(model_names));
 
                 % get model fr for trial table
                 model_fr_table = table(model_fr{:},'VariableNames',[strcat(model_aliases,'_predFR') {neural_signals}]);
@@ -312,10 +352,15 @@ function results = actpasSep(td_bin,params)
                     trial_id,...
                     test_class_table,...
                     trial_dir_table,...
-                    model_fr_table,...
-                    input_margin_table,...
-                    self_margin_table,...
-                    true_margin_table);
+                    model_fr_table);
+
+                if get_margins
+                    trial_table_cell{repeatnum,foldnum} = horzcat(...
+                        trial_table_cell{repeatnum,foldnum},...
+                        input_margin_table,...
+                        self_margin_table,...
+                        true_margin_table);
+                end
 
                 % construct LDA table entry
                 input_lda_coeff_table = cell2table(input_lda_coeff,'VariableNames',strcat(model_aliases,'_input_lda_coeff'));
@@ -352,5 +397,6 @@ function results = actpasSep(td_bin,params)
         % get one separability table
         lda_table = vertcat(lda_table_cell{:});
         trial_table = vertcat(trial_table_cell{:});
+        neuron_eval_table = vertcat(foldEval{:});
 
-        results = struct('lda_table',lda_table,'trial_table',trial_table);
+        results = struct('lda_table',lda_table,'trial_table',trial_table,'neuron_eval_table',neuron_eval_table);
