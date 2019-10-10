@@ -8,7 +8,7 @@
     % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20190806.mat'));
     % files = dir(fullfile(datadir,'*separationResults_run20190228.mat'));
     % files = dir(fullfile(datadir,'*separationResults_50msLag_run20190228_rerun20190809.mat'));
-    files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191009.mat'));
+    files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191010.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -212,13 +212,26 @@
         % xlabel('Trial number')
         % title(sprintf('%s-%s',trial_table.monkey{1},trial_table.date_time{1}))
 
-        % plot out active and passive predictive capabilities of hand/elbow model
-        % passive_trials = neuronAverage(...
-        %     sepResults.trial_table(sepResults.trial_table.isPassive,:),...
-        %     struct('keycols',{{'monkey','date','task','trialID'}}));
-        % active_trials = neuronAverage(...
-        %     sepResults.trial_table(~sepResults.trial_table.isPassive,:),...
-        %     struct('keycols',{{'monkey','date','task','trialID'}}));
+        % output a counter
+        fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
+    end
+    sep_table = vertcat(sep_table_cell{:});
+    margin_corr_table = vertcat(margin_corr_table_cell{:});
+
+%% Single neuron figures/analyses
+    fileclock = tic;
+    fprintf('Started loading files...\n')
+    for filenum = 1:length(filename)
+        % load data
+        load(fullfile(datadir,filename{filenum}))
+
+        % start with the tables we need...
+        passive_trials = neuronAverage(...
+            sepResults.trial_table(sepResults.trial_table.isPassive,:),...
+            struct('keycols',{{'monkey','date','task','trialID'}}));
+        active_trials = neuronAverage(...
+            sepResults.trial_table(~sepResults.trial_table.isPassive,:),...
+            struct('keycols',{{'monkey','date','task','trialID'}}));
         full_table = neuronAverage(...
             sepResults.trial_table,...
             struct('keycols',{{'monkey','date_time','task','crossvalID'}},'do_ci',false));
@@ -237,50 +250,52 @@
         avg_active_table = neuronAverage(...
             sepResults.trial_table(~sepResults.trial_table.isPassive,:),...
             struct('keycols',{{'monkey','date_time','task'}},'do_ci',false));
-        figure('defaultaxesfontsize',18)
-        subplot(1,3,1)
-        scatter(passive_table.S1_FR(:),passive_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
-        hold on
-        scatter(avg_passive_table.S1_FR(:),avg_passive_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
-        plot(xlim,xlim,'--k','linewidth',2)
-        title('Passive Trials')
-        ylabel('Hand/Elbow predicted average firing rate (Hz)')
-        xlabel('Actual average firing rate (Hz)')
-        axis image
-        set(gca,'box','off','tickdir','out')
-        subplot(1,3,2)
-        scatter(active_table.S1_FR(:),active_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
-        hold on
-        scatter(avg_active_table.S1_FR(:),avg_active_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
-        plot(xlim,xlim,'--k','linewidth',2)
-        title('Active Trials')
-        ylabel('Hand/Elbow predicted average firing rate (Hz)')
-        xlabel('Actual average firing rate (Hz)')
-        axis image
-        set(gca,'box','off','tickdir','out')
-        subplot(1,3,3)
-        scatter(full_table.S1_FR(:),full_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
-        hold on
-        scatter(avg_full_table.S1_FR(:),avg_full_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
-        plot(xlim,xlim,'--k','linewidth',2)
-        title('All Trials')
-        xlabel('Hand/Elbow predicted average firing rate (Hz)')
-        ylabel('Actual average firing rate (Hz)')
-        axis image
-        set(gca,'box','off','tickdir','out')
-        suptitle(sprintf('%s-%s',passive_table.monkey{1},passive_table.date_time{1}))
 
-        % plot out active v passive average rates
-        figure('defaultaxesfontsize',18)
-        scatter(passive_table.S1_FR(:),active_table.S1_FR(:),[],[0.8 0.8 0.8],'filled')
-        hold on
-        scatter(avg_passive_table.S1_FR(:),avg_active_table.S1_FR(:),[],[0.2 0.2 0.2],'filled')
-        plot(xlim,xlim,'--k','linewidth',2)
-        title('Neural activity averaged over active and trials')
-        ylabel('Average firing rate during active trials (Hz)')
-        xlabel('Average firing rate during passive trials (Hz)')
-        axis image
-        set(gca,'box','off','tickdir','out')
+        % % plot out active v passive average rates
+        % figure('defaultaxesfontsize',18)
+        % scatter(passive_table.S1_FR(:),active_table.S1_FR(:),[],[0.8 0.8 0.8],'filled')
+        % hold on
+        % scatter(avg_passive_table.S1_FR(:),avg_active_table.S1_FR(:),[],[0.2 0.2 0.2],'filled')
+        % plot(xlim,xlim,'--k','linewidth',2)
+        % title('Neural activity averaged over active and trials')
+        % ylabel('Average firing rate during active trials (Hz)')
+        % xlabel('Average firing rate during passive trials (Hz)')
+        % axis image
+        % set(gca,'box','off','tickdir','out')
+
+        % % plot out active and passive predictive capabilities of hand/elbow model
+        % figure('defaultaxesfontsize',18)
+        % subplot(1,3,1)
+        % scatter(passive_table.S1_FR(:),passive_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
+        % hold on
+        % scatter(avg_passive_table.S1_FR(:),avg_passive_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
+        % plot(xlim,xlim,'--k','linewidth',2)
+        % title('Passive Trials')
+        % ylabel('Hand/Elbow predicted average firing rate (Hz)')
+        % xlabel('Actual average firing rate (Hz)')
+        % axis image
+        % set(gca,'box','off','tickdir','out')
+        % subplot(1,3,2)
+        % scatter(active_table.S1_FR(:),active_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
+        % hold on
+        % scatter(avg_active_table.S1_FR(:),avg_active_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
+        % plot(xlim,xlim,'--k','linewidth',2)
+        % title('Active Trials')
+        % ylabel('Hand/Elbow predicted average firing rate (Hz)')
+        % xlabel('Actual average firing rate (Hz)')
+        % axis image
+        % set(gca,'box','off','tickdir','out')
+        % subplot(1,3,3)
+        % scatter(full_table.S1_FR(:),full_table.handelbow_predFR(:),[],[0.8 0.8 0.8],'filled')
+        % hold on
+        % scatter(avg_full_table.S1_FR(:),avg_full_table.handelbow_predFR(:),[],[0.2 0.2 0.2],'filled')
+        % plot(xlim,xlim,'--k','linewidth',2)
+        % title('All Trials')
+        % xlabel('Hand/Elbow predicted average firing rate (Hz)')
+        % ylabel('Actual average firing rate (Hz)')
+        % axis image
+        % set(gca,'box','off','tickdir','out')
+        % suptitle(sprintf('%s-%s',passive_table.monkey{1},passive_table.date_time{1}))
 
         % plot out individual neural separabilities compared to predicted separabilities
         avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
@@ -290,49 +305,152 @@
         for modelnum = 2:length(models_to_plot)
             subplot(1,length(models_to_plot)-1,modelnum-1)
             scatter(...
-                sepResults.neuron_eval_table.S1_FR_indiv_sep,...
                 sepResults.neuron_eval_table.(sprintf('glm_%s_model_indiv_sep',models_to_plot{modelnum})),...
-                [],[0.8 0.8 0.8],'filled')
+                sepResults.neuron_eval_table.S1_FR_indiv_sep,...
+                [],[0.8 0.8 0.8],'filled','markerfacealpha',0.2)
             hold on
-            scatter(avg_neuron_eval.S1_FR_indiv_sep,...
+            scatter(...
                 avg_neuron_eval.(sprintf('glm_%s_model_indiv_sep',models_to_plot{modelnum})),...
+                avg_neuron_eval.S1_FR_indiv_sep,...
                 [],[0.2 0.2 0.2],'filled')
             plot(xlim,xlim,'--k','linewidth',2)
             plot(xlim,[0.5 0.5],'--k','linewidth',2)
             plot([0.5 0.5],ylim,'--k','linewidth',2)
-            xlabel('Actual individual neural active/passive separability')
-            ylabel(sprintf('%s individual neural active/passive separability',getModelTitles(models_to_plot{modelnum})))
+            ylabel('Actual individual neural active/passive separability')
+            xlabel(sprintf('%s individual neural active/passive separability',getModelTitles(models_to_plot{modelnum})))
             axis image
             set(gca,'box','off','tickdir','out')
         end
         suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
 
-        % plot out individual separabilities compared to evaluation metrics
+        % Look at per-condition pR2 against separability for individual neurons
+        % figure('defaultaxesfontsize',18)
+        % for modelnum = 2:length(models_to_plot)
+        %     % first full
+        %     subplot(3,length(models_to_plot)-1,modelnum-1)
+        %     scatter(...
+        %         sepResults.neuron_eval_table.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
+        %         sepResults.neuron_eval_table.S1_FR_indiv_sep,...
+        %         [],[0.8 0.8 0.8],'filled')
+        %     hold on
+        %     scatter(...
+        %         avg_neuron_eval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
+        %         avg_neuron_eval.S1_FR_indiv_sep,...
+        %         [],[0.2 0.2 0.2],'filled')
+        %     plot(xlim,[0.5 0.5],'--k','linewidth',2)
+        %     plot([0 0],ylim,'-k','linewidth',2)
+        %     ylabel('Actual individual neural active/passive separability')
+        %     xlabel(sprintf('%s pR^2',getModelTitles(models_to_plot{modelnum})))
+        %     set(gca,'box','off','tickdir','out')
+
+        %     % then active
+        %     subplot(3,length(models_to_plot)-1,length(models_to_plot)+modelnum-2)
+        %     scatter(...
+        %         sepResults.neuron_eval_table.(sprintf('glm_%s_model_act_eval',models_to_plot{modelnum})),...
+        %         sepResults.neuron_eval_table.S1_FR_indiv_sep,...
+        %         [],[0.8 0.8 0.8],'filled')
+        %     hold on
+        %     scatter(...
+        %         avg_neuron_eval.(sprintf('glm_%s_model_act_eval',models_to_plot{modelnum})),...
+        %         avg_neuron_eval.S1_FR_indiv_sep,...
+        %         [],[0.2 0.2 0.2],'filled')
+        %     plot(xlim,[0.5 0.5],'--k','linewidth',2)
+        %     plot([0 0],ylim,'-k','linewidth',2)
+        %     ylabel('Actual individual neural active/passive separability')
+        %     xlabel(sprintf('%s pR^2',getModelTitles(models_to_plot{modelnum})))
+        %     set(gca,'box','off','tickdir','out')
+
+        %     % now passive
+        %     subplot(3,length(models_to_plot)-1,2*(length(models_to_plot)-1)+modelnum-1)
+        %     scatter(...
+        %         sepResults.neuron_eval_table.(sprintf('glm_%s_model_pas_eval',models_to_plot{modelnum})),...
+        %         sepResults.neuron_eval_table.S1_FR_indiv_sep,...
+        %         [],[0.8 0.5 0.5],'filled')
+        %     hold on
+        %     scatter(...
+        %         avg_neuron_eval.(sprintf('glm_%s_model_pas_eval',models_to_plot{modelnum})),...
+        %         avg_neuron_eval.S1_FR_indiv_sep,...
+        %         [],[0.5 0.2 0.2],'filled')
+        %     plot(xlim,[0.5 0.5],'--k','linewidth',2)
+        %     plot([0 0],ylim,'-k','linewidth',2)
+        %     ylabel('Actual individual neural active/passive separability')
+        %     xlabel(sprintf('%s pR^2',getModelTitles(models_to_plot{modelnum})))
+        %     set(gca,'box','off','tickdir','out')
+        % end
+        % suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
+
+        % compare across condition pR2 and condition pR2
         figure('defaultaxesfontsize',18)
         for modelnum = 2:length(models_to_plot)
-            subplot(1,length(models_to_plot)-1,modelnum-1)
-            scatter(...
+            % first active
+            subplot(2,length(models_to_plot)-1,modelnum-1)
+            scatter3(...
+                sepResults.neuron_eval_table.(sprintf('glm_%s_model_act_eval',models_to_plot{modelnum})),...
                 sepResults.neuron_eval_table.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
-                sepResults.neuron_eval_table.S1_FR_indiv_sep,...
-                [],[0.8 0.8 0.8],'filled')
+                sepResults.neuron_eval_table.(sprintf('%s_indiv_sep',sprintf('glm_%s_model',models_to_plot{modelnum}))),...
+                [],[0.8 0.8 0.8],'filled','markerfacealpha',0.2)
             hold on
-            scatter(...
+            scatter3(...
+                avg_neuron_eval.(sprintf('glm_%s_model_act_eval',models_to_plot{modelnum})),...
                 avg_neuron_eval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
-                avg_neuron_eval.S1_FR_indiv_sep,...
+                avg_neuron_eval.(sprintf('%s_indiv_sep',sprintf('glm_%s_model',models_to_plot{modelnum}))),...
                 [],[0.2 0.2 0.2],'filled')
-            plot(xlim,[0.5 0.5],'--k','linewidth',2)
-            plot([0 0],ylim,'-k','linewidth',2)
-            ylabel('Actual individual neural active/passive separability')
-            xlabel(sprintf('%s pR^2',getModelTitles(models_to_plot{modelnum})))
-            set(gca,'box','off','tickdir','out')
+            plot3(xlim,[0 0],[0.5 0.5],'-k','linewidth',2)
+            plot3([0 0],ylim,[0.5 0.5],'-k','linewidth',2)
+            plot3(xlim,xlim,[0.5 0.5],'--k','linewidth',2)
+            plot3([0 0],[0 0],[0 1],'-k','linewidth',2)
+            ylabel(sprintf('%s full pR^2',getModelTitles(models_to_plot{modelnum})))
+            xlabel(sprintf('%s active pR^2',getModelTitles(models_to_plot{modelnum})))
+            zlabel('Separability')
+            set(gca,'box','off','tickdir','out','xlim',[-0.5 0.5],'ylim',[-0.2 0.5],'zlim',[0.4 1])
+
+            % now passive
+            subplot(2,length(models_to_plot)-1,(length(models_to_plot)-1)+modelnum-1)
+            scatter3(...
+                sepResults.neuron_eval_table.(sprintf('glm_%s_model_pas_eval',models_to_plot{modelnum})),...
+                sepResults.neuron_eval_table.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
+                sepResults.neuron_eval_table.(sprintf('%s_indiv_sep',sprintf('glm_%s_model',models_to_plot{modelnum}))),...
+                [],[0.8 0.5 0.5],'filled','markerfacealpha',0.2)
+            hold on
+            scatter3(...
+                avg_neuron_eval.(sprintf('glm_%s_model_pas_eval',models_to_plot{modelnum})),...
+                avg_neuron_eval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
+                avg_neuron_eval.(sprintf('%s_indiv_sep',sprintf('glm_%s_model',models_to_plot{modelnum}))),...
+                [],[0.5 0.2 0.2],'filled')
+            plot3(xlim,[0 0],[0.5 0.5],'-k','linewidth',2)
+            plot3([0 0],ylim,[0.5 0.5],'-k','linewidth',2)
+            plot3(xlim,xlim,[0.5 0.5],'--k','linewidth',2)
+            plot3([0 0],[0 0],[0 1],'-k','linewidth',2)
+            ylabel(sprintf('%s full pR^2',getModelTitles(models_to_plot{modelnum})))
+            xlabel(sprintf('%s passive pR^2',getModelTitles(models_to_plot{modelnum})))
+            zlabel('Separability')
+            set(gca,'box','off','tickdir','out','xlim',[-0.5 0.5],'ylim',[-0.2 0.5],'zlim',[0.4 1])
         end
         suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
 
+        % compare predicted to actual firing rates for each neuron
+        % figure('defaultaxesfontsize',18)
+        % for neuronnum = 1:size(passive_trials.S1_FR,2)
+        %     clf
+        %     scatter(passive_trials.S1_FR(:,neuronnum),passive_trials.handelbow_predFR(:,neuronnum),[],[0.8 0.5 0.5],'filled')
+        %     hold on
+        %     scatter(avg_passive_table.S1_FR(:,neuronnum),avg_passive_table.handelbow_predFR(:,neuronnum),[],'r','filled')
+        %     scatter(active_trials.S1_FR(:,neuronnum),active_trials.handelbow_predFR(:,neuronnum),[],[0.8 0.8 0.8],'filled')
+        %     scatter(avg_active_table.S1_FR(:,neuronnum),avg_active_table.handelbow_predFR(:,neuronnum),[],'k','filled')
+        %     plot(xlim,xlim,'--k','linewidth',2)
+        %     ylabel('Hand/Elbow predicted average firing rate (Hz)')
+        %     xlabel('Actual average firing rate (Hz)')
+        %     axis image
+        %     set(gca,'box','off','tickdir','out')
+        %     title(sprintf('%s-%s',passive_table.monkey{1},passive_table.date_time{1}))
+        %     waitforbuttonpress
+        % end
+
+        % compare input separabilities to actual separabilities
+        
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
     end
-    sep_table = vertcat(sep_table_cell{:});
-    margin_corr_table = vertcat(margin_corr_table_cell{:});
 
 %% Make summary plots
     % plot session average connected by lines...
