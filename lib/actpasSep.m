@@ -237,10 +237,18 @@ function results = actpasSep(td_bin,params)
                         eval_params = glm_info;
                         eval_params.eval_metric = 'pr2';
                         eval_params.num_boots = 1;
-                        model_eval{modelnum} = array2table(...
-                            squeeze(evalModel(td_test,eval_params))',...
-                            'VariableNames',strcat(model_names(modelnum),'_eval'));
-                        model_eval{modelnum}.Properties.VariableDescriptions = {'linear'};
+                        eval_params.block_trials = true;
+                        eval_params.trial_idx = 1:length(td_test);
+                        act_eval_params = eval_params;
+                        act_eval_params.trial_idx = getTDidx(td_test,'ctrHoldBump',false);
+                        pas_eval_params = eval_params;
+                        pas_eval_params.trial_idx = getTDidx(td_test,'ctrHoldBump',true);
+                        model_eval{modelnum} = table(...
+                            evalModel(td_test,eval_params),...
+                            evalModel(td_test,act_eval_params),...
+                            evalModel(td_test,pas_eval_params),...
+                            'VariableNames',strcat(model_names{modelnum},{'_eval','_act_eval','_pas_eval'}));
+                        model_eval{modelnum}.Properties.VariableDescriptions = repmat({'linear'},1,3);
 
                         % get input LDA models
                         if strcmpi(model_aliases{modelnum},'ext_actpasbaseline')
