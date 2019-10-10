@@ -6,8 +6,9 @@
     datadir = '/data/raeed/project-data/limblab/s1-kinematics/Results/Separability';
     % filename = {'Han_20171101_TRT_encodingResults_run20180809.mat','Chips_20170915_TRT_encodingResults_run20180809.mat','Lando_20170802_encodingResults_run20180809.mat'};
     % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20190806.mat'));
-    files = dir(fullfile(datadir,'*separationResults_run20190228.mat'));
+    % files = dir(fullfile(datadir,'*separationResults_run20190228.mat'));
     % files = dir(fullfile(datadir,'*separationResults_50msLag_run20190228_rerun20190809.mat'));
+    files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191009.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -281,6 +282,51 @@
         axis image
         set(gca,'box','off','tickdir','out')
 
+        % plot out individual neural separabilities compared to predicted separabilities
+        avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
+            'keycols',{{'monkey','date','task','signalID'}},...
+            'do_ci',false));
+        figure('defaultaxesfontsize',18)
+        for modelnum = 2:length(models_to_plot)
+            subplot(1,length(models_to_plot)-1,modelnum-1)
+            scatter(...
+                sepResults.neuron_eval_table.S1_FR_indiv_sep,...
+                sepResults.neuron_eval_table.(sprintf('glm_%s_model_indiv_sep',models_to_plot{modelnum})),...
+                [],[0.8 0.8 0.8],'filled')
+            hold on
+            scatter(avg_neuron_eval.S1_FR_indiv_sep,...
+                avg_neuron_eval.(sprintf('glm_%s_model_indiv_sep',models_to_plot{modelnum})),...
+                [],[0.2 0.2 0.2],'filled')
+            plot(xlim,xlim,'--k','linewidth',2)
+            plot(xlim,[0.5 0.5],'--k','linewidth',2)
+            plot([0.5 0.5],ylim,'--k','linewidth',2)
+            xlabel('Actual individual neural active/passive separability')
+            ylabel(sprintf('%s individual neural active/passive separability',getModelTitles(models_to_plot{modelnum})))
+            axis image
+            set(gca,'box','off','tickdir','out')
+        end
+        suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
+
+        % plot out individual separabilities compared to evaluation metrics
+        figure('defaultaxesfontsize',18)
+        for modelnum = 2:length(models_to_plot)
+            subplot(1,length(models_to_plot)-1,modelnum-1)
+            scatter(...
+                sepResults.neuron_eval_table.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
+                sepResults.neuron_eval_table.S1_FR_indiv_sep,...
+                [],[0.8 0.8 0.8],'filled')
+            hold on
+            scatter(...
+                avg_neuron_eval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
+                avg_neuron_eval.S1_FR_indiv_sep,...
+                [],[0.2 0.2 0.2],'filled')
+            plot(xlim,[0.5 0.5],'--k','linewidth',2)
+            plot([0 0],ylim,'-k','linewidth',2)
+            ylabel('Actual individual neural active/passive separability')
+            xlabel(sprintf('%s pR^2',getModelTitles(models_to_plot{modelnum})))
+            set(gca,'box','off','tickdir','out')
+        end
+        suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
 
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
