@@ -220,6 +220,7 @@
 
 %% Single neuron figures/analyses
     fileclock = tic;
+    neuron_eval_cell = cell(length(filename),1);
     fprintf('Started loading files...\n')
     for filenum = 1:length(filename)
         % load data
@@ -447,10 +448,14 @@
         % end
 
         % compare input separabilities to actual separabilities
+
+        % compile neuron eval table together
+        neuron_eval_cell{filenum} = sepResults.neuron_eval_table;
         
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
     end
+    neuron_eval = vertcat(neuron_eval_cell{:});
 
 %% Make summary plots
     % plot session average connected by lines...
@@ -561,4 +566,22 @@
             title(sprintf('MarginCorrelation%s',margin_varnames_extra{marginnum}),'interpreter','none')
         end
         % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
+
+    % plot individual neural separability on array map
+        avg_neuron_eval = neuronAverage(neuron_eval,struct(...
+            'keycol',{{'monkey','date','task','signalID'}},...
+            'do_ci',false));
+        avg_neuron_eval = horzcat(avg_neuron_eval,table(avg_neuron_eval.signalID(:,1),'VariableNames',{'chan'}));
+        figure('defaultaxesfontsize',18)
+        lm_table = plotArrayMap(avg_neuron_eval,struct('map_plot','S1_FR_indiv_sep','clims',[0.5 0.9],'calc_linmodels',true));
+        suptitle('Active/Passive Separability')
+        for sessionnum = 1:height(lm_table)
+            coefTest(lm_table{sessionnum,3}{1})
+        end
+        figure('defaultaxesfontsize',18)
+        lm_table = plotArrayMap(avg_neuron_eval,struct('map_plot','glm_handelbow_model_act_eval','clims',[-0.5 0.5],'calc_linmodels',true));
+        suptitle('Active/Passive Separability')
+        for sessionnum = 1:height(lm_table)
+            coefTest(lm_table{sessionnum,3}{1})
+        end
 
