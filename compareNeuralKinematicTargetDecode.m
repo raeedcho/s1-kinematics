@@ -209,7 +209,7 @@ function decoder_accuracy_table = compareNeuralKinematicTargetDecode
 
                 % train and test models
                 [neur_accuracy_act,kin_accuracy_act] = train_test_decoders(td_train_act,td_test_act,'tgtDir');
-                [neur_accuracy_pas,kin_accuracy_pas] = train_test_decoders(td_train_pas,td_test_pas,'tgtDir');
+                [neur_accuracy_pas,kin_accuracy_pas] = train_test_decoders(td_train_pas,td_test_pas,'bumpDir');
 
                 % Put together table
                 decode_table = table(...
