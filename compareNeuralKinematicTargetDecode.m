@@ -240,10 +240,11 @@ function [neur_decode_acc,kin_decode_acc] = train_test_decoders(td_train,td_test
     [dirs_train,~,dir_idx_train] = unique(cat(1,td_train.(target_field_name)));
     [~,dir_idx_test] = ismember(cat(1,td_test.(target_field_name)),dirs_train);
 
-    % extract neural and kinematic timeseries
+    % extract neural timeseries
     train_neur_signals = cat(3,td_train.S1_FR);
     test_neur_signals = cat(3,td_test.S1_FR);
 
+    % get markers for kinematic timeseries
     markername = 'Marker_3';
     [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_train(1).marker_names);
     assert(all(point_exists),'Hand marker does not exist?')
@@ -251,6 +252,7 @@ function [neur_decode_acc,kin_decode_acc] = train_test_decoders(td_train,td_test
     [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_train(1).marker_names);
     assert(all(point_exists),'Elbow marker does not exist?')
     markers_idx = [marker_hand_idx marker_elbow_idx];
+    % markers_idx = marker_elbow_idx;
     train_kin_signals = zeros(size(train_neur_signals,1),2*length(markers_idx),size(train_neur_signals,3));
     for trialnum = 1:length(td_train)
         train_kin_signals(:,:,trialnum) = [td_train(trialnum).markers(:,markers_idx) td_train(trialnum).marker_vel(:,markers_idx)];
@@ -259,6 +261,10 @@ function [neur_decode_acc,kin_decode_acc] = train_test_decoders(td_train,td_test
     for trialnum = 1:length(td_test)
         test_kin_signals(:,:,trialnum) = [td_test(trialnum).markers(:,markers_idx) td_test(trialnum).marker_vel(:,markers_idx)];
     end
+
+    % % try out hand position and velocity for kinematic signals
+    % train_kin_signals = cat(2,cat(3,td_train.pos),cat(3,td_train.vel));
+    % test_kin_signals = cat(2,cat(3,td_test.pos),cat(3,td_test.vel));
 
     % permute signal tensors such that each time point slice is a regular matrix
     train_kin_signals = permute(train_kin_signals,[3 2 1]);
