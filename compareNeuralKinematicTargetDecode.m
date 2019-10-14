@@ -1,12 +1,11 @@
+function decoder_accuracy_table = compareNeuralKinematicTargetDecode
 % This script will compare the target decoding capabilities of neural activity and kinematics over time
 % for active and passive trials
 
 %% Set up
     if ispc
-        homefolder = 'C:\Users\rhc307';
         dataroot = '';
     else
-        homefolder = '/home/raeed';
         dataroot = '/data/raeed';
     end
     
@@ -14,9 +13,12 @@
     file_info = dir(fullfile(datadir,'*COactpas*.mat'));
     filenames = horzcat({file_info.name})';
     arrayname = 'S1';
+    num_repeats = 20;
+    num_folds = 5;
     crossval_lookup = [];
 
 %% Loop through files
+    file_table_cell = cell(4,1);
     for filenum = 1:4%length(filenames)
         %% load and preprocess data
         td = load(fullfile(datadir,[filenames{filenum}]));
@@ -159,17 +161,19 @@
         % add firing rates in addition to spike counts
         td = addFiringRates(td,struct('array',arrayname));
 
-        % train models on active movements, test on passive movements
-        act_idx = getTDidx(td,'ctrHoldBump',false);
-        pas_idx = getTDidx(td,'ctrHoldBump',true);
+        % split up again
+        [~,td_act] = getTDidx(td,'ctrHoldBump',false);
+        [~,td_pas] = getTDidx(td,'ctrHoldBump',true);
+
+        % preallocate cell array for crossval table
+        meta_table = cell2table({td(1).monkey,td(1).date_time,td(1).task},...
+            'VariableNames',{'monkey','date','task'});
+        meta_table.Properties.VariableDescriptions = repmat({'meta'},1,3);
+        decode_table_cell = cell(num_repeats,num_folds);
 
         % crossvalidate decoders for active and passive
         repeat_tic = tic;
         fprintf('Starting %dx%d cross-validation at time: %f\n',num_repeats,num_folds,toc(repeat_tic))
-        meta_table = cell2table({td_bin(1).monkey,td_bin(1).date_time,td_bin(1).task},...
-            'VariableNames',{'monkey','date','task'});
-        meta_table.Properties.VariableDescriptions = repmat({'meta'},1,3);
-        [trial_table_cell,lda_table_cell,foldEval] = deal(cell(num_repeats,num_folds));
         for repeatnum = 1:num_repeats
             foldidx = crossvalind('kfold',length(td_act),num_folds);
             fold_tic = tic;
@@ -197,12 +201,81 @@
                     td_train = td_whole(train_idx_whole);
                 end
 
+                % split into act and pas
+                [~,td_train_act] = getTDidx(td_train,'ctrHoldBump',false);
+                [~,td_train_pas] = getTDidx(td_train,'ctrHoldBump',true);
+                [~,td_test_act] = getTDidx(td_test,'ctrHoldBump',false);
+                [~,td_test_pas] = getTDidx(td_test,'ctrHoldBump',true);
+
                 % train and test models
-                %...
+                [neur_accuracy_act,kin_accuracy_act] = train_test_decoders(td_train_act,td_test_act,'tgtDir');
+                [neur_accuracy_pas,kin_accuracy_pas] = train_test_decoders(td_train_pas,td_test_pas,'tgtDir');
+
+                % Put together table
+                decode_table = table(...
+                    neur_accuracy_act,...
+                    neur_accuracy_pas,...
+                    kin_accuracy_act,...
+                    kin_accuracy_pas);
+                decode_table.Properties.VariableDescriptions = repmat({'linear'},1,4);
+
+                decode_table_cell{repeatnum,foldnum} = horzcat(meta_table,crossval_table,decode_table);
 
                 fprintf('\tEvaluated fold %d at time: %f\n',foldnum,toc(fold_tic))
             end
             fprintf('Evaluated repeat %d at time: %f\n',repeatnum,toc(repeat_tic))
         end
+
+        % put together monkey table
+        file_table_cell{filenum} = vertcat(decode_table_cell{:});
+    end
+    decoder_accuracy_table = vertcat(file_table_cell{:});
+end
+
+function [neur_decode_acc,kin_decode_acc] = train_test_decoders(td_train,td_test,target_field_name)
+% This function trains and tests the decoders and returns
+% a vector of accuracies (one for each time point)
+
+    % first extract "answers"
+    [dirs_train,~,dir_idx_train] = unique(cat(1,td_train.(target_field_name)));
+    [~,dir_idx_test] = ismember(cat(1,td_test.(target_field_name)),dirs_train);
+
+    % extract neural and kinematic timeseries
+    train_neur_signals = cat(3,td_train.S1_FR);
+    test_neur_signals = cat(3,td_test.S1_FR);
+
+    markername = 'Marker_3';
+    [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_train(1).marker_names);
+    assert(all(point_exists),'Hand marker does not exist?')
+    markername = 'Pronation_Pt1';
+    [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_train(1).marker_names);
+    assert(all(point_exists),'Elbow marker does not exist?')
+    markers_idx = [marker_hand_idx marker_elbow_idx];
+    train_kin_signals = zeros(size(train_neur_signals,1),2*length(markers_idx),size(train_neur_signals,3));
+    for trialnum = 1:length(td_train)
+        train_kin_signals(:,:,trialnum) = [td_train(trialnum).markers(:,markers_idx) td_train(trialnum).marker_vel(:,markers_idx)];
+    end
+    test_kin_signals = zeros(size(test_neur_signals,1),2*length(markers_idx),size(test_neur_signals,3));
+    for trialnum = 1:length(td_test)
+        test_kin_signals(:,:,trialnum) = [td_test(trialnum).markers(:,markers_idx) td_test(trialnum).marker_vel(:,markers_idx)];
     end
 
+    % permute signal tensors such that each time point slice is a regular matrix
+    train_kin_signals = permute(train_kin_signals,[3 2 1]);
+    test_kin_signals = permute(test_kin_signals,[3 2 1]);
+    train_neur_signals = permute(train_neur_signals,[3 2 1]);
+    test_neur_signals = permute(test_neur_signals,[3 2 1]);
+
+    % Train models
+    kin_decode_acc = zeros(1,size(train_kin_signals,3));
+    neur_decode_acc = zeros(1,size(train_neur_signals,3));
+    for timepoint = 1:size(train_kin_signals,3)
+        % Kinematics
+        kin_discr = fitcdiscr(train_kin_signals(:,:,timepoint),dir_idx_train);
+        kin_decode_acc(timepoint) = sum(predict(kin_discr,test_kin_signals(:,:,timepoint)) == dir_idx_test)/length(dir_idx_test);
+
+        % Neural
+        neur_discr = fitcdiscr(train_neur_signals(:,:,timepoint),dir_idx_train,'discrimtype','pseudolinear');
+        neur_decode_acc(timepoint) = sum(predict(neur_discr,test_neur_signals(:,:,timepoint)) == dir_idx_test)/length(dir_idx_test);
+    end
+end 
