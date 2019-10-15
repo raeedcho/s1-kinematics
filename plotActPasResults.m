@@ -460,45 +460,6 @@
         'keycols',{{'monkey','date','task','signalID'}},...
         'do_ci',false));
 
-
-
-    % load model diff table
-    load(fullfile(datadir,'handelbow_actpasModelDiff_run20191012.mat'))
-    model_diff_table = horzcat(...
-        model_diff_table,...
-        table(sum(model_diff_table.handelbow_param_diff.^2,2),'VariableNames',{'handelbow_param_diff_norm'}));
-    model_diff_table.Properties.VariableDescriptions{end} = 'linear';
-    avg_model_diff = neuronAverage(model_diff_table,struct('keycols',{{'monkey','date','task','signalID'}}));
-
-    % join average neuron tables together
-    avg_neuron_info = join(avg_neuron_eval,avg_model_diff);
-
-    % plot separability against the norm model diff
-    figure('defaultaxesfontsize',18)
-    for monkeynum = 1:length(monkey_names)
-        % figure out what sessions we have for this monkey
-        % should be two of these for each monkey...subplot below won't work otherwise I think
-        [~,monkey_neuron_info] = getNTidx(avg_neuron_info,'monkey',monkey_names{monkeynum});
-        session_dates = unique(monkey_neuron_info.date); 
-
-        for sessionnum = 1:length(session_dates)
-            subplot(length(monkey_names),length(session_dates),length(monkey_names)*(monkeynum-1)+sessionnum)
-            [~,session_neuron_info] = getNTidx(monkey_neuron_info,'date',session_dates{sessionnum});
-
-            % Just plot out norm model diff against separability
-            scatter(...
-                session_neuron_info.handelbow_param_diff_norm,...
-                session_neuron_info.S1_FR_indiv_sep,...
-                [],[0.2 0.2 0.2],'filled')
-            hold on
-            plot(xlim,[0.5 0.5],'--k','linewidth',2)
-            set(gca,'box','off','tickdir','out','xlim',[0 1e6],'ylim',[0.4 0.9])
-            ylabel('Active/passive separability')
-            xlabel('Norm of model parameter diff')
-            title(sprintf('%s %s',monkey_names{monkeynum},session_dates{sessionnum}))
-        end
-    end
-
 %% Make summary plots
     % plot session average connected by lines...
         figure('defaultaxesfontsize',18)
