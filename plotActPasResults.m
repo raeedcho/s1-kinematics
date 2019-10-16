@@ -253,6 +253,39 @@
             0 0 0;...
             1 0 0])
         set(gca,'box','off','tickdir','out')
+        axis ij
+        xlabel('Firing rate (Hz)')
+        title(sprintf('%s %s',average_trials.monkey{1},average_trials.date_time{1}))
+
+        % try a histogram version of neuron v firing rate
+        figure('defaultaxesfontsize',18)
+        ax = zeros(size(average_trials.S1_FR,2),1);
+        % here we know that there are only a finite number of possibilities
+        possible_FR = unique(average_trials.S1_FR);
+        % split into active and passive
+        [~,act_trials] = getNTidx(average_trials,'isPassive',false);
+        [~,pas_trials] = getNTidx(average_trials,'isPassive',true);
+        for neuronnum = 1:size(average_trials.S1_FR,2)
+            ax(neuronnum) = subplot(size(average_trials.S1_FR,2),1,neuronnum);
+
+            % get counts of fr in the unique bins
+            act_counts = histcounts(act_trials.S1_FR(:,neuronnum),[possible_FR;Inf]);
+            pas_counts = histcounts(pas_trials.S1_FR(:,neuronnum),[possible_FR;Inf]);
+
+            % plot bars for each
+            % plot([0 0],[possible_FR(1) possible_FR(end)])
+            bar(possible_FR',act_counts,1,'FaceColor','k','EdgeColor','none','FaceAlpha',0.5)
+            hold on
+            bar(possible_FR',pas_counts,1,'FaceColor','r','EdgeColor','none','FaceAlpha',0.5)
+
+            % set(gca,'box','off','tickdir','out')
+            axis off
+        end
+        axis on
+        set(gca,'box','off','tickdir','out','ytick',[])
+        xlabel('Firing rate (Hz)')
+        suptitle(sprintf('%s %s',average_trials.monkey{1},average_trials.date_time{1}))
+        linkaxes(ax,'x')
 
         % plot out individual neural separabilities compared to predicted separabilities
         avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
