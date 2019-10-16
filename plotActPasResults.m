@@ -8,7 +8,8 @@
     % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20190806.mat'));
     % files = dir(fullfile(datadir,'*separationResults_run20190228.mat'));
     % files = dir(fullfile(datadir,'*separationResults_50msLag_run20190228_rerun20190809.mat'));
-    files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191010.mat'));
+    % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191010.mat'));
+    files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191016.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
