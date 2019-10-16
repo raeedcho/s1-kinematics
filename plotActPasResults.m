@@ -535,6 +535,132 @@
     end
     neuron_corr_table = horzcat(keyTable,vertcat(corr_cell{:}));
 
+    % make figure for VAF of model separability
+    figure('defaultaxesfontsize',18)
+    alpha = 0.05;
+    model_x = (2:3:((length(models_to_plot)-2)*3+2))/10;
+    for monkeynum = 1:length(monkey_names)
+        subplot(1,length(monkey_names),monkeynum)
+        plot([min(model_x)-0.2 max(model_x)+0.2],[0 0],'-k','linewidth',2)
+        hold on
+        
+        % figure out what sessions we have for this monkey
+        [~,monkey_corrs] = getNTidx(neuron_corr_table,'monkey',monkey_names{monkeynum});
+        session_dates = unique(monkey_corrs.date);
+
+        for sessionnum = 1:length(session_dates)
+            [~,session_corrs] = getNTidx(monkey_corrs,'date',session_dates{sessionnum});
+
+            % estimate error bars
+            [~,cols] = ismember(strcat(models_to_plot(2:end),'_vaf_modelsep_neuronsep'),session_corrs.Properties.VariableNames);
+            num_repeats = double(max(session_corrs.crossvalID(:,1)));
+            num_folds = double(max(session_corrs.crossvalID(:,2)));
+            crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+            yvals = mean(session_corrs{:,cols});
+            var_corrs = var(session_corrs{:,cols});
+            upp = tinv(1-alpha/2,num_folds*num_repeats-1);
+            low = tinv(alpha/2,num_folds*num_repeats-1);
+            CI_lo = yvals + low * sqrt(crossval_correction*var_corrs);
+            CI_hi = yvals + upp * sqrt(crossval_correction*var_corrs);
+
+            % plot dots and lines
+            plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+            scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+        end
+        ylabel('VAF of model predicted separability')
+        title(monkey_names{monkeynum})
+        set(gca,'box','off','tickdir','out',...
+            'xlim',[min(model_x)-0.2 max(model_x)+0.2],...
+            'xtick',model_x,'xticklabel',getModelTitles(models_to_plot(2:end)),...
+            'ylim',[-1 1],'ytick',[-1 0 0.5 1])
+    end
+
+    % make figure for correlations of model separability with actual separability
+    figure('defaultaxesfontsize',18)
+    alpha = 0.05;
+    model_x = (2:3:((length(models_to_plot)-2)*3+2))/10;
+    for monkeynum = 1:length(monkey_names)
+        subplot(1,length(monkey_names),monkeynum)
+        plot([min(model_x)-0.2 max(model_x)+0.2],[0 0],'-k','linewidth',2)
+        hold on
+        
+        % figure out what sessions we have for this monkey
+        [~,monkey_corrs] = getNTidx(neuron_corr_table,'monkey',monkey_names{monkeynum});
+        session_dates = unique(monkey_corrs.date);
+
+        for sessionnum = 1:length(session_dates)
+            [~,session_corrs] = getNTidx(monkey_corrs,'date',session_dates{sessionnum});
+
+            % estimate error bars
+            [~,cols] = ismember(strcat(models_to_plot(2:end),'_corr_modelsep_neuronsep'),session_corrs.Properties.VariableNames);
+            num_repeats = double(max(session_corrs.crossvalID(:,1)));
+            num_folds = double(max(session_corrs.crossvalID(:,2)));
+            crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+            yvals = mean(session_corrs{:,cols});
+            var_corrs = var(session_corrs{:,cols});
+            upp = tinv(1-alpha/2,num_folds*num_repeats-1);
+            low = tinv(alpha/2,num_folds*num_repeats-1);
+            CI_lo = yvals + low * sqrt(crossval_correction*var_corrs);
+            CI_hi = yvals + upp * sqrt(crossval_correction*var_corrs);
+
+            % plot dots and lines
+            plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+            scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+        end
+        ylabel('Correlation between model predicted separability and actual neural separability')
+        title(monkey_names{monkeynum})
+        set(gca,'box','off','tickdir','out',...
+            'xlim',[min(model_x)-0.2 max(model_x)+0.2],...
+            'xtick',model_x,'xticklabel',getModelTitles(models_to_plot(2:end)),...
+            'ylim',[-1 1],'ytick',[-1 0 0.5 1])
+    end
+
+    % make figure for correlations of pR2 handelbow model with separability
+    alpha = 0.05;
+    xvals = [2 5 8]/10;
+    for modelnum = 2:length(models_to_plot)
+        figure('defaultaxesfontsize',18)
+        for monkeynum = 1:length(monkey_names)
+            subplot(1,length(monkey_names),monkeynum)
+            plot([min(xvals)-0.2 max(xvals)+0.2],[0 0],'-k','linewidth',2)
+            hold on
+            
+            % figure out what sessions we have for this monkey
+            [~,monkey_corrs] = getNTidx(neuron_corr_table,'monkey',monkey_names{monkeynum});
+            session_dates = unique(monkey_corrs.date);
+
+            for sessionnum = 1:length(session_dates)
+                [~,session_corrs] = getNTidx(monkey_corrs,'date',session_dates{sessionnum});
+
+                % estimate error bars
+                [~,cols] = ismember(...
+                    strcat(models_to_plot{modelnum},{'_corr_pr2_neuronsep','_corr_actpr2_neuronsep','_corr_paspr2_neuronsep'}),...
+                    session_corrs.Properties.VariableNames);
+                num_repeats = double(max(session_corrs.crossvalID(:,1)));
+                num_folds = double(max(session_corrs.crossvalID(:,2)));
+                crossval_correction = 1/(num_folds*num_repeats) + 1/(num_folds-1);
+                yvals = mean(session_corrs{:,cols});
+                var_corrs = var(session_corrs{:,cols});
+                upp = tinv(1-alpha/2,num_folds*num_repeats-1);
+                low = tinv(alpha/2,num_folds*num_repeats-1);
+                CI_lo = yvals + low * sqrt(crossval_correction*var_corrs);
+                CI_hi = yvals + upp * sqrt(crossval_correction*var_corrs);
+                
+                % plot dots and lines
+                plot(repmat(xvals,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+                scatter(xvals(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+            end
+            ylabel('Correlation with active/passive separability')
+            title(monkey_names{monkeynum})
+            set(gca,'box','off','tickdir','out',...
+                'xlim',[min(xvals)-0.2 max(xvals)+0.2],...
+                'xtick',xvals,'xticklabel',{'Full pR^2','Active pR^2','Passive pR^2'},...
+                'ylim',[-1 1],'ytick',[-1 -0.5 0 0.5 1])
+        end
+        suptitle(models_to_plot{modelnum})
+        % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
+    end
+
 %% Make summary plots
     % plot session average connected by lines...
         figure('defaultaxesfontsize',18)
