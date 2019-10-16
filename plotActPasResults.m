@@ -266,7 +266,7 @@
         [~,act_trials] = getNTidx(average_trials,'isPassive',false);
         [~,pas_trials] = getNTidx(average_trials,'isPassive',true);
         for neuronnum = 1:size(average_trials.S1_FR,2)
-            ax(neuronnum) = subplot(size(average_trials.S1_FR,2),1,neuronnum);
+            ax(neuronnum) = subplot(1,size(average_trials.S1_FR,2),neuronnum);
 
             % get counts of fr in the unique bins
             act_counts = histcounts(act_trials.S1_FR(:,neuronnum),[possible_FR;Inf]);
@@ -274,18 +274,19 @@
 
             % plot bars for each
             % plot([0 0],[possible_FR(1) possible_FR(end)])
-            bar(possible_FR',act_counts,1,'FaceColor','k','EdgeColor','none','FaceAlpha',0.5)
+            barh(possible_FR',act_counts,1,'FaceColor','k','EdgeColor','none','FaceAlpha',0.5)
             hold on
-            bar(possible_FR',pas_counts,1,'FaceColor','r','EdgeColor','none','FaceAlpha',0.5)
+            barh(possible_FR',pas_counts,1,'FaceColor','r','EdgeColor','none','FaceAlpha',0.5)
 
             % set(gca,'box','off','tickdir','out')
             axis off
         end
+        subplot(1,size(average_trials.S1_FR,2),1)
         axis on
-        set(gca,'box','off','tickdir','out','ytick',[])
-        xlabel('Firing rate (Hz)')
+        set(gca,'box','off','tickdir','out','xtick',[])
+        ylabel('Firing rate (Hz)')
         suptitle(sprintf('%s %s',average_trials.monkey{1},average_trials.date_time{1}))
-        linkaxes(ax,'x')
+        linkaxes(ax,'y')
 
         % plot out individual neural separabilities compared to predicted separabilities
         avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
@@ -493,7 +494,6 @@
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
     end
-
     neuron_eval = vertcat(neuron_eval_cell{:});
     avg_neuron_eval = neuronAverage(neuron_eval,struct(...
         'keycols',{{'monkey','date','task','signalID'}},...
