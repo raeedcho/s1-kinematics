@@ -10,6 +10,8 @@ function model_titles = getModelTitles(model_alias)
         switch model_alias_cell{modelnum}
         case 'ext'
             model_titles{modelnum} = 'Extrinsic';
+        case 'extforce'
+            model_titles{modelnum} = 'Extrinsic + Force';
         case 'opensim_ext'
             model_titles{modelnum} = 'OpenSim Extrinsic';
         case 'ego'
