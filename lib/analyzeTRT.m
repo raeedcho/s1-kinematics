@@ -266,6 +266,7 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
     % Evaluate model fits and add to foldEval table
     foldEval = makeNeuronTableStarter(td_train,struct('out_signal_names',unit_guide,'meta',struct('crossvalID',crossvalID)));
     model_eval = cell(1,length(model_names)-1);
+    space_model_eval = cell(2,length(model_names)-1);
     eval_params = glm_info;
     for modelnum = 1:length(model_names)-1
         eval_params{modelnum}.eval_metric = model_eval_metric;
@@ -274,8 +275,16 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
             squeeze(evalModel([td_test{2} td_test{1}],eval_params{modelnum}))',...
             'VariableNames',strcat(model_names(modelnum),'_eval'));
         model_eval{modelnum}.Properties.VariableDescriptions = {'linear'};
+
+        % get evals for individual spaces
+        for spacenum = 1:2
+            space_model_eval{spacenum,modelnum} = array2table(...
+                squeeze(evalModel(td_test{spacenum},eval_params{modelnum}))',...
+                'VariableNames',{sprintf('%s_space%d_eval',model_names{modelnum},spacenum)});
+            space_model_eval{spacenum,modelnum}.Properties.VariableDescriptions = {'linear'};
+        end
     end
-    foldEval = horzcat(foldEval, model_eval{:});
+    foldEval = horzcat(foldEval, model_eval{:}, space_model_eval{:});
 
 %% Get extrinsic test tuning (to calculate later quantities from)
     tempTuningTable = cell(2,1);
