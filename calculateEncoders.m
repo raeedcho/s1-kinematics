@@ -12,10 +12,10 @@ file_info = dir(fullfile(datadir,'*TRT*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Encoding');
 run_date = char(datetime('today','format','yyyyMMdd'));
-savesuffix = sprintf('_encodingResults_ExtElbowHandelbowForce_run%s.mat',run_date);
+savesuffix = sprintf('_encodingResults_sixmodel_run%s.mat',run_date);
 
-% model_aliases = {'ext','ego','joint','musc','handelbow','elbow'};
-model_aliases = {'ext','elbow','handelbow','extforce','handelbowforce'};
+model_aliases = {'ext','ego','joint','musc','handelbow','extforce'};
+% model_aliases = {'ext','elbow','handelbow','extforce','handelbowforce'};
 arrayname = 'S1';
 num_musc_pcs = 5;
 
