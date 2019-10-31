@@ -238,25 +238,10 @@
         average_trials = neuronAverage(...
             sepResults.trial_table,...
             struct('keycols',{{'monkey','date_time','task','trialID','isPassive'}},'do_ci',false));
-
-        % plot out neuron number vs firing rate, each trial colored by active or passive
-        figure('defaultaxesfontsize',18)
-        S1_FR = average_trials.S1_FR;
-        neuronnums = repmat(1:size(S1_FR,2),height(average_trials),1);
-        trial_colors = repmat(average_trials.isPassive,1,size(S1_FR,2));
-        scatter(...
-            S1_FR(:)+randn(size(S1_FR(:))),...
-            neuronnums(:)+0.15*randn(size(neuronnums(:))),...
-            [],...
-            double(trial_colors(:)),...
-            'filled','markerfacealpha',0.2)
-        colormap([...
-            0 0 0;...
-            1 0 0])
-        set(gca,'box','off','tickdir','out')
-        axis ij
-        xlabel('Firing rate (Hz)')
-        title(sprintf('%s %s',average_trials.monkey{1},average_trials.date_time{1}))
+        avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
+            'keycols',{{'monkey','date','task','signalID'}},...
+            'do_ci',false,...
+            'do_nanmean',true));
 
         % try a histogram version of neuron v firing rate
         figure('defaultaxesfontsize',18)
@@ -279,6 +264,9 @@
             hold on
             barh(possible_FR',pas_counts,1,'FaceColor','r','EdgeColor','none','FaceAlpha',0.5)
 
+            % print out separabilities...
+            title(sprintf('%2.0f',avg_neuron_eval.S1_FR_indiv_sep(neuronnum,:)*100))
+
             % set(gca,'box','off','tickdir','out')
             axis off
         end
@@ -286,14 +274,31 @@
         axis on
         set(gca,'box','off','tickdir','out','xtick',[])
         ylabel('Firing rate (Hz)')
-        suptitle(sprintf('%s %s',average_trials.monkey{1},average_trials.date_time{1}))
+        suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
         linkaxes(ax,'y')
+        saveas(gcf,fullfile(figdir,sprintf(...
+            '%s_%s_actpasFR_run%s.pdf',...
+            sepResults.neuron_eval_table.monkey{1},...
+            strrep(sepResults.neuron_eval_table.date{1},'/',''),...
+            run_date)))
+
+        figure('defaultaxesfontsize',18)
+        signalIDs = avg_neuron_eval.signalID;
+        plot([0 size(signalIDs,1)+1],[0.5 0.5],'--k','linewidth',2)
+        hold on
+        for neuronnum = 1:size(signalIDs,1)
+            [~,single_neuron_eval] = getNTidx(sepResults.neuron_eval_table,'signalID',signalIDs(neuronnum,:));
+            scatter(repmat(neuronnum,1,height(single_neuron_eval)),single_neuron_eval.S1_FR_indiv_sep,25,'k','filled','markerfacealpha',0.2)
+            scatter(neuronnum,avg_neuron_eval.S1_FR_indiv_sep(neuronnum,:),100,'k','filled')
+        end
+        set(gca,'box','off','tickdir','out','ylim',[0 1],'xlim',[0 size(signalIDs,1)+1])
+        saveas(gcf,fullfile(figdir,sprintf(...
+            '%s_%s_indivneuron_separability_run%s.pdf',...
+            sepResults.neuron_eval_table.monkey{1},...
+            strrep(sepResults.neuron_eval_table.date{1},'/',''),...
+            run_date)))
 
         % plot out individual neural separabilities compared to predicted separabilities
-        avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
-            'keycols',{{'monkey','date','task','signalID'}},...
-            'do_ci',false,...
-            'do_nanmean',true));
         figure('defaultaxesfontsize',18)
         for modelnum = 2:length(models_to_plot)
             subplot(1,length(models_to_plot)-1,modelnum-1)
@@ -306,15 +311,20 @@
                 avg_neuron_eval.(sprintf('glm_%s_model_indiv_sep',models_to_plot{modelnum})),...
                 avg_neuron_eval.S1_FR_indiv_sep,...
                 [],[0.2 0.2 0.2],'filled')
-            plot(xlim,xlim,'--k','linewidth',2)
-            plot(xlim,[0.5 0.5],'--k','linewidth',2)
-            plot([0.5 0.5],ylim,'--k','linewidth',2)
+            plot([0.4 1],[0.4 1],'--k','linewidth',2)
+            plot([0.4 1],[0.5 0.5],'--k','linewidth',2)
+            plot([0.5 0.5],[0.4 1],'--k','linewidth',2)
             ylabel('Actual individual neural active/passive separability')
             xlabel(sprintf('%s individual neural active/passive separability',getModelTitles(models_to_plot{modelnum})))
             axis image
-            set(gca,'box','off','tickdir','out')
+            set(gca,'box','off','tickdir','out','xlim',[0.4 1],'ylim',[0.4 1])
         end
         suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
+        saveas(gcf,fullfile(figdir,sprintf(...
+            '%s_%s_indivneuron_modelpred_separability_run%s.pdf',...
+            sepResults.neuron_eval_table.monkey{1},...
+            strrep(sepResults.neuron_eval_table.date{1},'/',''),...
+            run_date)))
 
         % % Look at per-condition pR2 against separability for individual neurons
         % figure('defaultaxesfontsize',18)
@@ -385,11 +395,11 @@
             avg_neuron_eval.(sprintf('glm_%s_model_eval','handelbow')),...
             avg_neuron_eval.S1_FR_indiv_sep,...
             [],[0.2 0.2 0.2],'filled')
-        plot(xlim,[0.5 0.5],'--k','linewidth',2)
-        plot([0 0],ylim,'-k','linewidth',2)
+        plot([-0.5 0.5],[0.5 0.5],'--k','linewidth',2)
+        plot([0 0],[0.4 1],'-k','linewidth',2)
         ylabel('Actual individual neural active/passive separability')
         xlabel(sprintf('%s full pR^2',getModelTitles('handelbow')))
-        set(gca,'box','off','tickdir','out')
+        set(gca,'box','off','tickdir','out','xlim',[-0.5 0.5],'ylim',[0.4 1])
         % then active
         subplot(1,3,2)
         scatter(...
@@ -401,10 +411,10 @@
             avg_neuron_eval.(sprintf('glm_%s_model_act_eval','handelbow')),...
             avg_neuron_eval.S1_FR_indiv_sep,...
             [],[0.2 0.2 0.2],'filled')
-        plot(xlim,[0.5 0.5],'--k','linewidth',2)
-        plot([0 0],ylim,'-k','linewidth',2)
+        plot([-0.5 0.5],[0.5 0.5],'--k','linewidth',2)
+        plot([0 0],[0.4 1],'-k','linewidth',2)
         xlabel(sprintf('%s active pR^2',getModelTitles('handelbow')))
-        set(gca,'box','off','tickdir','out')
+        set(gca,'box','off','tickdir','out','xlim',[-0.5 0.5],'ylim',[0.4 1])
         % now passive
         subplot(1,3,3)
         scatter(...
@@ -416,11 +426,16 @@
             avg_neuron_eval.(sprintf('glm_%s_model_pas_eval','handelbow')),...
             avg_neuron_eval.S1_FR_indiv_sep,...
             [],[0.5 0.2 0.2],'filled')
-        plot(xlim,[0.5 0.5],'--k','linewidth',2)
-        plot([0 0],ylim,'-k','linewidth',2)
+        plot([-0.5 0.5],[0.5 0.5],'--k','linewidth',2)
+        plot([0 0],[0.4 1],'-k','linewidth',2)
         xlabel(sprintf('%s passive pR^2',getModelTitles('handelbow')))
-        set(gca,'box','off','tickdir','out')
+        set(gca,'box','off','tickdir','out','xlim',[-0.5 0.5],'ylim',[0.4 1])
         suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
+        saveas(gcf,fullfile(figdir,sprintf(...
+            '%s_%s_indivneuron_handelbow_pr2_v_separability_run%s.pdf',...
+            sepResults.neuron_eval_table.monkey{1},...
+            strrep(sepResults.neuron_eval_table.date{1},'/',''),...
+            run_date)))
 
         % % compare across condition pR2 and condition pR2
         % figure('defaultaxesfontsize',18)
@@ -575,6 +590,7 @@
             'xtick',model_x,'xticklabel',getModelTitles(models_to_plot(2:end)),...
             'ylim',[-1 1],'ytick',[-1 0 0.5 1])
     end
+    saveas(gcf,fullfile(figdir,sprintf('actpas_indivneuron_modelseparabilityVAF_run%s.pdf',run_date)))
 
     % make figure for correlations of model separability with actual separability
     figure('defaultaxesfontsize',18)
@@ -615,6 +631,7 @@
             'xtick',model_x,'xticklabel',getModelTitles(models_to_plot(2:end)),...
             'ylim',[-1 1],'ytick',[-1 0 0.5 1])
     end
+    saveas(gcf,fullfile(figdir,sprintf('actpas_indivneuron_modelseparabilityCorr_run%s.pdf',run_date)))
 
     % make figure for correlations of pR2 handelbow model with separability
     alpha = 0.05;
@@ -659,7 +676,7 @@
                 'ylim',[-1 1],'ytick',[-1 -0.5 0 0.5 1])
         end
         suptitle(models_to_plot{modelnum})
-        % saveas(gcf,fullfile(figdir,sprintf('actpasSeparability_run%s.pdf',run_date)))
+        saveas(gcf,fullfile(figdir,sprintf('actpas_indivneuron_%s_pr2separabilityCorr_run%s.pdf',models_to_plot{modelnum},run_date)))
     end
 
 %% Make summary plots
