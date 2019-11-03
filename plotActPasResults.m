@@ -92,6 +92,7 @@
             strrep(sepResults.neuron_eval_table.date{1},'/',''),...
             run_date)))
 
+        % plot separability of each neuron
         figure('defaultaxesfontsize',18)
         signalIDs = avg_neuron_eval.signalID;
         plot([0 size(signalIDs,1)+1],[0.5 0.5],'--k','linewidth',2)
