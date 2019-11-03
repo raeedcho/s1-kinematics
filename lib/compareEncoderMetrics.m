@@ -14,6 +14,7 @@ function [winners,model_pairs] = compareEncoderMetrics(metric_table,params)
 
     models = {};
     alpha = 0.05;
+    bonferroni_correction = [];
     num_repeats = double(max(metric_table.crossvalID(:,1)));
     num_folds = double(max(metric_table.crossvalID(:,2)));
     postfix = '';
@@ -23,7 +24,12 @@ function [winners,model_pairs] = compareEncoderMetrics(metric_table,params)
 
     % make the comparisons
     model_pairs = nchoosek(models,2);
-    bonferroni_alpha = alpha/size(model_pairs,1);
+    if isempty(bonferroni_correction)
+        % bonferroni_alpha = alpha/size(model_pairs,1);
+        error('Please specify a correction factor for the comparisons!')
+    else
+        bonferroni_alpha = alpha/bonferroni_correction;
+    end
     winners = cell(size(model_pairs,1),size(neuron_ids,1));
     for neuronnum = 1:size(neuron_ids,1)
         [~,neuron_eval] = getNTidx(metric_table,'signalID',neuron_ids(neuronnum,:));
