@@ -5,7 +5,10 @@ function [winners,model_pairs] = compareEncoderMetrics(metric_table,params)
     %   metric_table - table of metric to compare models on
     %   params - parameters struct
     %       .models - names of models in cell array
+    %       .model_pairs - paired names of models to compare (default: do all pairwise comparisons)
     %       .alpha - alpha value to test at (before corrections) Default: 0.05
+    %       .bonferroni_correction - correction factor to apply to alpha for statistical testing
+    %           (default: number of model comparisons)
     %       .postfix - postfix of models in metric_table
     %       .num_repeats - number of repeats in crossvalidation
     %           (default is to infer from metric_table)
@@ -13,6 +16,7 @@ function [winners,model_pairs] = compareEncoderMetrics(metric_table,params)
     %           (default is to infer from metric_table)
 
     models = {};
+    model_pairs = {};
     alpha = 0.05;
     bonferroni_correction = [];
     num_repeats = double(max(metric_table.crossvalID(:,1)));
@@ -23,7 +27,9 @@ function [winners,model_pairs] = compareEncoderMetrics(metric_table,params)
     neuron_ids = unique(metric_table.signalID,'rows');
 
     % make the comparisons
-    model_pairs = nchoosek(models,2);
+    if isempty(model_pairs)
+        model_pairs = nchoosek(models,2);
+    end
     if isempty(bonferroni_correction)
         % bonferroni_alpha = alpha/size(model_pairs,1);
         error('Please specify a correction factor for the comparisons!')
