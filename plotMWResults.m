@@ -24,6 +24,10 @@
 
     monkey_names = {'Chips','Han','Lando'};
     models_to_plot = {'ext','handelbow','extforce'};
+    hand_models = {'ext','ego'};
+    arm_models = {'joint','musc','handelbow'};
+    included_models = union(union(models_to_plot,hand_models),arm_models);
+    not_plot_models = setdiff(included_models,models_to_plot);
     % models_to_plot = {'elbow','ext','musc','handelbow'};
     % models_to_plot = {'elbow','ext','extforce','handelbow'};
     % models_to_plot = {'ext','extforce','handelbow','handelbowforce'};
@@ -55,15 +59,15 @@
 
         % We already have evaluation table in crossEval... just extract the models we want
         model_eval{monkey_idx,session_ctr(monkey_idx)} = encoderResults.crossEval(:,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
-        model_eval_cell = cell(1,length(models_to_plot));
-        space_eval_cell = cell(2,length(models_to_plot));
-        for modelnum = 1:length(models_to_plot)
-            model_eval_cell{modelnum} = table(encoderResults.crossEval.(sprintf('glm_%s_model_eval',models_to_plot{modelnum})),...
-                'VariableNames',strcat(models_to_plot(modelnum),'_eval'));
+        model_eval_cell = cell(1,length(included_models));
+        space_eval_cell = cell(2,length(included_models));
+        for modelnum = 1:length(included_models)
+            model_eval_cell{modelnum} = table(encoderResults.crossEval.(sprintf('glm_%s_model_eval',included_models{modelnum})),...
+                'VariableNames',strcat(included_models(modelnum),'_eval'));
             model_eval_cell{modelnum}.Properties.VariableDescriptions = {'linear'};
             for spacenum = 1:2
-                space_eval_cell{spacenum,modelnum} = table(encoderResults.crossEval.(sprintf('glm_%s_model_space%d_eval',models_to_plot{modelnum},spacenum)),...
-                    'VariableNames',{sprintf('%s_space%d_eval',models_to_plot{modelnum},spacenum)});
+                space_eval_cell{spacenum,modelnum} = table(encoderResults.crossEval.(sprintf('glm_%s_model_space%d_eval',included_models{modelnum},spacenum)),...
+                    'VariableNames',{sprintf('%s_space%d_eval',included_models{modelnum},spacenum)});
                 space_eval_cell{spacenum,modelnum}.Properties.VariableDescriptions = {'linear'};
             end
         end
@@ -76,12 +80,12 @@
         model_tuning{monkey_idx,session_ctr(monkey_idx)} = encoderResults.crossTuning(:,...
             contains(encoderResults.crossTuning.Properties.VariableDescriptions,'meta') |...
             strcmpi(encoderResults.crossTuning.Properties.VariableNames,'bins'));
-        model_tuning_cell = cell(1,length(models_to_plot)+1);
-        for modelnum = 1:length(models_to_plot)
+        model_tuning_cell = cell(1,length(included_models)+1);
+        for modelnum = 1:length(included_models)
             model_tuning_cell{modelnum} = table(...
-                encoderResults.crossTuning.(sprintf('glm_%s_model_velCurve',models_to_plot{modelnum})),...
-                encoderResults.crossTuning.(sprintf('glm_%s_model_velPD',models_to_plot{modelnum})),...
-                'VariableNames',strcat(models_to_plot(modelnum),{'_velCurve','_velPD'}));
+                encoderResults.crossTuning.(sprintf('glm_%s_model_velCurve',included_models{modelnum})),...
+                encoderResults.crossTuning.(sprintf('glm_%s_model_velPD',included_models{modelnum})),...
+                'VariableNames',strcat(included_models(modelnum),{'_velCurve','_velPD'}));
             model_tuning_cell{modelnum}.Properties.VariableDescriptions = {'linear','circular'};
         end
         model_tuning_cell{end} = table(...
@@ -96,11 +100,11 @@
 
         % Get tuning curve correlation table
         tuning_corr{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderTuningCorr(...
-            encoderResults,struct('model_aliases',{models_to_plot},'neural_signal','S1_FR'));
+            encoderResults,struct('model_aliases',{included_models},'neural_signal','S1_FR'));
 
         % Get PD shift error table
         shift_vaf{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftVAF(...
-            encoderResults,struct('model_aliases',{models_to_plot}));
+            encoderResults,struct('model_aliases',{included_models}));
 
         % get tuned neurons
         tuned_neurons{monkey_idx,session_ctr(monkey_idx)} = encoderResults.tunedNeurons;
@@ -109,7 +113,7 @@
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
     end
 
-%% Get pR2 pairwise comparisons for all model pairs and all neurons
+%% Get pR2 pairwise comparisons for model pairs and all neurons
     % find winners of pR2
     pr2_winners = cell(length(monkey_names),size(session_colors,1));
     for monkeynum = 1:length(monkey_names)
@@ -118,13 +122,14 @@
                     model_eval{monkeynum,sessionnum},struct(...
                         'bonferroni_correction',6,...
                         'models',{models_to_plot},...
+                        'model_pairs',{{'ext','handelbow';'extforce','handelbow'}},...
                         'postfix','_eval'));
         end
     end
 
     % figure out how many neurons the hand-based models could beat either of the whole-arm models
     hand_neuron_counter = 0;
-    rowchecks = contains(model_pairs,{'ext','ego'});
+    rowchecks = contains(model_pairs,hand_models);
     rowchecks = xor(rowchecks(:,1),rowchecks(:,2));
     for monkeynum = 1:length(monkey_names)
         for sessionnum = 1:session_ctr(monkeynum)
@@ -267,6 +272,7 @@
                     tuning_corr{monkeynum,sessionnum},struct(...
                         'bonferroni_correction',6,...
                         'models',{models_to_plot},...
+                        'model_pairs',{{'ext','handelbow';'extforce','handelbow'}},...
                         'postfix','_tuningCorr'));
         end
     end
@@ -731,6 +737,250 @@
         linkaxes(ax(:),'y')
         waitfor(h)
     end
+
+%% Within model class comparison
+    % figure out what comparisons are allowed
+    allowed_comparisons = vertcat(nchoosek(hand_models,2),nchoosek(arm_models,2));
+    allowed_comparisons = sort(allowed_comparisons')';
+
+    % pR2 comparison for all models
+        all_pr2_winners = cell(length(monkey_names),size(session_colors,1));
+        for monkeynum = 1:length(monkey_names)
+            for sessionnum = 1:session_ctr(monkeynum)
+                [all_pr2_winners{monkeynum,sessionnum},model_pairs] = compareEncoderMetrics(...
+                        model_eval{monkeynum,sessionnum},struct(...
+                            'bonferroni_correction',6,...
+                            'models',{included_models},...
+                            'model_pairs',{allowed_comparisons},...
+                            'postfix','_eval'));
+            end
+        end
+        figure
+        for monkeynum = 1:length(monkey_names)
+            for pairnum = 1:size(allowed_comparisons,1)
+                % set subplot
+                subplot(length(monkey_names),size(allowed_comparisons,1),...
+                    (monkeynum-1)*size(model_pairs,1)+pairnum)
+                plot([-1 1],[-1 1],'k--','linewidth',0.5)
+                hold on
+                plot([0 0],[-1 1],'k-','linewidth',0.5)
+                plot([-1 1],[0 0],'k-','linewidth',0.5)
+                for sessionnum = 1:session_ctr(monkeynum)
+                    avg_pR2 = neuronAverage(model_eval{monkeynum,sessionnum},struct('keycols','signalID','do_ci',false));
+                    % scatter filled circles if there's a winner, empty circles if not
+                    no_winner =  cellfun(@isempty,all_pr2_winners{monkeynum,sessionnum}(pairnum,:));
+                    scatter(...
+                        avg_pR2.(strcat(model_pairs{pairnum,1},'_eval'))(no_winner),...
+                        avg_pR2.(strcat(model_pairs{pairnum,2},'_eval'))(no_winner),...
+                        [],session_colors(sessionnum,:))
+                    scatter(...
+                        avg_pR2.(strcat(model_pairs{pairnum,1},'_eval'))(~no_winner),...
+                        avg_pR2.(strcat(model_pairs{pairnum,2},'_eval'))(~no_winner),...
+                        [],session_colors(sessionnum,:),'filled')
+                end
+                % make axes pretty
+                set(gca,'box','off','tickdir','out',...
+                    'xlim',[-0.1 0.6],'ylim',[-0.1 0.6])
+                axis square
+                if monkeynum ~= 1 || pairnum ~= 1
+                    set(gca,'box','off','tickdir','out',...
+                        'xtick',[],'ytick',[])
+                end
+                xlabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,1})))
+                ylabel(sprintf('%s pR2',getModelTitles(model_pairs{pairnum,2})))
+            end
+        end
+        suptitle('Pseudo-R^2 pairwise comparisons')
+        saveas(gcf,fullfile(figdir,sprintf('allmodel_pr2_pairwise_run%s.pdf',run_date)))
+
+    % tuning correlation comparison all models
+        all_tuning_corr_winners = cell(length(monkey_names),size(session_colors,1));
+        for monkeynum = 1:length(monkey_names)
+            for sessionnum = 1:session_ctr(monkeynum)
+                [all_tuning_corr_winners{monkeynum,sessionnum},model_pairs] = compareEncoderMetrics(...
+                        tuning_corr{monkeynum,sessionnum},struct(...
+                            'bonferroni_correction',6,...
+                            'models',{included_models},...
+                            'model_pairs',{allowed_comparisons},...
+                            'postfix','_tuningCorr'));
+            end
+        end
+        figure
+        for monkeynum = 1:length(monkey_names)
+            for pairnum = 1:size(model_pairs,1)
+                % set subplot
+                subplot(length(monkey_names),size(model_pairs,1),...
+                    (monkeynum-1)*size(model_pairs,1)+pairnum)
+                plot([-1 1],[-1 1],'k--','linewidth',0.5)
+                hold on
+                plot([0 0],[-1 1],'k-','linewidth',0.5)
+                plot([-1 1],[0 0],'k-','linewidth',0.5)
+                for sessionnum = 1:session_ctr(monkeynum)
+                    avg_corr = neuronAverage(tuning_corr{monkeynum,sessionnum},struct('keycols','signalID','do_ci',false));
+                    % scatter filled circles if there's a winner, empty circles if not
+                    no_winner =  cellfun(@isempty,all_tuning_corr_winners{monkeynum,sessionnum}(pairnum,:));
+                    scatter(...
+                        avg_corr.(strcat(model_pairs{pairnum,1},'_tuningCorr'))(no_winner),...
+                        avg_corr.(strcat(model_pairs{pairnum,2},'_tuningCorr'))(no_winner),...
+                        [],session_colors(sessionnum,:))
+                    scatter(...
+                        avg_corr.(strcat(model_pairs{pairnum,1},'_tuningCorr'))(~no_winner),...
+                        avg_corr.(strcat(model_pairs{pairnum,2},'_tuningCorr'))(~no_winner),...
+                        [],session_colors(sessionnum,:),'filled')
+                end
+                % make axes pretty
+                set(gca,'box','off','tickdir','out',...
+                    'xlim',[-0.1 1],'ylim',[-0.1 1],...
+                    'xtick',0:0.5:1,'ytick',0:0.5:1)
+                axis square
+                if monkeynum ~= 1 || pairnum ~= 1
+                    set(gca,'box','off','tickdir','out',...
+                        'xtick',[],'ytick',[])
+                end
+                xlabel(sprintf('%s',getModelTitles(model_pairs{pairnum,1})))
+                ylabel(sprintf('%s',getModelTitles(model_pairs{pairnum,2})))
+            end
+        end
+        suptitle('Tuning correlation pairwise comparisons')
+        saveas(gcf,fullfile(figdir,sprintf('allmodel_tuningCorr_pairwise_run%s.pdf',run_date)))
+
+    % PD shift for non-plotted models
+        file_shifts = cell(length(filename),length(not_plot_models)); % shift tables for each model in each file
+        for filenum = 1:length(filename)
+            % load data
+            load(fullfile(datadir,filename{filenum}))
+
+            shift_tables = calculatePDShiftTables(encoderResults,[strcat('glm_',not_plot_models,'_model') 'S1_FR']);
+            mean_shifts = cell(length(not_plot_models),1);
+            for modelnum = 1:length(not_plot_models)+1
+                mean_shifts{modelnum} = neuronAverage(shift_tables{modelnum},struct(...
+                    'keycols',{{'monkey','date','task','signalID'}}));
+                [~,file_shifts{filenum,modelnum}] = getNTidx(mean_shifts{modelnum},'signalID',encoderResults.tunedNeurons);
+            end
+        end
+
+        allFileShifts_real = vertcat(file_shifts{:,end});
+
+        % Make histograms and scatters
+        % hists = figure('defaultaxesfontsize',18);
+        total_hists = figure('defaultaxesfontsize',18);
+        scatters = figure('defaultaxesfontsize',18);
+        for monkeynum = 1:length(monkey_names)
+            % get monkey specific session dates
+            [~,monkey_shifts_real] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum});
+            session_dates = unique(monkey_shifts_real.date);
+
+            % make histogram combining sessions
+                % first figure out ylim
+                % ylim_high = 10*floor(height(monkey_shifts_real)/20);
+                ylim_high = 40;
+                % actual PD shift histogram
+                figure(total_hists)
+                subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+1)
+                h = histogram(gca,monkey_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+                set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
+                set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
+                ylabel(monkey_names{monkeynum})
+                if monkeynum == 1
+                    title('Actual PD Shift')
+                end
+                for modelnum = 1:length(not_plot_models)
+                    allFileShifts_model = vertcat(file_shifts{:,modelnum});
+                    [~,monkey_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum});
+
+                    % modeled PD shift histogram
+                    subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+modelnum+1)
+                    h = histogram(gca,monkey_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
+                    set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
+                    set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
+                    if monkeynum == 1
+                        title(sprintf('%s modeled PD shift',getModelTitles(not_plot_models{modelnum})))
+                    end
+                end
+
+            % make plots separating sessions
+                for sessionnum = 1:length(session_dates)
+                    % get real shifts for this session
+                    [~,session_shifts_real] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+                    % first the real PD shift histogram
+                    % figure(hists)
+                    % subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+1)
+                    % h = histogram(gca,session_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
+                    % set(h,'facecolor',session_colors(sessionnum,:),'edgecolor','none')
+                    % hold on
+
+                    % now the models
+                    for modelnum = 1:length(not_plot_models)
+                        % get the modeled shifts for this session
+                        allFileShifts_model = vertcat(file_shifts{:,modelnum});
+                        [~,session_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+                        % % modeled PD shift histogram
+                        % figure(hists)
+                        % subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+modelnum+1)
+                        % h = histogram(gca,session_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
+                        % set(h,'facecolor',session_colors(sessionnum,:),'edgecolor','none')
+                        % hold on
+
+                        % scatter plots
+                        figure(scatters)
+                        subplot(length(monkey_names),length(not_plot_models),(monkeynum-1)*(length(not_plot_models))+modelnum)
+                        % hsh = scatterhist(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,...
+                        %     'markersize',50,'group',allFileShifts_real.monkey,'location','NorthWest',...
+                        %     'direction','out','plotgroup','off','color',monkey_colors,'marker','...',...
+                        %     'nbins',[15 15],'style','stairs');
+                        % hsh(3).Children.EdgeColor = [0 0 0];
+                        % hsh(2).Children.EdgeColor = model_colors(modelnum,:);
+                        scatter(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,50,session_colors(sessionnum,:),'filled')
+                        hold on
+                    end
+                end
+                % make axes pretty
+                % figure(hists)
+                % subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+1)
+                % set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
+                % ylabel(monkey_names{monkeynum})
+                % if monkeynum == 1
+                %     title('Actual PD Shift')
+                % end
+                for modelnum = 1:length(not_plot_models)
+                    % histograms
+                    % figure(hists)
+                    % subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+modelnum+1)
+                    % set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
+                    % if monkeynum == 1
+                    %     title(sprintf('%s modeled PD shift',getModelTitles(not_plot_models{modelnum})))
+                    % end
+
+                    % scatter plots
+                    figure(scatters)
+                    subplot(length(monkey_names),length(not_plot_models),(monkeynum-1)*length(not_plot_models)+modelnum)
+                    plot([-180 180],[0 0],'-k','linewidth',2)
+                    plot([0 0],[-180 180],'-k','linewidth',2)
+                    plot([-180 180],[-180 180],'--k','linewidth',2)
+                    axis equal
+                    set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
+                    % labels
+                    if monkeynum == length(monkey_names)
+                        xlabel 'Modeled PD Shift'
+                    end
+                    if modelnum == 1
+                        ylabel({monkey_names{monkeynum};'Actual PD Shift'})
+                        ylbl = get(gca,'ylabel');
+                        set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','right')
+                    end
+                    if monkeynum == 1
+                        title(sprintf('%s model',getModelTitles(not_plot_models{modelnum})),'interpreter','none')
+                    end
+                end
+        end
+        figure(total_hists)
+        suptitle('PD shift histograms')
+        saveas(gcf,fullfile(figdir,sprintf('extra_PDShiftHists_run%s.pdf',run_date)))
+        figure(scatters)
+        suptitle('PD shift scatter plots')
+        saveas(gcf,fullfile(figdir,sprintf('extra_PDShiftScatters_run%s.pdf',run_date)))
 
 %% Extra stuff/in progress...
     %% Collect model prediction differences and plot
