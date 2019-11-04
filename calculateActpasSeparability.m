@@ -1,6 +1,6 @@
 %% Set up meta info
-% model_aliases = {'ext','extforce','handelbow','ext_actpasbaseline'};
-model_aliases = {'ext','extforce','handelbow'};
+model_aliases = {'ext','extforce','handelbow','handelbow_actpasbaseline'};
+% model_aliases = {'ext','extforce','handelbow'};
 model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
@@ -167,15 +167,34 @@ for filenum = 1:4%length(filenames)
         'min_fr',1,...
         'fr_window',{{'idx_movement_on',0;'idx_movement_on',11}},...
         'calc_fr',true));
-    
-    % add firing rates in addition to spike counts
-    td_bin = addFiringRates(td_bin,struct('array',arrayname));
 
     % shift S1 backwards by 50 ms to account for lag between kinematics and S1
-    td_bin = dupeAndShift(td_bin,[arrayname '_FR'],5);
+    % td_bin = dupeAndShift(td_bin,[arrayname '_FR'],5);
 
     % trim to just movements
     td_bin = trimTD(td_bin,{'idx_movement_on',0},{'idx_movement_on',11});
+
+    % check to make sure all neurons fire at least once in each condition (pretty rare that one doesn't)
+    [~,td_act] = getTDidx(td_bin,'ctrHoldBump',false);
+    [~,td_pas] = getTDidx(td_bin,'ctrHoldBump',true);
+
+    firing_units = mean(getSig(td_act,'S1_spikes'))~=0 & mean(getSig(td_pas,'S1_spikes'))~=0;
+    if any(~firing_units)
+        unit_ids = td_bin(1).([arrayname '_unit_guide']);
+        new_unit_guide = unit_ids(firing_units,:);
+        
+        for trialnum = 1:length(td_bin)
+            td_bin(trialnum).(sprintf('%s_unit_guide',arrayname)) = new_unit_guide;
+            
+            spikes = td_bin(trialnum).(sprintf('%s_spikes',arrayname));
+            spikes(:,~firing_units) = [];
+            td_bin(trialnum).(sprintf('%s_spikes',arrayname)) = spikes;
+        end
+        fprintf('Removed %d neurons for not firing in one condition\n',sum(~firing_units))
+    end
+    
+    % add firing rates in addition to spike counts
+    td_bin = addFiringRates(td_bin,struct('array',arrayname));
 
     % find average over the movement
     td_bin = binTD(td_bin,'average');
