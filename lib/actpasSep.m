@@ -150,7 +150,22 @@ function results = actpasSep(td_bin,params)
                                         'model_name',[model_aliases{modelnum} '_model'],...
                                         'in_signals',{{'markers_sph_hand_pos';'markers_sph_hand_vel';'markers_sph_elbow_pos';'markers_sph_elbow_vel'}},...
                                         'out_signals',neural_signals);
-            case 'ext_actpasbaseline' % Note: only works when each trial has only one bin (avg firing rate per trial)
+            case 'handelbow_actpasbaseline' % Note: only works when each trial has only one bin (avg firing rate per trial)
+                % Use hand position and whether or not the trial was active or passive
+                % effectively allows active and passive trials to have a different baseline FR in the model
+                warning('handelbow_actpasbaseline model will currently only work when each trial has one bin (average firing rate for trial)')
+                markername = 'Marker_3';
+                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
+                assert(all(point_exists),'Hand marker does not exist?')
+                markername = 'Pronation_Pt1';
+                [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
+                assert(all(point_exists),'Elbow marker does not exist?')
+                glm_params{modelnum} = struct(...
+                    'model_type',model_type,...
+                    'model_name',[model_aliases{modelnum} '_model'],...
+                    'in_signals',{{'markers',[marker_hand_idx marker_elbow_idx];'marker_vel',[marker_hand_idx marker_elbow_idx];'ctrHoldBump',1}},...
+                    'out_signals',neural_signals);
+            case 'ext_actpasbaseline'
                 % Use hand position and whether or not the trial was active or passive
                 % effectively allows active and passive trials to have a different baseline FR in the model
                 warning('ext_actpasbaseline model will currently only work when each trial has one bin (average firing rate for trial)')
@@ -251,7 +266,7 @@ function results = actpasSep(td_bin,params)
                         model_eval{modelnum}.Properties.VariableDescriptions = repmat({'linear'},1,3);
 
                         % get input LDA models
-                        if strcmpi(model_aliases{modelnum},'ext_actpasbaseline')
+                        if endsWith(model_aliases{modelnum},'_actpasbaseline')
                             % actpas input has zero variance and perfectly separates the classes
                             % So just put down the coefficients known to separate
                             input_signals = getSig(td_train,glm_params{modelnum}.in_signals);
@@ -301,7 +316,7 @@ function results = actpasSep(td_bin,params)
                     if modelnum ~= length(model_names)
                         % get input separability
                         input_signals = getSig(td_test,glm_params{modelnum}.in_signals);
-                        if strcmpi(model_aliases{modelnum},'ext_actpasbaseline')
+                        if endsWith(model_aliases{modelnum},'_actpasbaseline')
                             % actpas input should have 100% separability
                             input_seps{modelnum} = 1;
                         else
