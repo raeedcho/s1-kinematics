@@ -10,6 +10,7 @@
     % files = dir(fullfile(datadir,'*separationResults_50msLag_run20190228_rerun20190809.mat'));
     % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191010.mat'));
     files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191016.mat'));
+    % files = dir(fullfile(datadir,'*separationResults_run20190228_rerun20191103.mat'));
     filename = horzcat({files.name});
     
     % for figure saving
@@ -92,23 +93,6 @@
             strrep(sepResults.neuron_eval_table.date{1},'/',''),...
             run_date)))
 
-        % plot separability of each neuron
-        figure('defaultaxesfontsize',18)
-        signalIDs = avg_neuron_eval.signalID;
-        plot([0 size(signalIDs,1)+1],[0.5 0.5],'--k','linewidth',2)
-        hold on
-        for neuronnum = 1:size(signalIDs,1)
-            [~,single_neuron_eval] = getNTidx(sepResults.neuron_eval_table,'signalID',signalIDs(neuronnum,:));
-            scatter(repmat(neuronnum,1,height(single_neuron_eval)),single_neuron_eval.S1_FR_indiv_sep,25,'k','filled','markerfacealpha',0.2)
-            scatter(neuronnum,avg_neuron_eval.S1_FR_indiv_sep(neuronnum,:),100,'k','filled')
-        end
-        set(gca,'box','off','tickdir','out','ylim',[0 1],'xlim',[0 size(signalIDs,1)+1])
-        saveas(gcf,fullfile(figdir,sprintf(...
-            '%s_%s_indivneuron_separability_run%s.pdf',...
-            sepResults.neuron_eval_table.monkey{1},...
-            strrep(sepResults.neuron_eval_table.date{1},'/',''),...
-            run_date)))
-
         % compile neuron eval table together
         neuron_eval_cell{filenum} = sepResults.neuron_eval_table;
         
@@ -124,6 +108,56 @@
         'keycols',{{'monkey','date','task','signalID'}},...
         'do_ci',false,...
         'do_nanmean',true));
+
+    % plot separability of each neuron and save CIs into avg_neuron_eval
+    for monkeynum = 1:length(monkey_names)
+        [~,monkey_evals] = getNTidx(neuron_eval,'monkey',monkey_names{monkeynum});
+        session_dates = unique(monkey_evals.date);
+        for sessionnum = 1:length(session_dates)
+            [~,session_evals] = getNTidx(monkey_evals,'date',session_dates{sessionnum});
+            [~,session_avg] = getNTidx(avg_neuron_eval,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+            % create place to save CIs
+            signalID = session_avg.signalID;
+            S1_FR_indiv_sep_CI_lo = zeros(size(signalID,1),1);
+            S1_FR_indiv_sep_CI_hi = zeros(size(signalID,1),1);
+
+            figure('defaultaxesfontsize',18)
+            plot([0 size(signalID,1)+1],[0.5 0.5],'--k','linewidth',2)
+            hold on
+            for neuronnum = 1:size(signalID,1)
+                [~,single_neuron_eval] = getNTidx(session_evals,'signalID',signalID(neuronnum,:));
+
+                % figure out error bars and save
+                [CI_lo,CI_hi] = crossval_errorbars(single_neuron_eval.S1_FR_indiv_sep,struct(...
+                    'num_repeats',double(max(single_neuron_eval.crossvalID(:,1))),...
+                    'num_folds',double(max(single_neuron_eval.crossvalID(:,2)))));
+                S1_FR_indiv_sep_CI_lo(neuronnum,:) = CI_lo;
+                S1_FR_indiv_sep_CI_hi(neuronnum,:) = CI_hi;
+                
+                % scatter(repmat(neuronnum,1,height(single_neuron_eval)),single_neuron_eval.S1_FR_indiv_sep,25,'k','filled','markerfacealpha',0.2)
+                plot(repmat(neuronnum,1,2),[CI_lo CI_hi],'-k','linewidth',2)
+                scatter(neuronnum,session_avg.S1_FR_indiv_sep(neuronnum,:),100,'k','filled')
+            end
+            set(gca,'box','off','tickdir','out','ylim',[0 1],'xlim',[0 size(signalID,1)+1])
+            saveas(gcf,fullfile(figdir,sprintf(...
+                '%s_%s_indivneuron_separability_run%s.pdf',...
+                session_evals.monkey{1},...
+                strrep(session_evals.date{1},'/',''),...
+                run_date)))
+
+            % save error bars into avg_neuron_eval table
+            CI_cell{monkeynum,sessionnum} = table(...
+                session_avg.monkey,...
+                session_avg.date,...
+                signalID,...
+                S1_FR_indiv_sep_CI_lo,...
+                S1_FR_indiv_sep_CI_hi,...
+                'VariableNames',{'monkey','date','signalID','S1_FR_indiv_sep_CI_lo','S1_FR_indiv_sep_CI_hi'});
+        end
+    end
+    CI_table = vertcat(CI_cell{:});
+    avg_neuron_eval = join(avg_neuron_eval,CI_table);
 
     % compare pR2 of handelbow vs ext
     figure('defaultaxesfontsize',18)
@@ -164,8 +198,7 @@
             end
 
             % make axes pretty
-            % set(gca,'box','off','tickdir','out',...
-            %     'xlim',[-0.3 0.6],'ylim',[-0.3 0.6])
+            set(gca,'box','off','tickdir','out')
             axis image
             if monkeynum ~= 1 || pairnum ~= 1
                 set(gca,'box','off','tickdir','out',...
@@ -197,9 +230,17 @@
                 % plot out each session
                 for sessionnum = 1:length(session_dates)
                     [~,avg_pR2] = getNTidx(avg_neuron_eval,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+                    % fill by whether separable or not?
+                    sig_seps = avg_pR2.S1_FR_indiv_sep_CI_lo > 0.5;
+
                     scatter(...
-                        avg_pR2.(sprintf('%s_%s_eval',models_to_plot{modelnum},conds{condnum})),...
-                        avg_pR2.(sprintf('%s_eval',models_to_plot{modelnum})),...
+                        avg_pR2.(sprintf('%s_%s_eval',models_to_plot{modelnum},conds{condnum}))(~sig_seps),...
+                        avg_pR2.(sprintf('%s_eval',models_to_plot{modelnum}))(~sig_seps),...
+                        [],session_colors(sessionnum,:),'filled')
+                    scatter(...
+                        avg_pR2.(sprintf('%s_%s_eval',models_to_plot{modelnum},conds{condnum}))(sig_seps),...
+                        avg_pR2.(sprintf('%s_eval',models_to_plot{modelnum}))(sig_seps),...
                         [],session_colors(sessionnum,:),'filled')
                 end
                 % make axes pretty
@@ -216,6 +257,100 @@
         end
         suptitle('Full pR^2 vs within condition pR^2')
         saveas(gcf,fullfile(figdir,sprintf('actpas_%s_pr2_full_v_within_run%s.pdf',models_to_plot{modelnum},run_date)))
+    end
+
+    % try a line graph of the above
+    for modelnum = 2:length(models_to_plot)
+        figure('defaultaxesfontsize',18)
+        for monkeynum = 1:length(monkey_names)
+            % set subplot
+            subplot(1,length(monkey_names),monkeynum)
+            plot([-1 1],[0 0],'k-','linewidth',0.5)
+            hold on
+
+            % get sessions
+            [~,monkey_evals] = getNTidx(neuron_eval,'monkey',monkey_names{monkeynum});
+            session_dates = unique(monkey_evals.date);
+
+            % plot out each session
+            for sessionnum = 1:length(session_dates)
+                [~,avg_pR2] = getNTidx(avg_neuron_eval,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+                cols_to_plot = {...
+                    sprintf('%s_act_eval',models_to_plot{modelnum}),...
+                    sprintf('%s_eval',models_to_plot{modelnum}),...
+                    sprintf('%s_pas_eval',models_to_plot{modelnum})};
+                cond_pR2 = avg_pR2{:,cols_to_plot};
+
+                % fill by whether separable or not
+                sig_seps = avg_pR2.S1_FR_indiv_sep_CI_lo > 0.5;
+
+                plot(repmat([-0.8 0 0.8],size(cond_pR2,1),1)',cond_pR2','-o','linewidth',1,'color',session_colors(sessionnum,:))
+            end
+            % make axes pretty
+            set(gca,'box','off','tickdir','out',...
+                'xlim',[-1 1],'xtick',[-0.8 0 0.8],'xticklabel',{'Active pR^2','Full pR^2','Passive pR^2'},...
+                'ytick',[-1 0 1])
+            xlabel('Condition')
+            ylabel(sprintf('%s pR2',getModelTitles(models_to_plot{modelnum})))
+        end
+        suptitle('Full pR^2 vs within condition pR^2')
+        saveas(gcf,fullfile(figdir,sprintf('actpas_%s_pr2_full_v_within_line_run%s.pdf',models_to_plot{modelnum},run_date)))
+    end
+
+    % plot separability against full and within condition pR2
+    conds = {'','act_','pas_'};
+    for modelnum = 2:length(models_to_plot)
+        figure('defaultaxesfontsize',18)
+        for monkeynum = 1:length(monkey_names)
+            for condnum = 1:length(conds)
+                % set subplot
+                subplot(length(monkey_names),length(conds),(monkeynum-1)*length(conds)+condnum)
+                plot([0 0],[0 1],'k-','linewidth',0.5)
+                hold on
+                plot([-1 1],[0 0],'k-','linewidth',0.5)
+                plot([-1 1],[0.5 0.5],'k--','linewidth',0.5)
+
+                % get sessions
+                [~,monkey_evals] = getNTidx(neuron_eval,'monkey',monkey_names{monkeynum});
+                session_dates = unique(monkey_evals.date);
+
+                % plot out each session
+                for sessionnum = 1:length(session_dates)
+                    [~,session_evals] = getNTidx(monkey_evals,'date',session_dates{sessionnum});
+                    [~,avg_pR2] = getNTidx(avg_neuron_eval,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
+
+                    sig_seps = avg_pR2.S1_FR_indiv_sep_CI_lo > 0.5;
+
+                    scatter(...
+                        avg_pR2.(sprintf('%s_%seval',models_to_plot{modelnum},conds{condnum}))(~sig_seps),...
+                        avg_pR2.S1_FR_indiv_sep(~sig_seps),...
+                        [],session_colors(sessionnum,:))
+                    scatter(...
+                        avg_pR2.(sprintf('%s_%seval',models_to_plot{modelnum},conds{condnum}))(sig_seps),...
+                        avg_pR2.S1_FR_indiv_sep(sig_seps),...
+                        [],session_colors(sessionnum,:),'filled')
+
+                    % fit quick linear model to plot fit line
+                    % lm = fitlm(...
+                    %     avg_pR2.(sprintf('%s_%seval',models_to_plot{modelnum},conds{condnum})),...
+                    %     avg_pR2.S1_FR_indiv_sep);
+                    % plot([-1;1],lm.predict([-1;1]),...
+                    %     '--','color',session_colors(sessionnum,:),'linewidth',1)
+                end
+                % make axes pretty
+                set(gca,'box','off','tickdir','out',...
+                    'xlim',[-1 1],'ylim',[0.4 1])
+                if monkeynum ~= 1 || condnum ~= 1
+                    set(gca,'box','off','tickdir','out',...
+                        'xtick',[],'ytick',[])
+                end
+                xlabel(sprintf('%s %s pR2',getModelTitles(models_to_plot{modelnum}),conds{condnum}))
+                ylabel(sprintf('Neural Separability',getModelTitles(models_to_plot{modelnum})))
+            end
+        end
+        suptitle('Neural separability vs pR^2')
+        saveas(gcf,fullfile(figdir,sprintf('actpas_%s_sepvpr2_run%s.pdf',models_to_plot{modelnum},run_date)))
     end
 
     % get correlation values for each crossval
@@ -252,53 +387,6 @@
         corr_cell{key_idx} = horzcat(model_corr{:});
     end
     neuron_corr_table = horzcat(keyTable,vertcat(corr_cell{:}));
-
-    % plot separability against full and within condition pR2
-    conds = {'','act_','pas_'};
-    for modelnum = 2:length(models_to_plot)
-        figure('defaultaxesfontsize',18)
-        for monkeynum = 1:length(monkey_names)
-            for condnum = 1:length(conds)
-                % set subplot
-                subplot(length(monkey_names),length(conds),(monkeynum-1)*length(conds)+condnum)
-                plot([0 0],[0 1],'k-','linewidth',0.5)
-                hold on
-                plot([-1 1],[0 0],'k-','linewidth',0.5)
-                plot([-1 1],[0.5 0.5],'k--','linewidth',0.5)
-
-                % get sessions
-                [~,monkey_evals] = getNTidx(neuron_eval,'monkey',monkey_names{monkeynum});
-                session_dates = unique(monkey_evals.date);
-
-                % plot out each session
-                for sessionnum = 1:length(session_dates)
-                    [~,avg_pR2] = getNTidx(avg_neuron_eval,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
-                    scatter(...
-                        avg_pR2.(sprintf('%s_%seval',models_to_plot{modelnum},conds{condnum})),...
-                        avg_pR2.(sprintf('S1_FR_indiv_sep',models_to_plot{modelnum})),...
-                        [],session_colors(sessionnum,:),'filled')
-
-                    % fit quick linear model to plot fit line
-                    lm = fitlm(...
-                        avg_pR2.(sprintf('%s_%seval',models_to_plot{modelnum},conds{condnum})),...
-                        avg_pR2.S1_FR_indiv_sep);
-                    plot([-1;1],lm.predict([-1;1]),...
-                        '--','color',session_colors(sessionnum,:),'linewidth',1)
-                end
-                % make axes pretty
-                set(gca,'box','off','tickdir','out',...
-                    'xlim',[-1 1],'ylim',[0.4 1])
-                if monkeynum ~= 1 || condnum ~= 1
-                    set(gca,'box','off','tickdir','out',...
-                        'xtick',[],'ytick',[])
-                end
-                xlabel(sprintf('%s %s pR2',getModelTitles(models_to_plot{modelnum}),conds{condnum}))
-                ylabel(sprintf('Neural Separability',getModelTitles(models_to_plot{modelnum})))
-            end
-        end
-        suptitle('Neural separability vs pR^2')
-        saveas(gcf,fullfile(figdir,sprintf('actpas_%s_sepvpr2_run%s.pdf',models_to_plot{modelnum},run_date)))
-    end
 
     % make figure for VAF of model separability
     figure('defaultaxesfontsize',18)
