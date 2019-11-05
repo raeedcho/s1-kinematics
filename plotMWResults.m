@@ -127,16 +127,20 @@
         end
     end
 
-    % figure out how many neurons the hand-based models could beat either of the whole-arm models
-    hand_neuron_counter = 0;
-    rowchecks = contains(model_pairs,hand_models);
-    rowchecks = xor(rowchecks(:,1),rowchecks(:,2));
-    for monkeynum = 1:length(monkey_names)
-        for sessionnum = 1:session_ctr(monkeynum)
-            hand_neuron_counter = hand_neuron_counter + ...
-                sum(any(contains(pr2_winners{monkeynum,sessionnum}(rowchecks,:),{'ext','ego'})),2)
-        end
-    end
+    % figure out how many neurons the hand models could beat either of the whole-arm models
+    % hand_neuron_counter = 0;
+    % rowchecks = contains(model_pairs,hand_models);
+    % rowchecks = xor(rowchecks(:,1),rowchecks(:,2));
+    % for monkeynum = 1:length(monkey_names)
+    %     for sessionnum = 1:session_ctr(monkeynum)
+    %         hand_neuron_counter = hand_neuron_counter + ...
+    %             sum(any(contains(pr2_winners{monkeynum,sessionnum}(rowchecks,:),{'ext','ego'})),2)
+    %     end
+    % end
+    all_pr2_winners = horzcat(pr2_winners{:});
+    ext_winners = sum(strcmpi(all_pr2_winners,'ext'),2);
+    handelbow_winners = sum(strcmpi(all_pr2_winners,'handelbow'),2);
+    extforce_winners = sum(strcmpi(all_pr2_winners,'extforce'),2);
 
     % make the pairwise comparison scatter plot
     figure
@@ -175,7 +179,7 @@
         end
     end
     suptitle('Pseudo-R^2 pairwise comparisons')
-    saveas(gcf,fullfile(figdir,sprintf('pr2_pairwise_run%s.pdf',run_date)))
+    % saveas(gcf,fullfile(figdir,sprintf('pr2_pairwise_run%s.pdf',run_date)))
 
     % show scatter plot for hand/elbow pR2 within condition vs against condition
     for modelnum = 1:length(models_to_plot)
@@ -278,15 +282,19 @@
     end
 
     % figure out how many neurons the hand-based models could beat either of the whole-arm models
-    hand_neuron_counter = 0;
-    rowchecks = contains(model_pairs,{'ext','ego'});
-    rowchecks = xor(rowchecks(:,1),rowchecks(:,2));
-    for monkeynum = 1:length(monkey_names)
-        for sessionnum = 1:session_ctr(monkeynum)
-            hand_neuron_counter = hand_neuron_counter + ...
-                sum(any(contains(tuning_corr_winners{monkeynum,sessionnum}(rowchecks,:),{'ext','ego'})),2)
-        end
-    end
+    % hand_neuron_counter = 0;
+    % rowchecks = contains(model_pairs,{'ext','ego'});
+    % rowchecks = xor(rowchecks(:,1),rowchecks(:,2));
+    % for monkeynum = 1:length(monkey_names)
+    %     for sessionnum = 1:session_ctr(monkeynum)
+    %         hand_neuron_counter = hand_neuron_counter + ...
+    %             sum(any(contains(tuning_corr_winners{monkeynum,sessionnum}(rowchecks,:),{'ext','ego'})),2)
+    %     end
+    % end
+    all_tuning_corr_winners = horzcat(tuning_corr_winners{:});
+    ext_winners = sum(strcmpi(all_tuning_corr_winners,'ext'),2);
+    handelbow_winners = sum(strcmpi(all_tuning_corr_winners,'handelbow'),2);
+    extforce_winners = sum(strcmpi(all_tuning_corr_winners,'extforce'),2);
 
     % make the pairwise comparison scatter plot
     figure
@@ -534,6 +542,7 @@
                     shift_vaf{monkeynum,sessionnum},struct(...
                         'bonferroni_correction',6,...
                         'models',{models_to_plot},...
+                        'model_pairs',{{'ext','handelbow';'extforce','handelbow'}},...
                         'postfix','_vaf'));
         end
     end
@@ -551,9 +560,28 @@
                     shift_vaf_session,struct(...
                         'bonferroni_correction',6,...
                         'models',{models_to_plot},...
+                        'model_pairs',{{'ext','handelbow';'extforce','handelbow'}},...
                         'postfix','_vaf'));
         end
     end
+
+    % find winners
+    all_shift_vaf_winners = horzcat(shift_vaf_winners{:});
+    ext_winners = sum(strcmpi(all_shift_vaf_winners,'ext'),2);
+    handelbow_winners = sum(strcmpi(all_shift_vaf_winners,'handelbow'),2);
+    extforce_winners = sum(strcmpi(all_shift_vaf_winners,'extforce'),2);
+
+    % session winners
+    all_shift_vaf_session_winners = horzcat(shift_vaf_session_winners{:});
+    ext_winners = sum(strcmpi(all_shift_vaf_session_winners,'ext'),2);
+    handelbow_winners = sum(strcmpi(all_shift_vaf_session_winners,'handelbow'),2);
+    extforce_winners = sum(strcmpi(all_shift_vaf_session_winners,'extforce'),2);
+
+    % get average shift vaf over all neurons
+    shift_vaf_all = vertcat(shift_vaf{:});
+    avg_shift_vaf_all = neuronAverage(shift_vaf_all,struct(...
+        'keycols',{{'task'}},...
+        'do_ci',false));
 
     % make the winner dot plot
     figure('defaultaxesfontsize',18)
