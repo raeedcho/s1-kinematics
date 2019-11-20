@@ -4,7 +4,7 @@
 
 %% Set up plotting variables
     if ispc
-        dataroot = '';
+        dataroot = 'G:\raeed\';
     else
         dataroot = '/data/raeed';
     end
@@ -23,7 +23,7 @@
     run_date = char(datetime('today','format','yyyyMMdd'));
 
     monkey_names = {'Chips','Han','Lando'};
-    models_to_plot = {'ext','handelbow','extforce'};
+    models_to_plot = {'ext','handelbow'};
     hand_models = {'ext','ego'};
     arm_models = {'joint','musc','handelbow'};
     included_models = union(union(models_to_plot,hand_models),arm_models);
@@ -60,7 +60,7 @@
         % We already have evaluation table in crossEval... just extract the models we want
         model_eval{monkey_idx,session_ctr(monkey_idx)} = encoderResults.crossEval(:,contains(encoderResults.crossEval.Properties.VariableDescriptions,'meta'));
         model_eval_cell = cell(1,length(included_models));
-        space_eval_cell = cell(2,length(included_models));
+        [space_eval_cell,space_eval_within_cell] = deal(cell(2,length(included_models)));
         for modelnum = 1:length(included_models)
             model_eval_cell{modelnum} = table(encoderResults.crossEval.(sprintf('glm_%s_model_eval',included_models{modelnum})),...
                 'VariableNames',strcat(included_models(modelnum),'_eval'));
@@ -69,12 +69,21 @@
                 space_eval_cell{spacenum,modelnum} = table(encoderResults.crossEval.(sprintf('glm_%s_model_space%d_eval',included_models{modelnum},spacenum)),...
                     'VariableNames',{sprintf('%s_space%d_eval',included_models{modelnum},spacenum)});
                 space_eval_cell{spacenum,modelnum}.Properties.VariableDescriptions = {'linear'};
+                % because some old files don't have this...
+                try
+                    space_eval_within_cell{spacenum,modelnum} = table(encoderResults.crossEval.(sprintf('glm_%s_model_space%d_within_eval',included_models{modelnum},spacenum)),...
+                        'VariableNames',{sprintf('%s_space%d_within_eval',included_models{modelnum},spacenum)});
+                    space_eval_within_cell{spacenum,modelnum}.Properties.VariableDescriptions = {'linear'};
+                catch ME
+                    warning('Within space predictions are not available. Eval table is not completely filled out')
+                end
             end
         end
         model_eval{monkey_idx,session_ctr(monkey_idx)} = horzcat(...
             model_eval{monkey_idx,session_ctr(monkey_idx)},...
             model_eval_cell{:},...
-            space_eval_cell{:});
+            space_eval_cell{:},...
+            space_eval_within_cell{:});
 
         % We already have tuning table in crossTuning... just extract the models we want
         model_tuning{monkey_idx,session_ctr(monkey_idx)} = encoderResults.crossTuning(:,...
@@ -102,12 +111,15 @@
         tuning_corr{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderTuningCorr(...
             encoderResults,struct('model_aliases',{included_models},'neural_signal','S1_FR'));
 
-        % Get PD shift error table
-        shift_vaf{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftVAF(...
-            encoderResults,struct('model_aliases',{included_models}));
-
         % get tuned neurons
-        tuned_neurons{monkey_idx,session_ctr(monkey_idx)} = encoderResults.tunedNeurons;
+        if isfield(encoderResults,'tunedNeurons')
+            % Get PD shift error table
+            shift_vaf{monkey_idx,session_ctr(monkey_idx)} = calculateEncoderPDShiftVAF(...
+                encoderResults,struct('model_aliases',{included_models}));
+            tuned_neurons{monkey_idx,session_ctr(monkey_idx)} = encoderResults.tunedNeurons;
+        else
+            warning('No tuned neurons field found!')
+        end
 
         % output a counter
         fprintf('Processed file %d of %d at time %f\n',filenum,length(filename),toc(fileclock))
@@ -187,7 +199,7 @@
         for monkeynum = 1:length(monkey_names)
             for spacenum = 1:2
                 % set subplot
-                subplot(length(monkey_names),2,(monkeynum-1)*2+spacenum)
+                subplot(2,length(monkey_names),(spacenum-1)*length(monkey_names)+monkeynum)
 
                 % plot lines
                 plot([-1 1],[-1 1],'k--','linewidth',0.5)
@@ -200,7 +212,7 @@
                     avg_pR2 = neuronAverage(model_eval{monkeynum,sessionnum},struct('keycols','signalID','do_ci',false));
                     scatter(...
                         avg_pR2.(sprintf('%s_space%d_eval',models_to_plot{modelnum},spacenum)),...
-                        avg_pR2.(sprintf('%s_eval',models_to_plot{modelnum})),...
+                        avg_pR2.(sprintf('%s_space%d_within_eval',models_to_plot{modelnum},spacenum)),...
                         [],session_colors(sessionnum,:),'filled')
                 end
                 % make axes pretty
@@ -211,12 +223,13 @@
                     set(gca,'box','off','tickdir','out',...
                         'xtick',[],'ytick',[])
                 end
-                xlabel(sprintf('%s workspace %d pR2',getModelTitles(models_to_plot{modelnum}),spacenum))
-                ylabel(sprintf('%s full pR2',getModelTitles(models_to_plot{modelnum})))
+                xlabel(sprintf('%s trained across pR2',getModelTitles(models_to_plot{modelnum})))
+                ylabel(sprintf('%s trained within pR2',getModelTitles(models_to_plot{modelnum})))
+                title(sprintf('Workspace %d',spacenum))
             end
         end
         suptitle('Full pR^2 vs within condition pR^2')
-        saveas(gcf,fullfile(figdir,sprintf('%s_pr2_full_v_within_run%s.pdf',models_to_plot{modelnum},run_date)))
+%         saveas(gcf,fullfile(figdir,sprintf('%s_pr2_full_v_within_run%s.pdf',models_to_plot{modelnum},run_date)))
     end
 
     % make the winner dot plot
@@ -1012,7 +1025,7 @@
 
 %% Extra stuff/in progress...
     %% Collect model prediction differences and plot
-    for filenum = 1%:length(filename)
+    for filenum = 4%:length(filename)
         load(fullfile(datadir,filename{filenum}))
 
         td_tuning = horzcat(encoderResults.td_tuning{:});
@@ -1027,9 +1040,43 @@
 
         % plot image
         figure
-        imagesc((handelbow_ext_pred_diff'),[-10 10])
-        colormap(viridis)
+        imagesc((handelbow_ext_pred_diff'),[-3 3])
+        colormap(interp1(1:11,[...
+            127,59,8;...
+            179,88,6;...
+            224,130,20;...
+            253,184,99;...
+            254,224,182;...
+            247,247,247;...
+            216,218,235;...
+            178,171,210;...
+            128,115,172;...
+            84,39,136;...
+            45,0,75]./255,...
+            linspace(1,11,255)))
         colorbar
+        set(gca,'tickdir','out','box','off')
+        ylabel('Neurons')
+        xlabel('Trial number')
+        title(sprintf('%s %s whole-arm to hand-only model prediction difference',td_tuning(1).monkey,td_tuning(1).date_time))
+        
+        figure
+        imagesc(cov(handelbow_ext_pred_diff),[-1 1])
+        colormap(interp1(1:11,[...
+            127,59,8;...
+            179,88,6;...
+            224,130,20;...
+            253,184,99;...
+            254,224,182;...
+            247,247,247;...
+            216,218,235;...
+            178,171,210;...
+            128,115,172;...
+            84,39,136;...
+            45,0,75]./255,...
+            linspace(1,11,255)))
+        colorbar
+        set(gca,'tickdir','out','box','off')
 
         figure
         plot(abs(handelbow_ext_pred_diff))
