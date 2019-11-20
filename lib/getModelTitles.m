@@ -9,7 +9,7 @@ function model_titles = getModelTitles(model_alias)
     for modelnum = 1:length(model_alias_cell)
         switch model_alias_cell{modelnum}
         case 'ext'
-            model_titles{modelnum} = 'Hand';
+            model_titles{modelnum} = 'Hand-only';
         case 'extforce'
             model_titles{modelnum} = 'Hand Kinematic-Force';
         case 'opensim_ext'
@@ -27,13 +27,15 @@ function model_titles = getModelTitles(model_alias)
         case 'musc'
             model_titles{modelnum} = 'Muscle';
         case 'handelbow'
-            model_titles{modelnum} = 'Hand-Elbow';
+            model_titles{modelnum} = 'Whole-arm';
         case 'elbow'
             model_titles{modelnum} = 'Elbow';
         case 'opensim_handelbow'
             model_titles{modelnum} = 'OpenSim Hand-Elbow';
         case 'ego_handelbow'
             model_titles{modelnum} = 'Spherical Hand-Elbow';
+        case 'handelbow_surprise'
+            model_titles{modelnum} = 'Surprise!';
         end
     end
 

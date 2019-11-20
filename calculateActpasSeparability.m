@@ -1,18 +1,19 @@
 %% Set up meta info
-model_aliases = {'ext','extforce','handelbow','handelbow_actpasbaseline'};
+% model_aliases = {'ext','handelbow'};
 % model_aliases = {'ext','extforce','handelbow'};
+model_aliases = {'ext','handelbow','handelbow_surprise'};
 model_type = 'glm';
 arrayname = 'S1';
 num_musc_pcs = 5;
 num_pcs = 3;
 num_repeats = 20;
 num_folds = 5;
-rerun_crossval = true;
+rerun_crossval = false;
 get_margins = false;
 
 if ispc
-    homefolder = 'C:\Users\rhc307';
-    dataroot = '';
+    homefolder = 'C:\Users\Raeed';
+    dataroot = 'G:\raeed';
 else
     homefolder = '/home/raeed';
     dataroot = '/data/raeed';
@@ -32,7 +33,7 @@ else
 end
 
 %% Loop through files
-for filenum = 1:4%length(filenames)
+for filenum = [1 2 6 7]%length(filenames)
     clear sepResults
 
     %% load and preprocess data

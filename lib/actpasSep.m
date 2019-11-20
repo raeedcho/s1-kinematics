@@ -12,6 +12,7 @@ function results = actpasSep(td_bin,params)
         which_units = 'all'; % replace with a list of indices for which units to use for separability
         unit_guide = td_bin.S1_unit_guide;
         get_margins = false;
+        do_population_stuff = false;
         assignParams(who,params);
 
         if ~strcmpi(which_units,'all')
@@ -177,6 +178,25 @@ function results = actpasSep(td_bin,params)
                     'model_name',[model_aliases{modelnum} '_model'],...
                     'in_signals',{{'markers',marker_hand_idx;'marker_vel',marker_hand_idx;'ctrHoldBump',1}},...
                     'out_signals',neural_signals);
+            case 'handelbow_surprise'
+                % get all the hand/elbow stuff ready
+                markername = 'Marker_3';
+                [point_exists,marker_hand_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
+                assert(all(point_exists),'Hand marker does not exist?')
+                markername = 'Pronation_Pt1';
+                [point_exists,marker_elbow_idx] = ismember(strcat(markername,'_',{'x','y','z'}),td_bin(1).marker_names);
+                assert(all(point_exists),'Elbow marker does not exist?')
+                
+                % set up the td for a one-hot encoding of target direction only in the passive case
+                target_dirs = unique(horzcat(td_bin.bumpDir));
+                for trialnum = 1:length(td_bin)
+                    td_bin(trialnum).target_surprise = ismember(target_dirs,td_bin(trialnum).bumpDir) & td_bin(trialnum).ctrHoldBump;
+                end
+                glm_params{modelnum} = struct(...
+                    'model_type',model_type,...
+                    'model_name',[model_aliases{modelnum} '_model'],...
+                    'in_signals',{{'markers',[marker_hand_idx marker_elbow_idx];'marker_vel',[marker_hand_idx marker_elbow_idx];'target_surprise',1:length(target_dirs)}},...
+                    'out_signals',neural_signals);
             otherwise
                 error('Unrecognized model_alias')
             end
@@ -243,6 +263,47 @@ function results = actpasSep(td_bin,params)
                 indiv_seps = zeros(length(unit_guide),length(model_names));
                 for modelnum = 1:length(model_names)
                     if modelnum~=length(model_names)
+                        % get eval metrics for neurons trained and tested on same condition
+                        cond = {'act','pas'};
+                        train_cond_eval = cell(1,length(cond));
+                        for condnum = 1:2
+                            [~,td_train_cond] = getTDidx(td_train,'ctrHoldBump',strcmpi(cond{condnum},'pas'));
+                            [~,td_test_cond] = getTDidx(td_test,'ctrHoldBump',strcmpi(cond{condnum},'pas'));
+                            
+                            [~,glm_info] = getModel(td_train_cond,glm_params{modelnum});
+                            td_test_cond = getModel(td_test_cond,glm_info);
+                            
+                            eval_params = glm_info;
+                            eval_params.eval_metric = 'pr2';
+                            eval_params.num_boots = 1;
+                            eval_params.block_trials = true;
+                            eval_params.trial_idx = 1:length(td_test_cond);
+                            train_cond_eval{condnum} = evalModel(td_test_cond,eval_params);
+                        end
+                        model_eval_train_cond = table(train_cond_eval{:},...
+                            'VariableNames',strcat(model_names{modelnum},'_train_',cond,'_eval'));
+                        model_eval_train_cond.Properties.VariableDescriptions = repmat({'linear'},1,width(model_eval_train_cond));
+                        
+                        % train on half of full data...
+                        [~,td_train_half] = getTDidx(td_train,'rand',floor(length(td_train)/2));
+                        [~,td_test_half] = getTDidx(td_test,'rand',floor(length(td_test)/2));
+                        [~,glm_info] = getModel(td_train_half,glm_params{modelnum});
+                        td_test_half = getModel(td_test_half,glm_info);
+                        eval_params = glm_info;
+                        eval_params.eval_metric = 'pr2';
+                        eval_params.num_boots = 1;
+                        eval_params.block_trials = true;
+                        act_eval_params = eval_params;
+                        act_eval_params.trial_idx = getTDidx(td_test_half,'ctrHoldBump',false);
+                        pas_eval_params = eval_params;
+                        pas_eval_params.trial_idx = getTDidx(td_test_half,'ctrHoldBump',true);
+                        model_eval_half_full_train = table(...
+                            evalModel(td_test_half,act_eval_params),...
+                            evalModel(td_test_half,pas_eval_params),...
+                            'VariableNames',strcat(model_names{modelnum},{'_half_full_train_act_eval','_half_full_train_pas_eval'}));
+                        model_eval_half_full_train.Properties.VariableDescriptions = repmat({'linear'},1,2);
+                        
+                        % Train and test over both conditions
                         [td_train,glm_info] = getModel(td_train,glm_params{modelnum});
 
                         % predict firing rates
@@ -264,9 +325,10 @@ function results = actpasSep(td_bin,params)
                             evalModel(td_test,pas_eval_params),...
                             'VariableNames',strcat(model_names{modelnum},{'_eval','_act_eval','_pas_eval'}));
                         model_eval{modelnum}.Properties.VariableDescriptions = repmat({'linear'},1,3);
+                        model_eval{modelnum} = horzcat(model_eval{modelnum},model_eval_train_cond,model_eval_half_full_train);
 
                         % get input LDA models
-                        if endsWith(model_aliases{modelnum},'_actpasbaseline')
+                        if endsWith(model_aliases{modelnum},'_actpasbaseline') || endsWith(model_aliases{modelnum},'_surprise')
                             % actpas input has zero variance and perfectly separates the classes
                             % So just put down the coefficients known to separate
                             input_signals = getSig(td_train,glm_params{modelnum}.in_signals);
@@ -286,37 +348,42 @@ function results = actpasSep(td_bin,params)
                         end
                     end
                     
-                    % try sqrt transform (doesn't mess with model fitting because neural signals are last
-                    % td_train = sqrtTransform(td_train,struct('signals',model_names{modelnum}));
-                    % td_test = sqrtTransform(td_test,struct('signals',model_names{modelnum}));
-                    
-                    % get PCA
-                    [~,pca_info] = dimReduce(td_train,struct('signals',{{model_names{modelnum},which_units}}));
-                    td_test = dimReduce(td_test,pca_info);
-                    pca_coeff{modelnum} = pca_info.w(:,1:num_pcs);
-                    pca_mu{modelnum} = pca_info.mu;
-        
-                    % get LDA models
-                    % train_fr = cat(1,td_train.(model_names{modelnum}));
-                    train_fr = getSig(td_train,{model_names{modelnum},which_units});
-                    % lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
-                    lda_mdl{modelnum} = fitcdiscr((train_fr-pca_mu{modelnum})*pca_coeff{modelnum},train_class);
-                    lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(2,1).Const;lda_mdl{modelnum}.Coeffs(2,1).Linear]';
+                    if do_population_stuff
+                        % try sqrt transform (doesn't mess with model fitting because neural signals are last
+                        % td_train = sqrtTransform(td_train,struct('signals',model_names{modelnum}));
+                        % td_test = sqrtTransform(td_test,struct('signals',model_names{modelnum}));
+
+                        % get PCA
+                        [~,pca_info] = dimReduce(td_train,struct('signals',{{model_names{modelnum},which_units}}));
+                        td_test = dimReduce(td_test,pca_info);
+                        pca_coeff{modelnum} = pca_info.w(:,1:num_pcs);
+                        pca_mu{modelnum} = pca_info.mu;
+
+                        % get LDA models
+                        % train_fr = cat(1,td_train.(model_names{modelnum}));
+                        train_fr = getSig(td_train,{model_names{modelnum},which_units});
+                        % lda_mdl{modelnum} = fitcdiscr(train_fr,train_class);
+                        lda_mdl{modelnum} = fitcdiscr((train_fr-pca_mu{modelnum})*pca_coeff{modelnum},train_class);
+                        lda_coeff{modelnum} = [lda_mdl{modelnum}.Coeffs(2,1).Const;lda_mdl{modelnum}.Coeffs(2,1).Linear]';
+                    end
 
                     % get individual neuron separabilities
-                    train_fr = getSig(td_train,model_names{modelnum});
-                    test_fr = getSig(td_test,model_names{modelnum});
-                    for neuronnum = 1:size(train_fr,2)
-                        indiv_lda_mdl = fitcdiscr(train_fr(:,neuronnum),train_class);
-                        indiv_seps(neuronnum,modelnum) = sum(predict(indiv_lda_mdl,test_fr(:,neuronnum)) == test_class)/length(test_class);
+                    if modelnum == length(model_names)
+                        train_fr = getSig(td_train,model_names{modelnum});
+                        test_fr = getSig(td_test,model_names{modelnum});
+                        for neuronnum = 1:size(train_fr,2)
+                            indiv_lda_mdl = fitcdiscr(train_fr(:,neuronnum),train_class);
+                            indiv_seps(neuronnum,modelnum) = sum(predict(indiv_lda_mdl,test_fr(:,neuronnum)) == test_class)/length(test_class);
+                        end
                     end
                 end
 
+                
                 for modelnum = 1:length(model_names)
                     if modelnum ~= length(model_names)
                         % get input separability
                         input_signals = getSig(td_test,glm_params{modelnum}.in_signals);
-                        if endsWith(model_aliases{modelnum},'_actpasbaseline')
+                        if endsWith(model_aliases{modelnum},'_actpasbaseline') || endsWith(model_aliases{modelnum},'_surprise')
                             % actpas input should have 100% separability
                             input_seps{modelnum} = 1;
                         else
@@ -332,16 +399,18 @@ function results = actpasSep(td_bin,params)
                     % get separabilities from LDA models
                     % model_fr{modelnum} = cat(1,td_test.(model_names{modelnum}));
                     model_fr{modelnum} = getSig(td_test,{model_names{modelnum},which_units});
-                    
-                    % self_seps{modelnum} = sum(predict(lda_mdl{modelnum},model_fr{modelnum}) == test_class)/length(test_class);
-                    % true_seps{modelnum} = sum(predict(lda_mdl{end},model_fr{modelnum}) == test_class)/length(test_class);
-                    self_seps{modelnum} = sum(predict(lda_mdl{modelnum},(model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}) == test_class)/length(test_class);
-                    true_seps{modelnum} = sum(predict(lda_mdl{end},(model_fr{modelnum}-pca_mu{end})*pca_coeff{end}) == test_class)/length(test_class);
 
-                    % calculate margin from lda boundary
-                    if get_margins
-                        self_margin{modelnum} = ((model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}*lda_coeff{modelnum}(2:end)' + lda_coeff{modelnum}(1))/norm(lda_coeff{modelnum}(2:end));
-                        true_margin{modelnum} = ((model_fr{modelnum}-pca_mu{end})*pca_coeff{end}*lda_coeff{end}(2:end)' + lda_coeff{end}(1))/norm(lda_coeff{end}(2:end));
+                    if do_population_stuff
+                        % self_seps{modelnum} = sum(predict(lda_mdl{modelnum},model_fr{modelnum}) == test_class)/length(test_class);
+                        % true_seps{modelnum} = sum(predict(lda_mdl{end},model_fr{modelnum}) == test_class)/length(test_class);
+                        self_seps{modelnum} = sum(predict(lda_mdl{modelnum},(model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}) == test_class)/length(test_class);
+                        true_seps{modelnum} = sum(predict(lda_mdl{end},(model_fr{modelnum}-pca_mu{end})*pca_coeff{end}) == test_class)/length(test_class);
+
+                        % calculate margin from lda boundary
+                        if get_margins
+                            self_margin{modelnum} = ((model_fr{modelnum}-pca_mu{modelnum})*pca_coeff{modelnum}*lda_coeff{modelnum}(2:end)' + lda_coeff{modelnum}(1))/norm(lda_coeff{modelnum}(2:end));
+                            true_margin{modelnum} = ((model_fr{modelnum}-pca_mu{end})*pca_coeff{end}*lda_coeff{end}(2:end)' + lda_coeff{end}(1))/norm(lda_coeff{end}(2:end));
+                        end
                     end
                 end
 
@@ -360,14 +429,6 @@ function results = actpasSep(td_bin,params)
                 model_fr_table = table(model_fr{:},'VariableNames',[strcat(model_aliases,'_predFR') {neural_signals}]);
                 model_fr_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
 
-                % get margins for trial table
-                input_margin_table = table(input_margin{:},'VariableNames',strcat(model_aliases,'_input_margin'));
-                input_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_aliases));
-                self_margin_table = table(self_margin{:},'VariableNames',strcat([model_aliases {neural_signals}],'_self_margin'));
-                self_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
-                true_margin_table = table(true_margin{:},'VariableNames',strcat([model_aliases {neural_signals}],'_true_margin'));
-                true_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
-
                 % assemble trial table
                 trial_table_cell{repeatnum,foldnum} = horzcat(...
                     repmat(meta_table,length(trial_dir),1),...
@@ -378,11 +439,24 @@ function results = actpasSep(td_bin,params)
                     model_fr_table);
 
                 if get_margins
-                    trial_table_cell{repeatnum,foldnum} = horzcat(...
-                        trial_table_cell{repeatnum,foldnum},...
-                        input_margin_table,...
-                        self_margin_table,...
-                        true_margin_table);
+                    % get margins for trial table
+                    input_margin_table = table(input_margin{:},'VariableNames',strcat(model_aliases,'_input_margin'));
+                    input_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_aliases));
+                    if do_population_stuff
+                        trial_table_cell{repeatnum,foldnum} = horzcat(...
+                            trial_table_cell{repeatnum,foldnum},...
+                            input_margin_table,...
+                            self_margin_table,...
+                            true_margin_table);
+                    else
+                        self_margin_table = table(self_margin{:},'VariableNames',strcat([model_aliases {neural_signals}],'_self_margin'));
+                        self_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                        true_margin_table = table(true_margin{:},'VariableNames',strcat([model_aliases {neural_signals}],'_true_margin'));
+                        true_margin_table.Properties.VariableDescriptions = repmat({'linear'},1,length(model_names));
+                        trial_table_cell{repeatnum,foldnum} = horzcat(...
+                            trial_table_cell{repeatnum,foldnum},...
+                            input_margin_table);
+                    end
                 end
 
                 % construct LDA table entry
