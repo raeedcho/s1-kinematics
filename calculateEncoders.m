@@ -1,7 +1,7 @@
 %% Set up meta info
 if ispc
     homefolder = 'C:\Users\rhc307';
-    dataroot = homefolder;
+    dataroot = 'G:\raeed\';
 else
     homefolder = '/home/raeed';
     dataroot = '/data/raeed/';
@@ -12,10 +12,11 @@ file_info = dir(fullfile(datadir,'*TRT*'));
 filenames = horzcat({file_info.name})';
 savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Encoding');
 run_date = char(datetime('today','format','yyyyMMdd'));
-savesuffix = sprintf('_encodingResults_sixmodel_run%s.mat',run_date);
+savesuffix = sprintf('_encodingResults_handarm_run%s.mat',run_date);
 
-model_aliases = {'ext','ego','joint','musc','handelbow','extforce'};
+% model_aliases = {'ext','ego','joint','musc','handelbow','extforce'};
 % model_aliases = {'ext','elbow','handelbow','extforce','handelbowforce'};
+model_aliases = {'ext','handelbow'};
 arrayname = 'S1';
 num_musc_pcs = 5;
 
@@ -113,6 +114,7 @@ for filenum = 1:length(filenames)
         'arrayname',arrayname,...
         'num_tuning_bins',16,...
         'crossval_lookup',[],...
+        'get_tuning_curves',false,...
         'num_repeats',20,...
         'num_folds',5));
 

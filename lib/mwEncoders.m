@@ -23,6 +23,7 @@ function results = mwEncoders(td,params)
     model_type = 'glm';
     model_aliases = {'ext','ego','musc','handelbow'};
     arrayname = 'S1';
+    get_tuning_curves = true;
     assignParams(who,params);
     neural_signals = [arrayname '_FR'];
     unit_guide = td(1).([arrayname '_unit_guide']);
@@ -182,55 +183,58 @@ function results = mwEncoders(td,params)
     end
 
 %% Get comparison of actual tuning curves with various modeled tuning curves
-    % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
-    [~,td_pm] = getTDidx(td,'spaceNum',1);
-    [~,td_dl] = getTDidx(td,'spaceNum',2);
-
-    % use K-fold crossvalidation to get neural predictions from each model for tuning curves and PDs
-    indices = crossvalind('Kfold',length(td_pm),num_folds);
-    td_test = cell(2,num_folds);
-
-    % do the crossval
-    for foldctr = 1:num_folds
-        % split into testing and training
-        test_idx = (indices==foldctr);
-        train_idx = ~test_idx;
-        td_train = [td_pm(train_idx) td_dl(train_idx)];
-        td_test{1,foldctr} = td_pm(test_idx);
-        td_test{2,foldctr} = td_dl(test_idx);
-
-        % Fit models on training data
-        for modelnum = 1:num_models-1
-            [~,glm_info] = getModel(td_train,glm_params{modelnum});
-
-            % predict firing rates for td_test
-            for spacenum = 1:2
-                td_test{spacenum,foldctr} = getModel(td_test{spacenum,foldctr},glm_info);
-            end
-        end
-    end
-    td_tuning = {horzcat(td_test{1,:}); horzcat(td_test{2,:})};
-    
-    % get PDs and tuning curves
     pdTables = cell(2,num_models);
     tuning_curves = cell(2,num_models);
-    for modelnum = 1:num_models
-        for spacenum = 1:2
-            % First PDs
-            pd_params = struct(...
-                'out_signals',model_names{modelnum},...
-                'out_signal_names',unit_guide,...
-                'do_plot',false,...
-                'meta',struct('spaceNum',spacenum));
-            pdTables{spacenum,modelnum} = getTDClassicalPDs(td_tuning{spacenum},pd_params);
-            % pdTables{spacenum,modelnum} = getTDPDs(td_tuning{spacenum},pd_params);
+    td_tuning = [];
+    if get_tuning_curves
+        % Split td into different workspaces (workspace 1 is PM and workspace 2 is DL)
+        [~,td_pm] = getTDidx(td,'spaceNum',1);
+        [~,td_dl] = getTDidx(td,'spaceNum',2);
 
-            tuning_params = struct(...
-                'out_signals',model_names{modelnum},...
-                'out_signal_names',unit_guide,...
-                'num_bins',num_tuning_bins,...
-                'meta',struct('spaceNum',spacenum));
-            tuning_curves{spacenum,modelnum} = getTuningCurves(td_tuning{spacenum},tuning_params);
+        % use K-fold crossvalidation to get neural predictions from each model for tuning curves and PDs
+        indices = crossvalind('Kfold',length(td_pm),num_folds);
+        td_test = cell(2,num_folds);
+
+        % do the crossval
+        for foldctr = 1:num_folds
+            % split into testing and training
+            test_idx = (indices==foldctr);
+            train_idx = ~test_idx;
+            td_train = [td_pm(train_idx) td_dl(train_idx)];
+            td_test{1,foldctr} = td_pm(test_idx);
+            td_test{2,foldctr} = td_dl(test_idx);
+
+            % Fit models on training data
+            for modelnum = 1:num_models-1
+                [~,glm_info] = getModel(td_train,glm_params{modelnum});
+
+                % predict firing rates for td_test
+                for spacenum = 1:2
+                    td_test{spacenum,foldctr} = getModel(td_test{spacenum,foldctr},glm_info);
+                end
+            end
+        end
+        td_tuning = {horzcat(td_test{1,:}); horzcat(td_test{2,:})};
+
+        % get PDs and tuning curves
+        for modelnum = 1:num_models
+            for spacenum = 1:2
+                % First PDs
+                pd_params = struct(...
+                    'out_signals',model_names{modelnum},...
+                    'out_signal_names',unit_guide,...
+                    'do_plot',false,...
+                    'meta',struct('spaceNum',spacenum));
+                pdTables{spacenum,modelnum} = getTDClassicalPDs(td_tuning{spacenum},pd_params);
+                % pdTables{spacenum,modelnum} = getTDPDs(td_tuning{spacenum},pd_params);
+
+                tuning_params = struct(...
+                    'out_signals',model_names{modelnum},...
+                    'out_signal_names',unit_guide,...
+                    'num_bins',num_tuning_bins,...
+                    'meta',struct('spaceNum',spacenum));
+                tuning_curves{spacenum,modelnum} = getTuningCurves(td_tuning{spacenum},tuning_params);
+            end
         end
     end
 
@@ -248,18 +252,21 @@ function results = mwEncoders(td,params)
 
 %% create return struct
     % for cross validation plots
-    results.tuning_curves = tuning_curves;
-    results.pdTables = pdTables;
     results.crossEval = crossEval;
     results.crossTuning = crossTuning;
 
-    % for showing predictive capability
-    results.td_tuning = td_tuning;
-
-    % get names of tuned neurons
+    % get names of neurons
     signalIDs = unit_guide;
-    results.isTuned = pdTables{1,end}.velTuned & pdTables{2,end}.velTuned;
-    results.tunedNeurons = signalIDs(results.isTuned,:);
+    
+    if get_tuning_curves
+        results.tuning_curves = tuning_curves;
+        results.pdTables = pdTables;
+        results.isTuned = pdTables{1,end}.velTuned & pdTables{2,end}.velTuned;
+        results.tunedNeurons = signalIDs(results.isTuned,:);
+        
+        % for showing predictive capability
+        results.td_tuning = td_tuning;
+    end
 
     % get parameters
     results.params.num_folds = num_folds;
