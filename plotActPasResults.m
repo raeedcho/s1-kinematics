@@ -40,7 +40,7 @@
 
 %% Single neuron extraction
     fileclock = tic;
-    neuron_eval_cell = cell(length(filename),1);
+    [neuron_eval_cell,lda_table_cell] = deal(cell(length(filename),1));
     fprintf('Started loading files...\n')
     for filenum = 1:length(filename)
         % load data
@@ -54,52 +54,52 @@
         sepResults.neuron_eval_table(:,numeric_cols).Variables = numeric_vals;
 
         % start with the tables we need...
-%         average_trials = neuronAverage(...
-%             sepResults.trial_table,...
-%             struct('keycols',{{'monkey','date_time','task','trialID','isPassive'}},'do_ci',false));
-%         avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
-%             'keycols',{{'monkey','date','task','signalID'}},...
-%             'do_ci',false,...
-%             'do_nanmean',true));
-% 
-%         % try a histogram version of neuron v firing rate
-%         figure('defaultaxesfontsize',18)
-%         ax = zeros(size(average_trials.S1_FR,2),1);
-%         % here we know that there are only a finite number of possibilities
-%         possible_FR = unique(average_trials.S1_FR);
-%         % split into active and passive
-%         [~,act_trials] = getNTidx(average_trials,'isPassive',false);
-%         [~,pas_trials] = getNTidx(average_trials,'isPassive',true);
-%         for neuronnum = 1:size(average_trials.S1_FR,2)
-%             ax(neuronnum) = subplot(1,size(average_trials.S1_FR,2),neuronnum);
-% 
-%             % get counts of fr in the unique bins
-%             act_counts = histcounts(act_trials.S1_FR(:,neuronnum),[possible_FR;Inf]);
-%             pas_counts = histcounts(pas_trials.S1_FR(:,neuronnum),[possible_FR;Inf]);
-% 
-%             % plot bars for each
-%             % plot([0 0],[possible_FR(1) possible_FR(end)])
-%             barh(possible_FR',act_counts,1,'FaceColor','k','EdgeColor','none','FaceAlpha',0.5)
-%             hold on
-%             barh(possible_FR',pas_counts,1,'FaceColor','r','EdgeColor','none','FaceAlpha',0.5)
-% 
-%             % print out separabilities...
-%             title(sprintf('%2.0f',avg_neuron_eval.S1_FR_indiv_sep(neuronnum,:)*100))
-% 
-%             % set(gca,'box','off','tickdir','out')
-%             axis off
-%         end
-%         subplot(1,size(average_trials.S1_FR,2),1)
-%         axis on
-%         set(gca,'box','off','tickdir','out','xtick',[])
-%         ylabel('Firing rate (Hz)')
-%         suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
-%         linkaxes(ax,'y')
-%         saveas(gcf,fullfile(figdir,sprintf(...
-%             '%s_%s_actpasFR_run%s.pdf',...
-%             sepResults.neuron_eval_table.monkey{1},...
-%             strrep(sepResults.neuron_eval_table.date{1},'/',''),...
-%             run_date)))
+        % average_trials = neuronAverage(...
+        %     sepResults.trial_table,...
+        %     struct('keycols',{{'monkey','date_time','task','trialID','isPassive'}},'do_ci',false));
+        % avg_neuron_eval = neuronAverage(sepResults.neuron_eval_table,struct(...
+        %     'keycols',{{'monkey','date','task','signalID'}},...
+        %     'do_ci',false,...
+        %     'do_nanmean',true));
+  
+        % % try a histogram version of neuron v firing rate
+        % figure('defaultaxesfontsize',18)
+        % ax = zeros(size(average_trials.S1_FR,2),1);
+        % % here we know that there are only a finite number of possibilities
+        % possible_FR = unique(average_trials.S1_FR);
+        % % split into active and passive
+        % [~,act_trials] = getNTidx(average_trials,'isPassive',false);
+        % [~,pas_trials] = getNTidx(average_trials,'isPassive',true);
+        % for neuronnum = 1:size(average_trials.S1_FR,2)
+        %     ax(neuronnum) = subplot(1,size(average_trials.S1_FR,2),neuronnum);
+  
+        %     % get counts of fr in the unique bins
+        %     act_counts = histcounts(act_trials.S1_FR(:,neuronnum),[possible_FR;Inf]);
+        %     pas_counts = histcounts(pas_trials.S1_FR(:,neuronnum),[possible_FR;Inf]);
+  
+        %     % plot bars for each
+        %     % plot([0 0],[possible_FR(1) possible_FR(end)])
+        %     barh(possible_FR',act_counts,1,'FaceColor','k','EdgeColor','none','FaceAlpha',0.5)
+        %     hold on
+        %     barh(possible_FR',pas_counts,1,'FaceColor','r','EdgeColor','none','FaceAlpha',0.5)
+  
+        %     % print out separabilities...
+        %     title(sprintf('%2.0f',avg_neuron_eval.S1_FR_indiv_sep(neuronnum,:)*100))
+  
+        %     % set(gca,'box','off','tickdir','out')
+        %     axis off
+        % end
+        % subplot(1,size(average_trials.S1_FR,2),1)
+        % axis on
+        % set(gca,'box','off','tickdir','out','xtick',[])
+        % ylabel('Firing rate (Hz)')
+        % suptitle(sprintf('%s %s',sepResults.neuron_eval_table.monkey{1},sepResults.neuron_eval_table.date{1}))
+        % linkaxes(ax,'y')
+        % saveas(gcf,fullfile(figdir,sprintf(...
+        %     '%s_%s_actpasFR_run%s.pdf',...
+        %     sepResults.neuron_eval_table.monkey{1},...
+        %     strrep(sepResults.neuron_eval_table.date{1},'/',''),...
+        %     run_date)))
 
         % compile neuron eval table together
         neuron_eval_cell{filenum} = sepResults.neuron_eval_table;
@@ -297,16 +297,16 @@
                 set(gca,'box','off','tickdir','out',...
                     'xlim',[-0.7 0.7],'ylim',[-0.7 0.7])
                 axis equal
-%                 if monkeynum ~= 1 || condnum ~= 1
-%                     set(gca,'box','off','tickdir','out',...
-%                         'xtick',[],'ytick',[])
-%                 end
+                % if monkeynum ~= 1 || condnum ~= 1
+                %     set(gca,'box','off','tickdir','out',...
+                %         'xtick',[],'ytick',[])
+                % end
                 xlabel(sprintf('%s pR2, trained full, tested %s',getModelTitles(models_to_plot{modelnum}),conds{condnum}))
                 ylabel(sprintf('%s pR2, trained %s, tested %s',getModelTitles(models_to_plot{modelnum}),conds{condnum},conds{condnum}))
             end
         end
-%         suptitle('Full pR^2 vs within condition pR^2')
-%         saveas(gcf,fullfile(figdir,sprintf('actpas_%s_pr2_full_v_within_run%s.pdf',models_to_plot{modelnum},run_date)))
+        % suptitle('Full pR^2 vs within condition pR^2')
+        % saveas(gcf,fullfile(figdir,sprintf('actpas_%s_pr2_full_v_within_run%s.pdf',models_to_plot{modelnum},run_date)))
     end
 
     % try a line graph of the above
@@ -407,7 +407,7 @@
             end
         end
         suptitle('Neural separability vs pR^2')
-%         saveas(gcf,fullfile(figdir,sprintf('actpas_%s_sepvpr2_run%s.pdf',models_to_plot{modelnum},run_date)))
+        % saveas(gcf,fullfile(figdir,sprintf('actpas_%s_sepvpr2_run%s.pdf',models_to_plot{modelnum},run_date)))
     end
 
     % get correlation values for each crossval
@@ -422,11 +422,11 @@
         % get correlations
         model_corr = cell(1,length(models_to_plot)-1);
         for modelnum = 2:length(models_to_plot)
-%             vaf_modelsep_neuronsep = ...
-%                 1 - ...
-%                 sum((neuron_eval_select.S1_FR_indiv_sep-neuron_eval_select.(sprintf('%s_indiv_sep',models_to_plot{modelnum}))).^2)/...
-%                 sum((neuron_eval_select.S1_FR_indiv_sep-mean(neuron_eval_select.S1_FR_indiv_sep)).^2);
-%             corr_modelsep_neuronsep = corr(neuron_eval_select.S1_FR_indiv_sep,neuron_eval_select.(sprintf('%s_indiv_sep',models_to_plot{modelnum})),'rows','complete');
+            % vaf_modelsep_neuronsep = ...
+            %     1 - ...
+            %     sum((neuron_eval_select.S1_FR_indiv_sep-neuron_eval_select.(sprintf('%s_indiv_sep',models_to_plot{modelnum}))).^2)/...
+            %     sum((neuron_eval_select.S1_FR_indiv_sep-mean(neuron_eval_select.S1_FR_indiv_sep)).^2);
+            % corr_modelsep_neuronsep = corr(neuron_eval_select.S1_FR_indiv_sep,neuron_eval_select.(sprintf('%s_indiv_sep',models_to_plot{modelnum})),'rows','complete');
             corr_pr2_neuronsep = corr(neuron_eval_select.S1_FR_indiv_sep,neuron_eval_select.(sprintf('%s_eval',models_to_plot{modelnum})),'rows','complete');
             corr_actpr2_neuronsep = corr(neuron_eval_select.S1_FR_indiv_sep,neuron_eval_select.(sprintf('%s_act_eval',models_to_plot{modelnum})),'rows','complete');
             corr_paspr2_neuronsep = corr(neuron_eval_select.S1_FR_indiv_sep,neuron_eval_select.(sprintf('%s_pas_eval',models_to_plot{modelnum})),'rows','complete');
@@ -571,8 +571,166 @@
                 'ylim',[-1 1],'ytick',[-1 -0.5 0 0.5 1])
         end
         suptitle(models_to_plot{modelnum})
-%         saveas(gcf,fullfile(figdir,sprintf('actpas_indivneuron_%s_pr2separabilityCorr_run%s.pdf',models_to_plot{modelnum},run_date)))
+        % saveas(gcf,fullfile(figdir,sprintf('actpas_indivneuron_%s_pr2separabilityCorr_run%s.pdf',models_to_plot{modelnum},run_date)))
     end
+
+%% Onset latency stuff
+    load(fullfile(datadir,'neuralOnsetLatencies_run20191120.mat'))
+
+    % get tightest latency over direction for each neuron
+        monkey_names = {'Chips'};
+        conds = {'act','pas'};
+        tight_monkey_table = cell(length(monkey_names),1);
+        for monkeynum = 1:length(monkey_names)
+            [~,monkey_table] = getNTidx(latency_table,'monkey',monkey_names{monkeynum});
+            session_dates = unique(monkey_table.date);
+            tight_session_table = cell(length(session_dates),1);
+            for sessionnum = 1:length(session_dates)
+                [~,session_table] = getNTidx(monkey_table,'date',session_dates{sessionnum});
+        
+                signalID = unique(session_table.signalID,'rows');
+                tight_neuron_table = cell(length(conds),size(signalID,1));
+                for condnum = 1:length(conds)
+                    for signum = 1:size(signalID,1)
+                        [~,cond_table] = getNTidx(session_table,...
+                            'isPassive',strcmpi(conds{condnum},'pas'),...
+                            'signalID',signalID(signum,:));
+                
+                        % find tightest CI over all directions for the given neuron
+                        [~,tightest_idx] = min(cond_table.onsetLatencyCIHi-cond_table.onsetLatencyCILo);
+                        tight_neuron_table{condnum,signum} = cond_table(tightest_idx,:);
+                    end
+                end
+                tight_session_table{sessionnum} = vertcat(tight_neuron_table{:});
+            end
+            tight_monkey_table{monkeynum} = vertcat(tight_session_table{:});
+        end
+        tight_latency_table = vertcat(tight_monkey_table{:});
+
+    % plot model consistency (pR2 of model trained on both, evaluated on one) against onset latency
+    conds = {'act','pas'};
+    for modelnum = 2:length(models_to_plot)
+        figure('defaultaxesfontsize',18)
+        for monkeynum = 1:length(monkey_names)
+            for condnum = 1:length(conds)
+                % set subplot
+                subplot(2,length(monkey_names),(condnum-1)*length(monkey_names)+monkeynum)
+                plot([0 0],[-0.3 0.3],'k-','linewidth',0.5)
+                hold on
+                plot([-0.7 0.7],[0 0],'k-','linewidth',0.5)
+
+                % get monkey table to figure out session dates
+                [~,monkey_table] = getNTidx(tight_latency_table,'monkey',monkey_names{monkeynum});
+                session_dates = unique(monkey_table.date);
+
+                for sessionnum = 1:length(session_dates)
+                    % get eval table for this session
+                    [~,avg_pR2] = getNTidx(avg_neuron_eval,...
+                        'monkey',monkey_names{monkeynum},...
+                        'date',session_dates{sessionnum});
+        
+                    % get only entries for given condition in session
+                    [~,cond_table] = getNTidx(tight_latency_table,...
+                        'monkey',monkey_names{monkeynum},...
+                        'date',session_dates{sessionnum},...
+                        'isPassive',strcmpi(conds{condnum},'pas'));
+
+                    % join tables
+                    pr2_latency_table = join(avg_pR2,cond_table);
+
+                    % get model consistency value
+                    model_consistency = pr2_latency_table.(sprintf('%s_%s_eval',models_to_plot{modelnum},conds{condnum}));
+                    neuron_separability = pr2_latency_table.S1_FR_indiv_sep;
+                    onset_latency = pr2_latency_table.onsetLatency;
+
+                    % remove latencies with CIwidth > 100 ms
+                    wide_lat_idx = ((pr2_latency_table.onsetLatencyCIHi-pr2_latency_table.onsetLatencyCILo)>0.1);
+                    onset_latency(wide_lat_idx) = NaN;
+
+                    % plot the stuff
+                    scatterlims(...
+                        [-0.7 0.7],...
+                        [-0.3 0.3],...
+                        model_consistency,...
+                        pr2_latency_table.onsetLatency,...
+                        [],session_colors(sessionnum,:),'filled')
+
+                    plot(...
+                        repmat(model_consistency(~wide_lat_idx),1,2)',...
+                        pr2_latency_table{~wide_lat_idx,{'onsetLatencyCILo','onsetLatencyCIHi'}}',...
+                        'linewidth',2,'color',session_colors(sessionnum,:))
+                end
+
+                % make axes pretty
+                set(gca,'box','off','tickdir','out',...
+                    'xlim',[-0.7 0.7],'ylim',[-0.3 0.3])
+                xlabel(sprintf('%s pR2, trained full, tested %s',models_to_plot{modelnum},conds{condnum}))
+                ylabel(sprintf('%s onset latency (s)',conds{condnum}))
+            end
+        end
+    end
+
+    % plot neuron separability against onset latency
+    conds = {'act','pas'};
+    figure('defaultaxesfontsize',18)
+    for monkeynum = 1:length(monkey_names)
+        for condnum = 1:length(conds)
+            % set subplot
+            subplot(2,length(monkey_names),(condnum-1)*length(monkey_names)+monkeynum)
+            plot([0 0],[-0.3 0.3],'k-','linewidth',0.5)
+            hold on
+            plot([0 1],[0 0],'k-','linewidth',0.5)
+            plot([0.5 0.5],[-0.3 0.3],'k--','linewidth',0.5)
+
+            % get monkey table to figure out session dates
+            [~,monkey_table] = getNTidx(tight_latency_table,'monkey',monkey_names{monkeynum});
+            session_dates = unique(monkey_table.date);
+
+            for sessionnum = 1:length(session_dates)
+                % get eval table for this session
+                [~,avg_pR2] = getNTidx(avg_neuron_eval,...
+                    'monkey',monkey_names{monkeynum},...
+                    'date',session_dates{sessionnum});
+    
+                % get only entries for given condition in session
+                [~,cond_table] = getNTidx(tight_latency_table,...
+                    'monkey',monkey_names{monkeynum},...
+                    'date',session_dates{sessionnum},...
+                    'isPassive',strcmpi(conds{condnum},'pas'));
+
+                % join tables
+                pr2_latency_table = join(avg_pR2,cond_table);
+
+                % get model consistency value
+                neuron_separability = pr2_latency_table.S1_FR_indiv_sep;
+                onset_latency = pr2_latency_table.onsetLatency;
+
+                % remove latencies with CIwidth > 100 ms
+                wide_lat_idx = ((pr2_latency_table.onsetLatencyCIHi-pr2_latency_table.onsetLatencyCILo)>0.1);
+                onset_latency(wide_lat_idx) = NaN;
+
+                % plot the stuff
+                scatterlims(...
+                    [0 1],...
+                    [-0.3 0.3],...
+                    neuron_separability,...
+                    pr2_latency_table.onsetLatency,...
+                    [],session_colors(sessionnum,:),'filled')
+
+                plot(...
+                    repmat(neuron_separability(~wide_lat_idx),1,2)',...
+                    pr2_latency_table{~wide_lat_idx,{'onsetLatencyCILo','onsetLatencyCIHi'}}',...
+                    'linewidth',2,'color',session_colors(sessionnum,:))
+            end
+
+            % make axes pretty
+            set(gca,'box','off','tickdir','out',...
+                'xlim',[0 1],'ylim',[-0.3 0.3])
+            xlabel(sprintf('Separability index',models_to_plot{modelnum},conds{condnum}))
+            ylabel(sprintf('%s onset latency (s)',conds{condnum}))
+        end
+    end
+
 
 %% Make summary plots
     % plot session average connected by lines...
