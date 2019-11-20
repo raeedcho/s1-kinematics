@@ -252,21 +252,30 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
 %% Fit models
     % set up parameters for models
     glm_info = cell(1,length(model_names)-1);
+    glm_info_within = cell(2,length(model_names)-1);
     for modelnum = 1:length(model_names)-1
         [~,glm_info{modelnum}] = getModel(td_train,glm_params{modelnum});
+        
+        % get models for training on individual workspaces
+        for spacenum = 1:2
+            [~,td_train_space] = getTDidx(td_train,'spaceNum',spacenum);
+            [~,glm_info_within{spacenum,modelnum}] = getModel(td_train_space,glm_params{modelnum});
+        end
     end
 
     % Predict firing rates
+    td_test_within = td_test;
     for modelnum = 1:length(model_names)-1
         for spacenum = 1:2
             td_test{spacenum} = getModel(td_test{spacenum},glm_info{modelnum});
+            td_test_within{spacenum} = getModel(td_test_within{spacenum},glm_info_within{spacenum,modelnum});
         end
     end
 
     % Evaluate model fits and add to foldEval table
     foldEval = makeNeuronTableStarter(td_train,struct('out_signal_names',unit_guide,'meta',struct('crossvalID',crossvalID)));
     model_eval = cell(1,length(model_names)-1);
-    space_model_eval = cell(2,length(model_names)-1);
+    [space_model_eval,space_model_eval_within] = deal(cell(2,length(model_names)-1));
     eval_params = glm_info;
     for modelnum = 1:length(model_names)-1
         eval_params{modelnum}.eval_metric = model_eval_metric;
@@ -282,9 +291,14 @@ function [foldEval,foldTuning] = analyzeFold(td_train,td_test,params)
                 squeeze(evalModel(td_test{spacenum},eval_params{modelnum}))',...
                 'VariableNames',{sprintf('%s_space%d_eval',model_names{modelnum},spacenum)});
             space_model_eval{spacenum,modelnum}.Properties.VariableDescriptions = {'linear'};
+            
+            space_model_eval_within{spacenum,modelnum} = array2table(...
+                squeeze(evalModel(td_test_within{spacenum},eval_params{modelnum}))',...
+                'VariableNames',{sprintf('%s_space%d_within_eval',model_names{modelnum},spacenum)});
+            space_model_eval_within{spacenum,modelnum}.Properties.VariableDescriptions = {'linear'};
         end
     end
-    foldEval = horzcat(foldEval, model_eval{:}, space_model_eval{:});
+    foldEval = horzcat(foldEval, model_eval{:}, space_model_eval{:}, space_model_eval_within{:});
 
 %% Get extrinsic test tuning (to calculate later quantities from)
     tempTuningTable = cell(2,1);
