@@ -573,12 +573,15 @@
         suptitle(models_to_plot{modelnum})
         % saveas(gcf,fullfile(figdir,sprintf('actpas_indivneuron_%s_pr2separabilityCorr_run%s.pdf',models_to_plot{modelnum},run_date)))
     end
+    
+%% significance testing for inconsistencies in model
+    for modelnum = 2:length(models_to_plot)
+    end
 
 %% Onset latency stuff
     load(fullfile(datadir,'neuralOnsetLatencies_run20191120.mat'))
 
     % get tightest latency over direction for each neuron
-        monkey_names = {'Chips'};
         conds = {'act','pas'};
         tight_monkey_table = cell(length(monkey_names),1);
         for monkeynum = 1:length(monkey_names)
@@ -609,7 +612,7 @@
 
     % plot model consistency (pR2 of model trained on both, evaluated on one) against onset latency
     conds = {'act','pas'};
-    for modelnum = 2:length(models_to_plot)
+    for modelnum = 3%2:length(models_to_plot)
         figure('defaultaxesfontsize',18)
         for monkeynum = 1:length(monkey_names)
             for condnum = 1:length(conds)
@@ -652,7 +655,7 @@
                         [-0.7 0.7],...
                         [-0.3 0.3],...
                         model_consistency,...
-                        pr2_latency_table.onsetLatency,...
+                        onset_latency,...
                         [],session_colors(sessionnum,:),'filled')
 
                     plot(...
@@ -714,7 +717,7 @@
                     [0 1],...
                     [-0.3 0.3],...
                     neuron_separability,...
-                    pr2_latency_table.onsetLatency,...
+                    onset_latency,...
                     [],session_colors(sessionnum,:),'filled')
 
                 plot(...
