@@ -33,18 +33,48 @@ function plotExampleFR(trial_data,params)
             end
             plot(trial_starttime:bin_size:trial_endtime-bin_size,...
                 temp_pred','color',model_colors(modelnum,:),'linewidth',2)
-
-            % ax1 = subplot(2,1,1);
-            % plot(temp_vel(:,1),'b','linewidth',2)
-            % hold on
-            % plot(temp_vel(:,2),'g','linewidth',2)
-            % set(gca,'box','off','tickdir','out')
-            % 
-            % ax2 = subplot(2,1,2);
         end
         ylims = get(gca,'ylim');
         plot([trial_starttime trial_starttime],ylims,'--k','linewidth',2)
         plot([trial_endtime trial_endtime],ylims,'--k','linewidth',2)
     end
     set(gca,'box','off','tickdir','out')
+end
+
+function model_colors = getModelColors(model_alias)
+% get model colors, given a list of aliases
+    if ~iscell(model_alias)
+        model_alias = {model_alias};
+    end
+    model_colors = zeros(length(model_alias),3);
+    for modelnum = 1:length(model_alias)
+        switch model_alias{modelnum}
+        case 'ext'
+            model_colors(modelnum,:) = [247, 148, 30]/255;
+        case 'extforce'
+            model_colors(modelnum,:) = [38, 34, 98]/255;
+        case 'opensim_ext'
+            model_colors(modelnum,:) = [247, 148, 30]/255;
+        case 'ego'
+            model_colors(modelnum,:) = [105, 189, 69]/255;
+        case 'opensim_ego'
+            model_colors(modelnum,:) = [105, 189, 69]/255;
+        case 'cyl'
+            model_colors(modelnum,:) = [113, 191, 110]/255;
+        case 'opensim_cyl'
+            model_colors(modelnum,:) = [113, 191, 110]/255;
+        case 'joint'
+            model_colors(modelnum,:) = [38, 34, 98]/255;
+        case 'musc'
+            model_colors(modelnum,:) = [0, 174, 239]/255;
+        case 'handelbow'
+            model_colors(modelnum,:) = [193, 25, 47]/255;
+        case 'opensim_handelbow'
+            model_colors(modelnum,:) = [179, 44, 224]/255;
+        case 'ego_handelbow'
+            model_colors(modelnum,:) = [119, 255, 189]/255;
+        case 'ext_actpasbaseline'
+            model_colors(modelnum,:) = [119, 255, 189]/255;
+        end
+    end
 end

@@ -51,32 +51,3 @@
             'cmap',rf_colormap.receptive_field_color));
 
         rf_map = join(rf_map,lm_table);
-
-    % Test out predicted vs actual distalness
-        % figure('defaultaxesfontsize',18)
-        % for monkeynum = 1:height(monkeys)
-        %     for sessionnum = 1:num_sessions(monkeynum)
-        %         % get current session
-        %         [~,rf_map_session] = getNTidx(rf_map,...
-        %             'monkey',monkeys{monkeynum,1},...
-        %             'date',session_dates{monkeynum}{sessionnum});
-
-        %         % set subplot
-        %         plotnum = (monkeynum-1)*num_subplot_cols+sessionnum;
-        %         subplot(num_subplot_rows,num_subplot_cols,plotnum)
-
-        %         lm = rf_map_session.distalness_model{1};
-        %         scatter(...
-        %             lm.predict(rf_map_session(:,{'rowNum','colNum'})),...
-        %             rf_map_session.rf_distalness,...
-        %             [],'k','filled')
-        %         hold on
-        %         plot([0 7],[0 7],'--k','linewidth',2)
-        %         title(vertcat(monkeys{monkeynum,1},session_dates{monkeynum}(sessionnum)))
-        %         xlabel('Predicted rf distalness (au)')
-        %         ylabel('Receptive field distalness (au)')
-        %         set(gca,'box','off','tickdir','out',...
-        %             'xlim',[0 7],'ylim',[0 7])
-        %     end
-        % end
-
