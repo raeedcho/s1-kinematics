@@ -16,9 +16,9 @@
     end
     
     % load data
-    datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library','lib-s1-kin-paper');
-    file_data = load(fullfile(datadir,'twoworkspace_trim_TD.mat'));
-    trial_data_cell = file_data.trial_data_cell;
+    datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library');
+    file_info = dir(fullfile(datadir,'*TRT*'));
+    filenames = horzcat({file_info.name})';
     
     % save directory information (for convenience, since this code takes a while)
     savefile = true;
@@ -40,6 +40,88 @@
         102,194,165;...
         252,141,98;...
         141,160,203]/255;
+
+%% Loop through trial data files to clean up
+    trial_data_cell = cell(1,length(filenames));
+    for filenum = 1:length(filenames)
+        %% Load data
+        td = load(fullfile(datadir,[filenames{filenum}]));
+    
+        % rename trial_data for ease
+        td = td.trial_data;
+
+        % first process marker data
+        % find times when markers are NaN and replace with zeros temporarily
+        for trialnum = 1:length(td)
+            markernans = isnan(td(trialnum).markers);
+            td(trialnum).markers(markernans) = 0;
+            td(trialnum) = smoothSignals(td(trialnum),struct('signals','markers'));
+            td(trialnum).markers(markernans) = NaN;
+            clear markernans
+        end
+    
+        % get marker velocity
+        td = getDifferential(td,struct('signals','markers','alias','marker_vel'));
+        
+        % remove unsorted neurons
+        unit_ids = td(1).S1_unit_guide;
+        unsorted_units = (unit_ids(:,2)==0);
+        new_unit_guide = unit_ids(~unsorted_units,:);
+        for trialnum = 1:length(td)
+            td(trialnum).(sprintf('%s_unit_guide',arrayname)) = new_unit_guide;
+            
+            spikes = td(trialnum).(sprintf('%s_spikes',arrayname));
+            spikes(:,unsorted_units) = [];
+            td(trialnum).(sprintf('%s_spikes',arrayname)) = spikes;
+        end
+        
+        % add firing rates in addition to spike counts
+        td = addFiringRates(td,struct('array',arrayname));
+    
+        % prep trial data by getting only rewards and trimming to only movements
+        % split into trials
+        td = splitTD(...
+            td,...
+            struct(...
+                'split_idx_name','idx_startTime',...
+                'linked_fields',{{...
+                    'trialID',...
+                    'result',...
+                    'spaceNum',...
+                    'bumpDir',...
+                    }},...
+                'start_name','idx_startTime',...
+                'end_name','idx_endTime'));
+        [~,td] = getTDidx(td,'result','R');
+        td = reorderTDfields(td);
+    
+        % for active movements
+        % remove trials without a target start (for whatever reason)
+        td(isnan(cat(1,td.idx_targetStartTime))) = [];
+        td = trimTD(td,{'idx_targetStartTime',0},{'idx_endTime',0});
+    
+        % remove trials where markers aren't present
+        bad_trial = false(length(td),1);
+        for trialnum = 1:length(td)
+            if any(any(isnan(td(trialnum).markers)))
+                bad_trial(trialnum) = true;
+            end
+        end
+        td(bad_trial) = [];
+        fprintf('Removed %d trials because of missing markers\n',sum(bad_trial))
+        
+        % remove trials where muscles aren't present
+        bad_trial = false(length(td),1);
+        for trialnum = 1:length(td)
+            if any(any(isnan(td(trialnum).muscle_len) | isnan(td(trialnum).muscle_vel)))
+                bad_trial(trialnum) = true;
+            end
+        end
+        td(bad_trial) = [];
+        fprintf('Removed %d trials because of missing muscles\n',sum(bad_trial))
+
+        trial_data_cell{filenum} = td;
+    end
 
 %% Plot example rasters
     num_trials = 2;
@@ -84,7 +166,7 @@
     end
 
 %% Loop through files to cross-validate encoders
-    fprintf('Starting analysis of %d files. Warning: cross-validation will take a long time',length(trial_data_cell))
+    fprintf('Starting analysis of %d files. Warning: cross-validation will take a long time\n',length(trial_data_cell))
     encoderResults_cell = cell(length(trial_data_cell),1);
     for filenum = 1:length(trial_data_cell)
         % Load data
