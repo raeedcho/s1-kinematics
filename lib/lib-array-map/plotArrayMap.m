@@ -28,8 +28,7 @@ function lm_table = plotArrayMap(array_map,params)
     
     %% join array map with electrode map
     % load in electrode maps
-    elec_map = load(fullfile(mapdir,'elec-map.mat'));
-    elec_map = elec_map.elec_map;
+    elec_map = readtable(fullfile(mapdir,'elec_map.csv'));
     
     % attach array locations to the receptive fields
     array_map = join(array_map,elec_map);
@@ -186,8 +185,8 @@ function array_rot = getArrayRotationTable()
     
     % array rotations (such that medial is down and anterior is to the right, i.e. for Left S1)
     array_rot = {...
-        'Chips',[-55 90];...
-        'Han',[-30 90];...
-        'Lando',[0 90]};
+        'C',[-55 90];...
+        'H',[-30 90];...
+        'L',[0 90]};
     array_rot = cell2table(array_rot,'VariableNames',{'monkey','array_rotation'});
 end
