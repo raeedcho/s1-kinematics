@@ -106,13 +106,13 @@
 
 %% save encoder results
     if savefile
-        fprintf('Saving encoder results files...')
+        fprintf('Saving encoder results files...\n')
         save(fullfile(savedir,savename),'encoderResults_cell')
     end
 
 %% load encoder results (assuming a break)
     if savefile
-        fprintf('Loading encoder results files...')
+        fprintf('Loading encoder results files...\n')
         load(fullfile(savedir,savename))
     end
 
@@ -290,15 +290,15 @@
     all_pr2_winners = horzcat(pr2_winners{:});
     ext_winners = sum(strcmpi(all_pr2_winners,'ext'),2);
     handelbow_winners = sum(strcmpi(all_pr2_winners,'handelbow'),2);
-    fprintf('pR2 winners -- hand-only: %d, whole-arm: %d',ext_winners,handelbow_winners)
+    fprintf('pR2 winners -- hand-only: %d, whole-arm: %d\n',ext_winners,handelbow_winners)
 
     % make the pairwise comparison scatter plot
     figure
     for monkeynum = 1:length(monkey_names)
         for pairnum = 1:size(model_pairs,1)
             % set subplot
-            subplot(length(monkey_names),size(model_pairs,1),...
-                (monkeynum-1)*size(model_pairs,1)+pairnum)
+            subplot(size(model_pairs,1),length(monkey_names),...
+                (pairnum-1)*length(monkey_names)+monkeynum)
             plot([-1 1],[-1 1],'k--','linewidth',0.5)
             hold on
             plot([0 0],[-1 1],'k-','linewidth',0.5)
@@ -386,15 +386,15 @@
     all_tuning_corr_winners = horzcat(tuning_corr_winners{:});
     ext_winners = sum(strcmpi(all_tuning_corr_winners,'ext'),2);
     handelbow_winners = sum(strcmpi(all_tuning_corr_winners,'handelbow'),2);
-    fprintf('tuning correlation winners -- hand-only: %d, whole-arm: %d',ext_winners,handelbow_winners)
+    fprintf('tuning correlation winners -- hand-only: %d, whole-arm: %d\n',ext_winners,handelbow_winners)
 
     % make the pairwise comparison scatter plot
     figure
     for monkeynum = 1:length(monkey_names)
         for pairnum = 1:size(model_pairs,1)
             % set subplot
-            subplot(length(monkey_names),size(model_pairs,1),...
-                (monkeynum-1)*size(model_pairs,1)+pairnum)
+            subplot(size(model_pairs,1),length(monkey_names),...
+                (pairnum-1)*length(monkey_names)+monkeynum)
             plot([-1 1],[-1 1],'k--','linewidth',0.5)
             hold on
             plot([0 0],[-1 1],'k-','linewidth',0.5)
@@ -458,39 +458,38 @@
             ylim_high = 40;
             % actual PD shift histogram
             figure(total_hists)
-            subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
+            subplot(length(models_to_plot)+1,length(monkey_names),monkeynum)
             h = histogram(gca,monkey_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
             set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
-            set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
-            ylabel(monkey_names{monkeynum})
+            set(gca,...
+                'box','off','tickdir','out',...
+                'xlim',[-180 180],'xtick',[-180 0 180],...
+                'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high])
+            title(sprintf('Monkey %s',monkey_names{monkeynum}))
             if monkeynum == 1
-                title('Actual PD Shift')
+                ylabel('Actual PD Shift')
             end
             for modelnum = 1:length(models_to_plot)
                 allFileShifts_model = vertcat(file_shifts{:,modelnum});
                 [~,monkey_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum});
 
                 % modeled PD shift histogram
-                subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
+                subplot(length(models_to_plot)+1,length(monkey_names),modelnum*length(monkey_names)+monkeynum)
                 h = histogram(gca,monkey_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
                 set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
-                set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
+                set(gca,...
+                    'box','off','tickdir','out',...
+                    'xlim',[-180 180],'xtick',[-180 0 180],...
+                    'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high])
                 if monkeynum == 1
-                    title(sprintf('%s modeled PD shift',getModelTitles(models_to_plot{modelnum})))
+                    ylabel(sprintf('%s modeled PD shift',getModelTitles(models_to_plot{modelnum})))
                 end
             end
 
-        % make plots separating sessions
+        % make scatter plots separating sessions
             for sessionnum = 1:length(session_dates)
                 % get real shifts for this session
                 [~,session_shifts_real] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
-
-                % first the real PD shift histogram
-                % figure(hists)
-                % subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
-                % h = histogram(gca,session_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
-                % set(h,'facecolor',session_colors(sessionnum,:),'edgecolor','none')
-                % hold on
 
                 % now the models
                 for modelnum = 1:length(models_to_plot)
@@ -498,62 +497,41 @@
                     allFileShifts_model = vertcat(file_shifts{:,modelnum});
                     [~,session_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
 
-                    % % modeled PD shift histogram
-                    % figure(hists)
-                    % subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
-                    % h = histogram(gca,session_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
-                    % set(h,'facecolor',session_colors(sessionnum,:),'edgecolor','none')
-                    % hold on
-
                     % scatter plots
                     figure(scatters)
-                    subplot(length(monkey_names),length(models_to_plot),(monkeynum-1)*(length(models_to_plot))+modelnum)
-                    % hsh = scatterhist(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,...
-                    %     'markersize',50,'group',allFileShifts_real.monkey,'location','NorthWest',...
-                    %     'direction','out','plotgroup','off','color',monkey_colors,'marker','...',...
-                    %     'nbins',[15 15],'style','stairs');
-                    % hsh(3).Children.EdgeColor = [0 0 0];
-                    % hsh(2).Children.EdgeColor = model_colors(modelnum,:);
-                    scatter(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,50,session_colors(sessionnum,:),'filled')
+                    subplot(length(models_to_plot),length(monkey_names),(modelnum-1)*length(monkey_names)+monkeynum)
+                    scatter(...
+                        180/pi*session_shifts_real.velPD,...
+                        180/pi*session_shifts_model.velPD,...
+                        50,session_colors(sessionnum,:),'filled')
                     hold on
                 end
             end
-            % make axes pretty
-            % figure(hists)
-            % subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+1)
-            % set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
-            % ylabel(monkey_names{monkeynum})
-            % if monkeynum == 1
-            %     title('Actual PD Shift')
-            % end
-            for modelnum = 1:length(models_to_plot)
-                % histograms
-                % figure(hists)
-                % subplot(length(monkey_names),length(models_to_plot)+1,(monkeynum-1)*(length(models_to_plot)+1)+modelnum+1)
-                % set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 15],'ytick',[0 15 30],'view',[-90 90])
-                % if monkeynum == 1
-                %     title(sprintf('%s modeled PD shift',getModelTitles(models_to_plot{modelnum})))
-                % end
 
+            % make plots pretty
+            for modelnum = 1:length(models_to_plot)
                 % scatter plots
                 figure(scatters)
-                subplot(length(monkey_names),length(models_to_plot),(monkeynum-1)*length(models_to_plot)+modelnum)
+                subplot(length(models_to_plot),length(monkey_names),(modelnum-1)*length(monkey_names)+monkeynum)
                 plot([-180 180],[0 0],'-k','linewidth',2)
                 plot([0 0],[-180 180],'-k','linewidth',2)
                 plot([-180 180],[-180 180],'--k','linewidth',2)
                 axis equal
-                set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
+                set(gca,...
+                    'box','off','tickdir','out',...
+                    'xtick',[-180 180],'ytick',[-180 180],...
+                    'xlim',[-180 180],'ylim',[-180 180])
                 % labels
-                if monkeynum == length(monkey_names)
-                    xlabel 'Modeled PD Shift'
+                if modelnum == length(models_to_plot)
+                    xlabel('Actual PD Shift')
                 end
                 if modelnum == 1
-                    ylabel({monkey_names{monkeynum};'Actual PD Shift'})
-                    ylbl = get(gca,'ylabel');
-                    set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','right')
+                    title(sprintf('Monkey %s',monkey_names{monkeynum}))
                 end
                 if monkeynum == 1
-                    title(sprintf('%s model',getModelTitles(models_to_plot{modelnum})),'interpreter','none')
+                    ylabel(...
+                        {sprintf('%s model',getModelTitles(models_to_plot{modelnum}));'Modeled PD Shift'},...
+                        'interpreter','none')
                 end
             end
     end
@@ -571,7 +549,7 @@
                         shift_vaf{monkeynum,sessionnum},struct(...
                             'bonferroni_correction',6,...
                             'models',{models_to_plot},...
-                            'model_pairs',{{'ext','handelbow';'extforce','handelbow'}},...
+                            'model_pairs',{{'ext','handelbow'}},...
                             'postfix','_vaf'));
             end
         end
@@ -589,7 +567,7 @@
                         shift_vaf_session,struct(...
                             'bonferroni_correction',6,...
                             'models',{models_to_plot},...
-                            'model_pairs',{{'ext','handelbow';'extforce','handelbow'}},...
+                            'model_pairs',{{'ext','handelbow'}},...
                             'postfix','_vaf'));
             end
         end
@@ -598,13 +576,13 @@
         all_shift_vaf_winners = horzcat(shift_vaf_winners{:});
         ext_winners = sum(strcmpi(all_shift_vaf_winners,'ext'),2);
         handelbow_winners = sum(strcmpi(all_shift_vaf_winners,'handelbow'),2);
-        fprintf('shift VAF winners -- hand-only: %d, whole-arm: %d',ext_winners,handelbow_winners)
+        fprintf('shift VAF winners -- hand-only: %d, whole-arm: %d\n',ext_winners,handelbow_winners)
 
         % session winners
         all_shift_vaf_session_winners = horzcat(shift_vaf_session_winners{:});
         ext_winners = sum(strcmpi(all_shift_vaf_session_winners,'ext'),2);
         handelbow_winners = sum(strcmpi(all_shift_vaf_session_winners,'handelbow'),2);
-        extforce_winners = sum(strcmpi(all_shift_vaf_session_winners,'extforce'),2);
+        fprintf('shift VAF session winners -- hand-only: %d, whole-arm: %d\n',ext_winners,handelbow_winners)
 
         % get average shift vaf over all neurons
         shift_vaf_all = vertcat(shift_vaf{:});
@@ -619,7 +597,7 @@
         for monkeynum = 1:length(monkey_names)
             subplot(length(monkey_names),1,monkeynum)
             for sessionnum = 1:session_ctr(monkeynum)
-                % plot session average connected by lines...
+                % plot session average
                 avg_shift_vaf = neuronAverage(shift_vaf{monkeynum,sessionnum},...
                     struct('keycols',{{'monkey','date','task','crossvalID'}},'do_ci',false));
 
@@ -636,13 +614,14 @@
                 CI_hi = yvals + upp * sqrt(crossval_correction*var_vaf);
                 
                 % plot dots and lines
-                plot(repmat(model_x,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
+                session_jitter = 0.01*(sessionnum-(session_ctr(monkeynum)+1)/2);
+                plot(repmat(model_x+session_jitter,2,1),[CI_lo;CI_hi],'-','linewidth',2,'color',session_colors(sessionnum,:))
                 hold on
-                scatter(model_x(:),yvals(:),50,session_colors(sessionnum,:),'filled')
+                scatter(model_x(:)+session_jitter,yvals(:),50,session_colors(sessionnum,:),'filled')
             end
             ylabel('PD Shift Circular VAF')
             set(gca,'box','off','tickdir','out',...
-                'xlim',[0 1.3],'xtick',model_x,'xticklabel',getModelTitles(models_to_plot),...
+                'xlim',[model_x(1)-0.2 model_x(end)+0.2],'xtick',model_x,'xticklabel',getModelTitles(models_to_plot),...
                 'ylim',[0 1],'ytick',[0 1])
         end
 
@@ -670,8 +649,8 @@
         for monkeynum = 1:length(monkey_names)
             for pairnum = 1:size(allowed_comparisons,1)
                 % set subplot
-                subplot(length(monkey_names),size(allowed_comparisons,1),...
-                    (monkeynum-1)*size(model_pairs,1)+pairnum)
+                subplot(size(allowed_comparisons,1),length(monkey_names),...
+                    (pairnum-1)*length(monkey_names)+monkeynum)
                 plot([-1 1],[-1 1],'k--','linewidth',0.5)
                 hold on
                 plot([0 0],[-1 1],'k-','linewidth',0.5)
@@ -719,8 +698,8 @@
         for monkeynum = 1:length(monkey_names)
             for pairnum = 1:size(model_pairs,1)
                 % set subplot
-                subplot(length(monkey_names),size(model_pairs,1),...
-                    (monkeynum-1)*size(model_pairs,1)+pairnum)
+                subplot(size(model_pairs,1),length(monkey_names),...
+                    (pairnum-1)*length(monkey_names)+monkeynum)
                 plot([-1 1],[-1 1],'k--','linewidth',0.5)
                 hold on
                 plot([0 0],[-1 1],'k-','linewidth',0.5)
@@ -785,29 +764,33 @@
                 ylim_high = 40;
                 % actual PD shift histogram
                 figure(total_hists)
-                subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+1)
+                subplot(length(not_plot_models)+1,length(monkey_names),monkeynum)
                 h = histogram(gca,monkey_shifts_real.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
                 set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
-                set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
-                ylabel(monkey_names{monkeynum})
+                set(gca,'box','off','tickdir','out',...
+                    'xlim',[-180 180],'xtick',[-180 0 180],...
+                    'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high])
+                title(sprintf('Monkey %s',monkey_names{monkeynum}))
                 if monkeynum == 1
-                    title('Actual PD Shift')
+                    ylabel('Actual PD Shift')
                 end
                 for modelnum = 1:length(not_plot_models)
                     allFileShifts_model = vertcat(file_shifts{:,modelnum});
                     [~,monkey_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum});
 
                     % modeled PD shift histogram
-                    subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+modelnum+1)
+                    subplot(length(not_plot_models)+1,length(monkey_names),modelnum*length(monkey_names)+monkeynum)
                     h = histogram(gca,monkey_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','stair');
                     set(h,'facecolor','none','edgecolor',ones(1,3)*0.5)
-                    set(gca,'box','off','tickdir','out','xlim',[-180 180],'xtick',[-180 0 180],'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high],'view',[-90 90])
+                    set(gca,'box','off','tickdir','out',...
+                        'xlim',[-180 180],'xtick',[-180 0 180],...
+                        'ylim',[0 ylim_high],'ytick',[0 ylim_high/2 ylim_high])
                     if monkeynum == 1
-                        title(sprintf('%s modeled PD shift',getModelTitles(not_plot_models{modelnum})))
+                        ylabel(sprintf('%s modeled PD shift',getModelTitles(not_plot_models{modelnum})))
                     end
                 end
 
-            % make plots separating sessions
+            % make scatter plots separating sessions
                 for sessionnum = 1:length(session_dates)
                     % get real shifts for this session
                     [~,session_shifts_real] = getNTidx(allFileShifts_real,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
@@ -818,46 +801,37 @@
                         allFileShifts_model = vertcat(file_shifts{:,modelnum});
                         [~,session_shifts_model] = getNTidx(allFileShifts_model,'monkey',monkey_names{monkeynum},'date',session_dates{sessionnum});
 
-                        % % modeled PD shift histogram
-                        % figure(hists)
-                        % subplot(length(monkey_names),length(not_plot_models)+1,(monkeynum-1)*(length(not_plot_models)+1)+modelnum+1)
-                        % h = histogram(gca,session_shifts_model.velPD*180/pi,'BinWidth',10,'DisplayStyle','bar');
-                        % set(h,'facecolor',session_colors(sessionnum,:),'edgecolor','none')
-                        % hold on
-
                         % scatter plots
                         figure(scatters)
-                        subplot(length(monkey_names),length(not_plot_models),(monkeynum-1)*(length(not_plot_models))+modelnum)
-                        % hsh = scatterhist(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,...
-                        %     'markersize',50,'group',allFileShifts_real.monkey,'location','NorthWest',...
-                        %     'direction','out','plotgroup','off','color',monkey_colors,'marker','...',...
-                        %     'nbins',[15 15],'style','stairs');
-                        % hsh(3).Children.EdgeColor = [0 0 0];
-                        % hsh(2).Children.EdgeColor = model_colors(modelnum,:);
-                        scatter(180/pi*session_shifts_model.velPD,180/pi*session_shifts_real.velPD,50,session_colors(sessionnum,:),'filled')
+                        subplot(length(not_plot_models),length(monkey_names),(modelnum-1)*length(monkey_names)+monkeynum)
+                        scatter(...
+                            180/pi*session_shifts_real.velPD,...
+                            180/pi*session_shifts_model.velPD,...
+                            50,session_colors(sessionnum,:),'filled')
                         hold on
                     end
                 end
+                % prettify plots
                 for modelnum = 1:length(not_plot_models)
                     % scatter plots
                     figure(scatters)
-                    subplot(length(monkey_names),length(not_plot_models),(monkeynum-1)*length(not_plot_models)+modelnum)
+                    subplot(length(not_plot_models),length(monkey_names),(modelnum-1)*length(monkey_names)+monkeynum)
                     plot([-180 180],[0 0],'-k','linewidth',2)
                     plot([0 0],[-180 180],'-k','linewidth',2)
                     plot([-180 180],[-180 180],'--k','linewidth',2)
                     axis equal
                     set(gca,'box','off','tickdir','out','xtick',[-180 180],'ytick',[-180 180],'xlim',[-180 180],'ylim',[-180 180])
                     % labels
-                    if monkeynum == length(monkey_names)
-                        xlabel 'Modeled PD Shift'
+                    if modelnum == length(not_plot_models)
+                        xlabel('Actual PD Shift')
                     end
                     if modelnum == 1
-                        ylabel({monkey_names{monkeynum};'Actual PD Shift'})
-                        ylbl = get(gca,'ylabel');
-                        set(ylbl,'Rotation',0,'VerticalAlignment','middle','HorizontalAlignment','right')
+                        title(sprintf('Monkey %s',monkey_names{monkeynum}))
                     end
                     if monkeynum == 1
-                        title(sprintf('%s model',getModelTitles(not_plot_models{modelnum})),'interpreter','none')
+                        ylabel(...
+                            {sprintf('%s model',getModelTitles(not_plot_models{modelnum}));'Modeled PD Shift'},...
+                            'interpreter','none')
                     end
                 end
         end
