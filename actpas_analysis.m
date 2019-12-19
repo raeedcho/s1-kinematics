@@ -112,7 +112,7 @@
         td(bad_trial) = [];
         fprintf('Removed %d trials because of missing muscles\n',sum(bad_trial))
         
-        % for Chips_20170912, file has bumps on 100% of trials
+        % for C_20170912, trial structure is such that active and passive are part of the same trial--split it up
         if strcmpi(td(1).monkey,'C') && contains(td(1).date_time,'2017/9/12')
             td_copy = td;
             [td_copy.ctrHoldBump] = deal(false);
