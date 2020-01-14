@@ -3,13 +3,13 @@ function lm_table = plotArrayMap(array_map,params)
 
     %% Set up
     if ispc
-        dataroot = '';
+        dataroot = 'G:\raeed\project-data\limblab\s1-kinematics';
     else
-        dataroot = '/data/raeed';
+        dataroot = '/data/raeed/project-data/limblab/s1-kinematics';
     end
     
     % parameters we can change with params
-    mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps'); % directory of electrode map
+    mapdir = fullfile(dataroot,'sensory_mapping'); % directory of electrode map
     map_plot = 'modality_color'; % what to map
     coarseness = 1; % coarseness of map (averages over NxN area of array)
     clims = []; % color limits
