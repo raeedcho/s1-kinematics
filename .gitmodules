@@ -4,9 +4,6 @@
 [submodule "lib/circ-toolbox"]
 	path = lib/circ-toolbox
 	url = https://github.com/raeedcho/circ-toolbox.git
-[submodule "lib/matlab-linspecer"]
-	path = lib/matlab-linspecer
-	url = https://github.com/raeedcho/matlab-linspecer.git
 [submodule "lib/neuron-table"]
 	path = lib/neuron-table
 	url = https://github.com/raeedcho/neuron-table.git
