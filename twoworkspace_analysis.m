@@ -10,21 +10,25 @@
 
 %% Set up meta info and load trial data
     if ispc
-        dataroot = 'G:\raeed\';
+        dataroot = 'G:\raeed\project-data\limblab\s1-kinematics';
     else
-        dataroot = '/data/raeed/';
+        dataroot = '/data/raeed/project-data/limblab/s1-kinematics';
     end
     
     % load data
-    datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library');
-    file_info = dir(fullfile(datadir,'*TRT*'));
+    file_info = dir(fullfile(dataroot,'reaching_experiments','*TRT*'));
     filenames = horzcat({file_info.name})';
     
     % save directory information (for convenience, since this code takes a while)
     savefile = true;
-    savedir = fullfile(dataroot,'project-data','limblab','s1-kinematics','Results','Encoding');
-    run_date = char(datetime('today','format','yyyyMMdd'));
-    savename = sprintf('encoderResults_run%s.mat',run_date);
+    if savefile
+        savedir = fullfile(dataroot,'reaching_experiments','EncodingResults');
+        if ~exist(savedir,'dir')
+            mkdir(savedir)
+        end
+        run_date = char(datetime('today','format','yyyyMMdd'));
+        savename = sprintf('encoderResults_run%s.mat',run_date);
+    end
     
     arrayname = 'S1';
     monkey_names = {'C','H','L'};
@@ -45,7 +49,7 @@
     trial_data_cell = cell(1,length(filenames));
     for filenum = 1:length(filenames)
         %% Load data
-        td = load(fullfile(datadir,[filenames{filenum}]));
+        td = load(fullfile(dataroot,[filenames{filenum}]));
     
         % rename trial_data for ease
         td = td.trial_data;

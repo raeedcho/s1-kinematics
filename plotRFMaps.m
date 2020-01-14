@@ -3,11 +3,11 @@
 %% set up
     % get the array maps
     if ispc
-        dataroot = '';
+        dataroot = 'G:\raeed\project-data\limblab\s1-kinematics';
     else
-        dataroot = '/data/raeed';
+        dataroot = '/data/raeed/project-data/limblab/s1-kinematics';
     end
-    mapdir = fullfile(dataroot,'project-data','limblab','s1-kinematics','elec-maps');
+    mapdir = fullfile(dataroot,'sensory_mapping');
 
     rf_map = readtable(fullfile(mapdir,'rf_map.csv'));
     elec_map = readtable(fullfile(mapdir,'elec_map.csv'));

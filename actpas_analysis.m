@@ -6,13 +6,12 @@
 
 %% Set up meta info
     if ispc
-        dataroot = 'G:\raeed';
+        dataroot = 'G:\raeed\project-data\limblab\s1-kinematics';
     else
-        dataroot = '/data/raeed';
+        dataroot = '/data/raeed/project-data/limblab/s1-kinematics';
     end
     
-    datadir = fullfile(dataroot,'project-data','limblab','s1-kinematics','td-library');
-    file_info = dir(fullfile(datadir,'*COactpas*.mat'));
+    file_info = dir(fullfile(dataroot,'reaching_experiments','*COactpas*.mat'));
     filenames = horzcat({file_info.name})';
 
     % plotting variables
@@ -31,7 +30,7 @@
     trial_data_cell = cell(1,length(filenames));
     for filenum = 1:length(filenames)
         %% load and preprocess data
-        td = load(fullfile(datadir,[filenames{filenum}]));
+        td = load(fullfile(dataroot,[filenames{filenum}]));
     
         % rename trial_data for ease
         td = td.trial_data;
