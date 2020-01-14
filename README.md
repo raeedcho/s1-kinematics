@@ -4,7 +4,7 @@ This repository contains analysis code relevant to the manuscript "Area 2 of pri
 
 ## How to get the code
 
-### The easy way
+### Using `git`
 
 The best way to get the code is to clone this repository with `git`. When cloning the repository, make sure to use the -r flag to also clone the submodules in `lib/`.
 
@@ -12,14 +12,9 @@ The best way to get the code is to clone this repository with `git`. When clonin
 git clone -r https://github.com/raeedcho/s1-kinematics.git
 ```
 
-### The not-as-easy way
+### Downloading the release
 
-The other way to get the code is by downloading the v1.0 release package [here](https://github.com/raeedcho/s1-kinematics/archive/master.zip). However, note that you will also need to download the submodules separately and place them into `lib/`. Here are the links:
-
-- [TrialData](https://github.com/mattperich/TrialData/archive/57510b9b4686432923559cb19301fd4e296dc0ed.zip)
-- [circ-toolbox](https://github.com/raeedcho/circ-toolbox/archive/9df8247ad641447358f4868e2fdd2d52312a55d9.zip)
-- [matlab-colors](https://github.com/raeedcho/matlab-colors/archive/7d882b8b2d1399c91d2587cc7be79832fa64fea2.zip)
-- [neuron-table](https://github.com/raeedcho/neuron-table/archive/e7cddb45079784f4ad8d5e4d4f0f03619c3d4880.zip)
+You can also download the code from [here](https://github.com/raeedcho/s1-kinematics/releases/download/v1.0/s1-kinematics-v1.0.zip).
 
 ## Environmental requirements
 
