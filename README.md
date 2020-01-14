@@ -1,6 +1,6 @@
 # S1 kinematic encoding analysis
 
-This repository contains analysis code relevant to the manuscript "Area 2 of primary somatosensory cortex encodes kinematics of the whole arm", which can be found [here](https://www.biorxiv.org/content/10.1101/643205v2).
+This repository contains analysis code relevant to the manuscript "Area 2 of primary somatosensory cortex encodes kinematics of the whole arm", which can be found [here](https://doi.org/10.7554/eLife.48198).
 
 ## How to get the code
 
@@ -15,6 +15,12 @@ git clone -r https://github.com/raeedcho/s1-kinematics.git
 ### Downloading the release
 
 You can also download the code from [here](https://github.com/raeedcho/s1-kinematics/releases/download/v1.0/s1-kinematics-v1.0.zip).
+
+## Execution instructions
+
+The main scripts used to generate the figures from the behavioral and neural data (found [here](https://doi.org/10.5061/dryad.nk98sf7q7)) are `plotRFMaps.m`, `twoworkspace_analysis.m`, and `actpas_analysis.m`.
+
+Before running the main analysis scripts, add `lib/` and all its subdirectories to the MATLAB path. Download the data to disk and modify the `dataroot` at the top of the scripts to point to the unzipped data directory. Then simply run the scripts. Note that because these scripts use extensive cross-validation, the analysis will take a long time to run.
 
 ## Environmental requirements
 
@@ -75,9 +81,3 @@ I've tested this code most recently on MATLAB 2019a with the following toolboxes
 - System Identification Toolbox                         Version 9.10        (R2019a)
 - Text Analytics Toolbox                                Version 1.3         (R2019a)
 - Wavelet Toolbox                                       Version 5.2         (R2019a)
-
-## Execution instructions
-
-The main scripts used to generate the figures from the behavioral and neural data (found [here](https://doi.org/10.5061/dryad.nk98sf7q7)) are `plotRFMaps.m`, `twoworkspace_analysis.m`, and `actpas_analysis.m`.
-
-Before running the main analysis scripts, add `lib/` and all its subdirectories to the MATLAB path. Download the data to disk and modify the `dataroot` at the top of the scripts to point to the unzipped data directory. Then simply run the scripts. Note that because these scripts use extensive cross-validation, the analysis will take a long time to run.
