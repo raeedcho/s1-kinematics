@@ -30,7 +30,7 @@
     trial_data_cell = cell(1,length(filenames));
     for filenum = 1:length(filenames)
         %% load and preprocess data
-        td = load(fullfile(dataroot,[filenames{filenum}]));
+        td = load(fullfile(dataroot,'reaching_experiments',[filenames{filenum}]));
     
         % rename trial_data for ease
         td = td.trial_data;
